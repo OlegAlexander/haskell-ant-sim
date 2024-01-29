@@ -69,7 +69,7 @@ executable haskell-ant-sim
 
     -- Other library packages from which modules are imported.
     build-depends:  base ^>=4.17.2.0,
-                    vector ^>=0.13.1.0
+                    matrix ^>=0.3.6.3
                     
 
     -- Directories containing source files.
@@ -77,3 +77,6 @@ executable haskell-ant-sim
 
     -- Base language which the package is written in.
     default-language: GHC2021
+
+    -- Extensions to enable.
+    default-extensions: Strict
