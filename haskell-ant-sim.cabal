@@ -69,7 +69,8 @@ executable haskell-ant-sim
 
     -- Other library packages from which modules are imported.
     build-depends:  base ^>=4.17.2.0,
-                    matrix ^>=0.3.6.3
+                    matrix ^>=0.3.6.3,
+                    random ^>=1.2.1.2
                     
 
     -- Directories containing source files.
