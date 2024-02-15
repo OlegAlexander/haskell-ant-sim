@@ -1,183 +1,121 @@
-{-# LANGUAGE MultiWayIf #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Eta reduce" #-}
-
-
-
+{-# LANGUAGE PatternGuards #-}
+-- | Simple picture drawing application.
+--   Like MSPaint, but you can only draw lines.
+--
 module Main where
 
-import           Data.List     (foldl')
-import qualified Data.Matrix   as M
-import           System.Random (StdGen, randomR)
-
-data Ant = Ant { antId   :: Int,
-                 antX    :: Int,
-                 antY    :: Int,
-                 antDir  :: Direction,
-                 antMode :: Mode}
-                 deriving Show
-
-data Mode = SeekFood | SeekNest deriving Show
-
-data Direction
-    = North
-    | Northeast
-    | East
-    | Southeast
-    | South
-    | Southwest
-    | West
-    | Northwest
-    deriving (Enum, Bounded, Show)
+import qualified Data.Matrix                        as M
+import           Debug.Trace                        (traceShow)
+import           Graphics.Gloss
+import           Graphics.Gloss.Interface.Pure.Game
+import           Model
 
 
-type FoodPheremone = Int
-type NestPheremone = Int
+tileSize :: Int
+tileSize = 20
 
-data Patch
-    = Border
-    | Wall
-    | Food
-    | Nest
-    | Ground FoodPheremone NestPheremone
-    deriving (Eq, Show)
+tileSizeF :: Float
+tileSizeF = fromIntegral tileSize
 
-showPatch :: Patch -> Char
-showPatch p = case p of
-    Border     -> 'B'
-    Wall       -> 'W'
-    Food       -> 'F'
-    Nest       -> 'N'
-    Ground _ _ -> '.'
+gridWidth :: Int
+gridWidth = 40
 
+gridWidthF :: Float
+gridWidthF = fromIntegral gridWidth
 
-type Grid = M.Matrix Patch
-type Neighborhood = M.Matrix Patch
-type State = (Grid, [Ant], StdGen)
+gridHeight :: Int
+gridHeight = 30
 
-mkGrid :: Int -> Int -> Grid
-mkGrid w h = M.matrix h w $ const $ Ground 0 0
-
-
-showGrid :: Grid -> String
-showGrid = unlines . M.toLists . fmap showPatch
-
-
-getPatch ::Int -> Int -> Grid -> Patch
-getPatch x y g = M.getElem (y+1) (x+1) g
-
-
-setPatch :: Int -> Int -> Patch -> Grid -> Grid
-setPatch x y p g = M.setElem p (y+1, x+1) g
-
-
-dryGrid :: Grid -> Grid
-dryGrid = fmap dryPatch
-    where
-        dryPatch :: Patch -> Patch
-        dryPatch p = case p of
-            Ground f n -> Ground (max 0 (f-1)) (max 0 (n-1))
-            _          -> p
-
-
-setBorder :: Grid -> Grid
-setBorder g =
-    let (w, h) = (M.ncols g, M.nrows g)
-        top = foldl (\g' x -> setPatch x 0 Border g') g [0..w-1]
-        bottom = foldl (\g' x -> setPatch x (h-1) Border g') top [0..w-1]
-        left = foldl (\g' y -> setPatch 0 y Border g') bottom [0..h-1]
-        right = foldl (\g' y -> setPatch (w-1) y Border g') left [0..h-1]
-    in right
-
--- putStrLn $ showGrid $ setBorder $ mkGrid 20 10
-
-
-randomDir :: StdGen -> (Direction, StdGen)
-randomDir gen =
-    let minDir = fromEnum (minBound :: Direction)
-        maxDir = fromEnum (maxBound :: Direction)
-        (randIndex, nextGen) = randomR (minDir, maxDir) gen
-    in (toEnum randIndex, nextGen)
-
-
-mkAnt :: Int -> Int -> Int -> StdGen -> (Ant, StdGen)
-mkAnt id' x y gen =
-    let (dir, gen') = randomDir gen
-    in (Ant id' x y dir SeekFood, gen')
-
-
-mkAnts :: Int -> Int -> StdGen -> Int -> ([Ant], StdGen)
-mkAnts x y gen n = go x y gen n []
-    where
-        go _ _ g 0 ants = (reverse ants, g)
-        go x' y' g n' ants =
-            let (ant, g') = mkAnt (n - n' + 1) x' y' g
-            in go x' y' g' (n' - 1) (ant:ants)
-
-
-
-turnLeft :: Direction -> Direction
-turnLeft d' = toEnum $ (fromEnum d' - 1) `mod` 8
-
-turnRight :: Direction -> Direction
-turnRight d' = toEnum $ (fromEnum d' + 1) `mod` 8
-
-goStraight :: Direction -> Direction
-goStraight = id
-
-
-randomNextDir :: Direction -> StdGen -> (Direction, StdGen)
-randomNextDir d g =
-    let (rand :: Int, g') = randomR (0, 4) g
-    in if | rand == 0              -> (turnLeft d, g')
-          | rand >= 1 && rand <= 3 -> (goStraight d, g')
-          | rand == 4              -> (turnRight d, g')
-          | otherwise              -> error "Impossible"
-
-
-dropPheremone :: Patch -> Ant -> Patch
-dropPheremone p a = case p of
-    Ground f n -> case antMode a of
-        SeekFood -> Ground (f + 100) n
-        SeekNest -> Ground f (n + 100)
-    _          -> p
-
-
-dropPheremones :: Grid -> [Ant] -> Grid
-dropPheremones g ants = foldl' updateGrid g ants
-    where
-        updateGrid :: Grid -> Ant -> Grid
-        updateGrid g' a =
-            let (x, y) = (antX a, antY a)
-            in setPatch x y (dropPheremone (getPatch x y g') a) g'
-
-step :: Int -> Int -> Direction -> (Int, Int)
-step x y dir = case dir of
-    North     -> (x, y - 1)
-    Northeast -> (x + 1, y - 1)
-    East      -> (x + 1, y)
-    Southeast -> (x + 1, y + 1)
-    South     -> (x, y + 1)
-    Southwest -> (x - 1, y + 1)
-    West      -> (x - 1, y)
-    Northwest -> (x - 1, y - 1)
-
-
-getNeighborhood :: Int -> Int -> Grid -> Neighborhood
-getNeighborhood x y g = M.submatrix (y - 1) (y + 1) (x - 1) (x + 1) g
-
-
-moveAnt :: Grid -> Ant -> StdGen -> (Ant, StdGen)
-moveAnt g a gen =
-    let (x, y) = (antX a, antY a)
-        (dir, gen') = randomNextDir (antDir a) gen
-        (x', y') = step x y dir
-        patch = getPatch x' y' g
-        mode' = case antMode a of
-            SeekFood -> if patch == Nest then SeekNest else SeekFood
-            SeekNest -> if patch == Food then SeekFood else SeekNest
-    in (Ant (antId a) x' y' dir mode', gen')
+gridHeightF :: Float
+gridHeightF = fromIntegral gridHeight
 
 main :: IO ()
-main = do
-    putStrLn "Hello, Ant World!"
+main
+ = do   putStrLn "Starting Ant Sim..."
+        let state = initGrid gridWidth gridHeight
+        play    (InWindow "Haskell Ant Sim" (gridWidth * tileSize, gridHeight * tileSize) (0,0))
+                (greyN 0.5) 100 state
+                makeGridPicture handleEvent stepWorld
+
+-- | The game state.
+data State
+        = State (Maybe Path)    -- The current line being drawn.
+                [Picture]       -- All the lines drawn previously.
+
+
+-- | A Line Segment
+type Segment    = ((Float, Float), (Float, Float))
+
+
+-- | Convert our state to a picture.
+makePicture :: State -> Picture
+makePicture (State m xs)
+        = Pictures (maybe xs (\x -> Line x : xs) m)
+
+
+makeGridPicture :: Grid -> Picture
+makeGridPicture g =
+    let (w, h) = (M.ncols g, M.nrows g)
+        tx = gridWidthF / 2 * tileSizeF - tileSizeF / 2
+        ty = gridHeightF / 2 * tileSizeF - tileSizeF / 2
+    in translate (-tx) ty (scale 1.0 (-1.0) (Pictures [patchToPicture (x-1) (y-1) (getPatch x y g) | y <- [1..h], x <- [1..w]]))
+    where
+        patchToPicture :: Int -> Int -> Patch -> Picture
+        patchToPicture x y p = Translate (fromIntegral x * tileSizeF) (fromIntegral y * tileSizeF) $ case p of
+            Border     -> Color black $ rectangleSolid tileSizeF tileSizeF
+            Wall       -> Color black $ rectangleSolid tileSizeF tileSizeF
+            Nest       -> Color red   $ rectangleSolid tileSizeF tileSizeF
+            Food _     -> Color green $ rectangleSolid tileSizeF tileSizeF
+            Ground _ _ -> Color white $ rectangleSolid tileSizeF tileSizeF
+
+
+
+-- | Handle mouse click and motion events.
+-- handleEvent :: Event -> State -> State
+-- handleEvent event state
+--         -- If the mouse has moved, then extend the current line.
+--         | EventMotion (x, y)    <- event
+--         , State (Just ps) ss    <- state
+--         = State (Just ((x, y):ps)) ss
+
+--         -- Start drawing a new line.
+--         | EventKey (MouseButton LeftButton) Down _ pt@(x,y) <- event
+--         , State Nothing ss       <- state
+--         = State (Just [pt])
+--                 ((Translate x y $ Scale 0.1 0.1 $ Text "Down") : ss)
+
+--         -- Finish drawing a line, and add it to the picture.
+--         | EventKey (MouseButton LeftButton) Up _ pt@(x,y)      <- event
+--         , State (Just ps) ss    <- state
+--         = State Nothing
+--                 ((Translate x y $ Scale 0.1 0.1 $ Text "up") : Line (pt:ps) : ss)
+
+--         | otherwise
+--         = state
+
+
+
+
+mouseToScreen :: (Float, Float) -> (Float, Float)
+mouseToScreen (x, y) = ((gridWidthF * tileSizeF) / 2 + x, (gridHeightF * tileSizeF) / 2 - y)
+
+screenToGrid :: (Float, Float) -> (Int, Int)
+screenToGrid (x, y) = let (x', y') = (floor (x / tileSizeF) + 1, floor (y / tileSizeF) + 1)
+                            in (max 1 (min gridWidth x'), max 1 (min gridHeight y'))
+
+mouseToGrid :: (Float, Float) -> (Int, Int)
+mouseToGrid = screenToGrid . mouseToScreen
+
+handleEvent :: Event -> Grid -> Grid
+handleEvent e g =
+    case e of
+        EventKey (MouseButton LeftButton) Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in drawPatch x' y' (Food 10) g
+        _                                               -> g
+
+
+
+-- stepWorld :: Float -> State -> State
+-- stepWorld _ = id
+
+stepWorld :: Float -> Grid -> Grid
+stepWorld _ = id
