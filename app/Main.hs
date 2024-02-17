@@ -1,3 +1,7 @@
+-- Short stack trace: cabal run --enable-profiling --ghc-options="-prof -fprof-auto"
+--  Long stack trace: cabal run --enable-profiling --ghc-options="-prof -fprof-auto" haskell-ant-sim -- +RTS -xc
+-- Disable profiling: cabal run --disable-profiling
+
 {-# LANGUAGE PatternGuards #-}
 -- | Simple picture drawing application.
 --   Like MSPaint, but you can only draw lines.
@@ -34,7 +38,7 @@ main
  = do   putStrLn "Starting Ant Sim..."
         let state = initGrid gridWidth gridHeight
         play    (InWindow "Haskell Ant Sim" (gridWidth * tileSize, gridHeight * tileSize) (0,0))
-                (greyN 0.5) 100 state
+                black 100 state
                 makeGridPicture handleEvent stepWorld
 
 -- | The game state.
@@ -53,6 +57,17 @@ makePicture (State m xs)
         = Pictures (maybe xs (\x -> Line x : xs) m)
 
 
+patchColor :: Patch -> Color
+patchColor p = case p of
+    Border     -> white
+    Wall       -> white
+    Nest       -> red
+    Food u     -> makeColor 0 (fromIntegral u / 100) 0 1
+    Ground f n -> mixColors 0.5 0.5
+                  (makeColor 0 (0.5 * (fromIntegral f / 1000)) 0 1)
+                  (makeColor (0.5 * (fromIntegral n / 1000)) 0 0 1)
+
+
 makeGridPicture :: Grid -> Picture
 makeGridPicture g =
     let (w, h) = (M.ncols g, M.nrows g)
@@ -61,12 +76,8 @@ makeGridPicture g =
     in translate (-tx) ty (scale 1.0 (-1.0) (Pictures [patchToPicture (x-1) (y-1) (getPatch x y g) | y <- [1..h], x <- [1..w]]))
     where
         patchToPicture :: Int -> Int -> Patch -> Picture
-        patchToPicture x y p = Translate (fromIntegral x * tileSizeF) (fromIntegral y * tileSizeF) $ case p of
-            Border     -> Color black $ rectangleSolid tileSizeF tileSizeF
-            Wall       -> Color black $ rectangleSolid tileSizeF tileSizeF
-            Nest       -> Color red   $ rectangleSolid tileSizeF tileSizeF
-            Food _     -> Color green $ rectangleSolid tileSizeF tileSizeF
-            Ground _ _ -> Color white $ rectangleSolid tileSizeF tileSizeF
+        patchToPicture x y p = Translate (fromIntegral x * tileSizeF) (fromIntegral y * tileSizeF) $ Color (patchColor p) $ rectangleSolid tileSizeF tileSizeF
+
 
 
 
@@ -107,10 +118,11 @@ mouseToGrid :: (Float, Float) -> (Int, Int)
 mouseToGrid = screenToGrid . mouseToScreen
 
 handleEvent :: Event -> Grid -> Grid
-handleEvent e g =
-    case e of
-        EventKey (MouseButton LeftButton) Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in drawPatch x' y' (Food 10) g
-        _                                               -> g
+handleEvent e g = case e of
+    EventKey (MouseButton LeftButton)  Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in drawPatch x' y' (Ground 500 1000) g
+    EventMotion (x, y)                               -> let (x', y') = mouseToGrid (x, y) in drawPatch x' y' (Ground 500 1000) g
+    EventKey (MouseButton RightButton) Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in drawPatch x' y' (Ground 1000 500) g
+    _                                                -> g
 
 
 
@@ -118,4 +130,4 @@ handleEvent e g =
 -- stepWorld _ = id
 
 stepWorld :: Float -> Grid -> Grid
-stepWorld _ = id
+stepWorld _ = dryGrid
