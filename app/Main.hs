@@ -2,7 +2,10 @@
 --  Long stack trace: cabal run --enable-profiling --ghc-options="-prof -fprof-auto" haskell-ant-sim -- +RTS -xc
 -- Disable profiling: cabal run --disable-profiling
 
+{-# LANGUAGE MultiWayIf    #-}
 {-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Eta reduce" #-}
 -- | Simple picture drawing application.
 --   Like MSPaint, but you can only draw lines.
 --
@@ -13,48 +16,37 @@ import           Debug.Trace                        (traceShow)
 import           Graphics.Gloss
 import           Graphics.Gloss.Interface.Pure.Game
 import           Model
+import           System.Random                      (newStdGen)
 
 
 tileSize :: Int
-tileSize = 20
+tileSize = 10
 
 tileSizeF :: Float
 tileSizeF = fromIntegral tileSize
 
 gridWidth :: Int
-gridWidth = 40
+gridWidth = 80
 
 gridWidthF :: Float
 gridWidthF = fromIntegral gridWidth
 
 gridHeight :: Int
-gridHeight = 30
+gridHeight = 60
 
 gridHeightF :: Float
 gridHeightF = fromIntegral gridHeight
 
 main :: IO ()
-main
- = do   putStrLn "Starting Ant Sim..."
-        let state = initGrid gridWidth gridHeight
-        play    (InWindow "Haskell Ant Sim" (gridWidth * tileSize, gridHeight * tileSize) (0,0))
-                black 100 state
-                makeGridPicture handleEvent stepWorld
+main = do
+    gen <- newStdGen
+    let grid = initGrid gridWidth gridHeight
+        (ants, gen') = mkAnts (gridWidth `div` 2) (gridHeight `div` 2) gen 25
+        state = (grid, ants, gen')
+        (w, h) = (gridWidth * tileSize, gridHeight * tileSize)
+    play (InWindow "Haskell Ant Sim" (w, h) (0,0))
+         (greyN 0.5) 15 state makePicture handleEvent stepWorld
 
--- | The game state.
-data State
-        = State (Maybe Path)    -- The current line being drawn.
-                [Picture]       -- All the lines drawn previously.
-
-
--- | A Line Segment
-type Segment    = ((Float, Float), (Float, Float))
-
-
--- | Convert our state to a picture.
-makePicture :: State -> Picture
-makePicture (State m xs)
-        = Pictures (maybe xs (\x -> Line x : xs) m)
 
 
 patchColor :: Patch -> Color
@@ -64,20 +56,25 @@ patchColor p = case p of
     Nest       -> red
     Food u     -> makeColor 0 (fromIntegral u / 100) 0 1
     Ground f n -> mixColors 0.5 0.5
-                  (makeColor 0 (0.5 * (fromIntegral f / 1000)) 0 1)
-                  (makeColor (0.5 * (fromIntegral n / 1000)) 0 0 1)
+                  (makeColor 0 (min 0.5 (fromIntegral f / 1000)) 0 1)
+                  (makeColor (min 0.5 (fromIntegral n / 1000)) 0 0 1)
 
 
-makeGridPicture :: Grid -> Picture
-makeGridPicture g =
+
+makePicture :: State -> Picture
+makePicture (g, ants, gen) =
     let (w, h) = (M.ncols g, M.nrows g)
         tx = gridWidthF / 2 * tileSizeF - tileSizeF / 2
         ty = gridHeightF / 2 * tileSizeF - tileSizeF / 2
-    in translate (-tx) ty (scale 1.0 (-1.0) (Pictures [patchToPicture (x-1) (y-1) (getPatch x y g) | y <- [1..h], x <- [1..w]]))
+        patchPics = [patchToPicture (x-1) (y-1) (getPatch x y g) | y <- [1..h], x <- [1..w]]
+        antsPics = [antToPicture a | a <- ants]
+    in translate (-tx) ty (scale 1.0 (-1.0) (pictures (patchPics ++ antsPics)))
     where
         patchToPicture :: Int -> Int -> Patch -> Picture
-        patchToPicture x y p = Translate (fromIntegral x * tileSizeF) (fromIntegral y * tileSizeF) $ Color (patchColor p) $ rectangleSolid tileSizeF tileSizeF
+        patchToPicture x y p = translate (fromIntegral x * tileSizeF) (fromIntegral y * tileSizeF) $ color (patchColor p) $ rectangleSolid tileSizeF tileSizeF
 
+        antToPicture :: Ant -> Picture
+        antToPicture (Ant id' x y dir mode) = translate (fromIntegral (x-1) * tileSizeF) (fromIntegral (y-1) * tileSizeF) $ color orange $ circleSolid (tileSizeF / 2)
 
 
 
@@ -117,17 +114,18 @@ screenToGrid (x, y) = let (x', y') = (floor (x / tileSizeF) + 1, floor (y / tile
 mouseToGrid :: (Float, Float) -> (Int, Int)
 mouseToGrid = screenToGrid . mouseToScreen
 
-handleEvent :: Event -> Grid -> Grid
-handleEvent e g = case e of
-    EventKey (MouseButton LeftButton)  Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in drawPatch x' y' (Ground 500 1000) g
-    EventMotion (x, y)                               -> let (x', y') = mouseToGrid (x, y) in drawPatch x' y' (Ground 500 1000) g
-    EventKey (MouseButton RightButton) Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in drawPatch x' y' (Ground 1000 500) g
-    _                                                -> g
+
+handleEvent :: Event -> State -> State
+handleEvent e (g, ants, gen) = case e of
+    EventKey (MouseButton LeftButton) Down (Modifiers Down _ _) (x, y) -> let (x', y') = mouseToGrid (x, y) in (drawPatch x' y' (Ground 0 0) g, ants, gen)
+    EventKey (MouseButton LeftButton)  Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in (drawPatch x' y' Wall g, ants, gen)
+    EventKey (MouseButton RightButton) Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in (drawPatch x' y' (Food 100) g, ants, gen)
+    _    -> (g, ants, gen)
 
 
-
--- stepWorld :: Float -> State -> State
--- stepWorld _ = id
-
-stepWorld :: Float -> Grid -> Grid
-stepWorld _ = dryGrid
+stepWorld :: Float -> State -> State
+stepWorld _ (g, ants, gen) =
+    let g' = dryGrid g
+        (g'', ants', gen') = stepAnts (g', ants, gen)
+        g''' = dropPheremones g'' ants'
+    in (g''', ants', gen')

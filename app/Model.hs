@@ -54,7 +54,7 @@ showPatch p = case p of
 
 type Grid = M.Matrix Patch
 type Neighborhood = M.Matrix Patch
--- type State = (Grid, [Ant], StdGen)
+type State = (Grid, [Ant], StdGen)
 
 mkGrid :: Int -> Int -> Grid
 mkGrid w h = M.matrix h w $ const $ Ground 0 0
@@ -141,24 +141,27 @@ turnLeft d' = toEnum $ (fromEnum d' - 1) `mod` 8
 turnRight :: Direction -> Direction
 turnRight d' = toEnum $ (fromEnum d' + 1) `mod` 8
 
+turnAround :: Direction -> Direction
+turnAround d' = toEnum $ (fromEnum d' + 4) `mod` 8
+
 goStraight :: Direction -> Direction
 goStraight = id
 
 
 randomNextDir :: Direction -> StdGen -> (Direction, StdGen)
 randomNextDir d g =
-    let (rand :: Int, g') = randomR (0, 4) g
-    in if | rand == 0              -> (turnLeft d, g')
-          | rand >= 1 && rand <= 3 -> (goStraight d, g')
-          | rand == 4              -> (turnRight d, g')
+    let (rand :: Int, g') = randomR (1, 9) g
+    in if | rand == 1              -> (turnLeft d, g')
+          | rand >= 2 && rand <= 8 -> (goStraight d, g')
+          | rand == 9              -> (turnRight d, g')
           | otherwise              -> error "Impossible"
 
 
 dropPheremone :: Patch -> Ant -> Patch
 dropPheremone p a = case p of
     Ground f n -> case antMode a of
-        SeekFood -> Ground (f + 100) n
-        SeekNest -> Ground f (n + 100)
+        SeekNest -> Ground (f + 200) n
+        SeekFood -> Ground f (n + 200)
     _          -> p
 
 
@@ -184,4 +187,26 @@ step x y dir = case dir of
 
 getNeighborhood :: Int -> Int -> Grid -> Neighborhood
 getNeighborhood x y g = M.submatrix (y - 1) (y + 1) (x - 1) (x + 1) g
+
+stepAnt :: Grid -> Ant -> StdGen -> (Grid, Ant, StdGen)
+stepAnt g a gen =
+    let (x, y) = (antX a, antY a)
+        (dir, gen') = randomNextDir (antDir a) gen
+        (x', y') = step x y dir
+        p = getPatch x' y' g
+        a' = case p of
+            Food _ -> a {antX = x', antY = y', antDir = turnAround dir, antMode = SeekNest}
+            Nest   -> a {antX = x', antY = y', antDir = turnAround dir, antMode = SeekFood}
+            Border -> a {antDir = turnAround dir}
+            Wall   -> a {antDir = turnAround dir}
+            _      -> a {antX = x', antY = y', antDir = dir}
+    in (g, a', gen')
+
+stepAnts :: State -> State
+stepAnts (g, ants, gen) = foldl' stepAnt' (g, [], gen) ants
+    where
+        stepAnt' :: (Grid, [Ant], StdGen) -> Ant -> (Grid, [Ant], StdGen)
+        stepAnt' (g, ants, gen) a =
+            let (g', a', gen') = stepAnt g a gen
+            in (g', a':ants, gen')
 
