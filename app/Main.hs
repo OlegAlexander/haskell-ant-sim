@@ -41,11 +41,11 @@ main :: IO ()
 main = do
     gen <- newStdGen
     let grid = initGrid gridWidth gridHeight
-        (ants, gen') = mkAnts (gridWidth `div` 2) (gridHeight `div` 2) gen 25
+        (ants, gen') = mkAnts (gridWidth `div` 2) (gridHeight `div` 2) gen 50
         state = (grid, ants, gen')
         (w, h) = (gridWidth * tileSize, gridHeight * tileSize)
     play (InWindow "Haskell Ant Sim" (w, h) (0,0))
-         (greyN 0.5) 15 state makePicture handleEvent stepWorld
+         (greyN 0.5) 10 state makePicture handleEvent stepWorld
 
 
 
@@ -54,10 +54,10 @@ patchColor p = case p of
     Border     -> white
     Wall       -> white
     Nest       -> red
-    Food u     -> makeColor 0 (fromIntegral u / 100) 0 1
+    Food u     -> makeColor 0 (u / 100) 0 1
     Ground f n -> mixColors 0.5 0.5
-                  (makeColor 0 (min 0.5 (fromIntegral f / 1000)) 0 1)
-                  (makeColor (min 0.5 (fromIntegral n / 1000)) 0 0 1)
+                  (makeColor 0 (min 0.5 (f / 1000)) 0 1)
+                  (makeColor (min 0.5 (n / 1000)) 0 0 1)
 
 
 
@@ -74,7 +74,7 @@ makePicture (g, ants, gen) =
         patchToPicture x y p = translate (fromIntegral x * tileSizeF) (fromIntegral y * tileSizeF) $ color (patchColor p) $ rectangleSolid tileSizeF tileSizeF
 
         antToPicture :: Ant -> Picture
-        antToPicture (Ant id' x y dir mode) = translate (fromIntegral (x-1) * tileSizeF) (fromIntegral (y-1) * tileSizeF) $ color orange $ circleSolid (tileSizeF / 2)
+        antToPicture (Ant id' x y dir mode f n) = translate (fromIntegral (x-1) * tileSizeF) (fromIntegral (y-1) * tileSizeF) $ color (dim orange) $ circleSolid (tileSizeF / 2)
 
 
 
@@ -124,8 +124,4 @@ handleEvent e (g, ants, gen) = case e of
 
 
 stepWorld :: Float -> State -> State
-stepWorld _ (g, ants, gen) =
-    let g' = dryGrid g
-        (g'', ants', gen') = stepAnts (g', ants, gen)
-        g''' = dropPheremones g'' ants'
-    in (g''', ants', gen')
+stepWorld _ = updateState

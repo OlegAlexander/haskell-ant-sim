@@ -10,14 +10,16 @@ import           Data.List     (foldl')
 import qualified Data.Matrix   as M
 import           System.Random (StdGen, randomR)
 
-data Ant = Ant { antId   :: Int,
-                 antX    :: Int,
-                 antY    :: Int,
-                 antDir  :: Direction,
-                 antMode :: Mode}
+data Ant = Ant { antId            :: Int,
+                 antX             :: Int,
+                 antY             :: Int,
+                 antDir           :: Direction,
+                 antMode          :: Mode,
+                 antFoodPheremone :: FoodPheremone,
+                 antNestPheremone :: NestPheremone}
                  deriving Show
 
-data Mode = SeekFood | SeekNest deriving Show
+data Mode = SeekFood | SeekNest deriving (Eq, Show)
 
 data Direction
     = North
@@ -31,9 +33,9 @@ data Direction
     deriving (Enum, Bounded, Show)
 
 
-type FoodPheremone = Int
-type NestPheremone = Int
-type FoodUnits = Int
+type FoodPheremone = Float
+type NestPheremone = Float
+type FoodUnits = Float
 
 data Patch
     = Border
@@ -89,6 +91,35 @@ dryGrid = fmap dryPatch
             _          -> p
 
 
+
+diffuseGrid :: Grid -> Grid
+diffuseGrid g = M.matrix (M.nrows g) (M.ncols g) $ \(y, x) ->
+    let p = getPatch x y g
+    in case p of
+        Ground f n -> let (f', n') = diffusePheremones (x, y) g
+                      in Ground f' n'
+        _          -> p
+    where
+        diffusePheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone)
+        diffusePheremones (x, y) g =
+            let n = getNeighborhood x y g
+                centerWeight = 200 -- Adjust this value to control the diffusion rate
+                totalWeight = centerWeight + 8 -- Center weight + 8 neighbors
+                (f, n') = foldl' (countPheremones (x, y) g) (0, 0) n
+                -- Add the center patch's pheromones, weighted more heavily
+                (cf, cn) = getCenterPheremones x y g
+            in ((f + cf * centerWeight) / totalWeight, (n' + cn * centerWeight) / totalWeight)
+
+        countPheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone) -> Patch -> (FoodPheremone, NestPheremone)
+        countPheremones (cx, cy) g (f, n) p = case p of
+            Ground f' n' -> (f + f', n + n')
+            _            -> (f, n)
+
+        getCenterPheremones :: Int -> Int -> Grid -> (FoodPheremone, NestPheremone)
+        getCenterPheremones x y g = case getPatch x y g of
+            Ground f n -> (f, n)
+            _          -> (0, 0)
+
 setBorder :: Grid -> Grid
 setBorder g =
     let (w, h) = (M.ncols g, M.nrows g)
@@ -102,8 +133,8 @@ setBorder g =
 setNest :: Grid -> Grid
 setNest g =
     let (w, h) = (M.ncols g, M.nrows g)
-        (x, y) = (w `div` 2, h `div` 2)
-    in setPatch Nest (x, y) g
+        (cx, cy) = (w `div` 2, h `div` 2)
+    in setPatch Nest (cx+1, cy+1) g
 
 
 initGrid :: Int -> Int -> Grid
@@ -122,7 +153,7 @@ randomDir gen =
 mkAnt :: Int -> Int -> Int -> StdGen -> (Ant, StdGen)
 mkAnt id' x y gen =
     let (dir, gen') = randomDir gen
-    in (Ant id' x y dir SeekFood, gen')
+    in (Ant id' x y dir SeekFood 0 200, gen')
 
 
 mkAnts :: Int -> Int -> StdGen -> Int -> ([Ant], StdGen)
@@ -157,21 +188,70 @@ randomNextDir d g =
           | otherwise              -> error "Impossible"
 
 
-dropPheremone :: Patch -> Ant -> Patch
-dropPheremone p a = case p of
-    Ground f n -> case antMode a of
-        SeekNest -> Ground (f + 200) n
-        SeekFood -> Ground f (n + 200)
-    _          -> p
 
 
-dropPheremones :: Grid -> [Ant] -> Grid
-dropPheremones g ants = foldl' updateGrid g ants
+neighborhoodDirections :: [Direction]
+neighborhoodDirections = [Northwest, North, Northeast, West, North, East, Southwest, South, Southeast]
+
+neighborhoodFood :: Neighborhood -> [FoodPheremone]
+neighborhoodFood n =
+    let patches = M.toList $ setPatch Wall (2,2) n
+    in map patchFood patches
     where
-        updateGrid :: Grid -> Ant -> Grid
-        updateGrid g' a =
+        patchFood :: Patch -> FoodPheremone
+        patchFood p = case p of
+            Ground f _ -> f
+            Food _     -> 10000000000
+            _          -> 0
+
+neighborhoodNest :: Neighborhood -> [NestPheremone]
+neighborhoodNest n =
+    let patches = M.toList $ setPatch Wall (2,2) n
+    in map patchNest patches
+    where
+        patchNest :: Patch -> NestPheremone
+        patchNest p = case p of
+            Ground _ n' -> n'
+            Nest        -> 10000000000
+            _           -> 0
+
+
+maxFoodDirection :: Neighborhood -> Maybe Direction
+maxFoodDirection n =
+    let food = neighborhoodFood n
+        maxFood = maximum food
+    in if maxFood == 0 then Nothing
+       else Just $ neighborhoodDirections !! head (filter ((== maxFood) . (food !!)) [0..8])
+
+
+maxNestDirection :: Neighborhood -> Maybe Direction
+maxNestDirection n =
+    let nest = neighborhoodNest n
+        maxNest = maximum nest
+    in if maxNest == 0 then Nothing
+       else Just $ neighborhoodDirections !! head (filter ((== maxNest) . (nest !!)) [0..8])
+
+
+
+dropPheremone :: Patch -> Ant -> (Ant, Patch)
+dropPheremone p a =
+    let (antFood, antNest) = (antFoodPheremone a, antNestPheremone a)
+    in case p of
+    Ground f n -> case antMode a of
+        SeekNest -> (a {antFoodPheremone = max 0 (antFood-1)}, Ground (f + antFood) n)
+        SeekFood -> (a {antNestPheremone = max 0 (antNest-1)}, Ground f (n + antNest))
+    _          -> (a,p)
+
+
+dropPheremones :: Grid -> [Ant] -> ([Ant], Grid)
+dropPheremones g ants = foldl' dropPheremone' ([], g) ants
+    where
+        dropPheremone' :: ([Ant], Grid) -> Ant -> ([Ant], Grid)
+        dropPheremone' (ants, g) a =
             let (x, y) = (antX a, antY a)
-            in setPatch (dropPheremone (getPatch x y g') a) (x, y)  g'
+                p = getPatch x y g
+                (a', p') = dropPheremone p a
+            in (a':ants, setPatch p' (x, y) g)
 
 step :: Int -> Int -> Direction -> (Int, Int)
 step x y dir = case dir of
@@ -188,19 +268,31 @@ step x y dir = case dir of
 getNeighborhood :: Int -> Int -> Grid -> Neighborhood
 getNeighborhood x y g = M.submatrix (y - 1) (y + 1) (x - 1) (x + 1) g
 
+
 stepAnt :: Grid -> Ant -> StdGen -> (Grid, Ant, StdGen)
 stepAnt g a gen =
     let (x, y) = (antX a, antY a)
-        (dir, gen') = randomNextDir (antDir a) gen
-        (x', y') = step x y dir
+        n = getNeighborhood x y g
+        (dir, gen') =
+            if | antMode a == SeekFood -> case maxFoodDirection n of
+                   Just d  -> (d, gen)
+                   Nothing -> randomNextDir (antDir a) gen
+               | antMode a == SeekNest -> case maxNestDirection n of
+                   Just d  -> (d, gen)
+                   Nothing -> randomNextDir (antDir a) gen
+               | otherwise -> error "Impossible"
+        (dir', gen''') =
+            let (r, gen'') = randomR (0.0, 1.0 :: Double) gen'
+            in if r < 0.5 then randomNextDir dir gen'' else (dir, gen'')
+        (x', y') = step x y dir'
         p = getPatch x' y' g
         a' = case p of
-            Food _ -> a {antX = x', antY = y', antDir = turnAround dir, antMode = SeekNest}
-            Nest   -> a {antX = x', antY = y', antDir = turnAround dir, antMode = SeekFood}
-            Border -> a {antDir = turnAround dir}
-            Wall   -> a {antDir = turnAround dir}
-            _      -> a {antX = x', antY = y', antDir = dir}
-    in (g, a', gen')
+            Food _      -> a {antX = x', antY = y', antDir = turnAround dir, antMode = SeekNest, antFoodPheremone = 200, antNestPheremone = 0}
+            Nest        -> a {antX = x', antY = y', antDir = turnAround dir, antMode = SeekFood, antFoodPheremone = 0, antNestPheremone = 200}
+            Border      -> a {antDir = turnAround dir}
+            Wall        -> a {antDir = turnAround dir}
+            Ground _ _  -> a {antX = x', antY = y', antDir = dir}
+    in (g, a', gen''')
 
 stepAnts :: State -> State
 stepAnts (g, ants, gen) = foldl' stepAnt' (g, [], gen) ants
@@ -210,3 +302,9 @@ stepAnts (g, ants, gen) = foldl' stepAnt' (g, [], gen) ants
             let (g', a', gen') = stepAnt g a gen
             in (g', a':ants, gen')
 
+updateState :: State -> State
+updateState (g, ants, gen) =
+    let g' = dryGrid g -- $ diffuseGrid g
+        (ants', g'') = dropPheremones g' ants
+        (g''', ants'', gen') = stepAnts (g'', ants', gen)
+    in (g''', ants'', gen')
