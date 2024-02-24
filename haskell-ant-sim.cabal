@@ -54,6 +54,16 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
+library
+    hs-source-dirs:      src
+    exposed-modules:     Model
+    build-depends:      base ^>=4.17.2.0,
+                        matrix ^>=0.3.6.3,
+                        random ^>=1.2.1.2,
+    default-language:    GHC2021
+    default-extensions: Strict
+
+
 executable haskell-ant-sim
     -- Import common warning flags.
     import:           warnings
@@ -62,7 +72,7 @@ executable haskell-ant-sim
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: Model
+    --other-modules: Model
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -71,7 +81,8 @@ executable haskell-ant-sim
     build-depends:  base ^>=4.17.2.0,
                     matrix ^>=0.3.6.3,
                     random ^>=1.2.1.2,
-                    gloss ^>=1.13.2.2
+                    gloss ^>=1.13.2.2,
+                    haskell-ant-sim
                     
 
     -- Directories containing source files.
@@ -81,4 +92,20 @@ executable haskell-ant-sim
     default-language: GHC2021
 
     -- Extensions to enable.
+    default-extensions: Strict
+
+test-suite spec
+    -- cabal test --test-show-details=direct
+    type: exitcode-stdio-1.0
+    main-is: Spec.hs
+    hs-source-dirs: test
+    ghc-options: -Wall
+    build-depends:
+        base ==4.*, 
+        matrix ^>=0.3.6.3, 
+        random ^>=1.2.1.2, 
+        hspec ==2.*, 
+        QuickCheck ==2.*,
+        haskell-ant-sim
+    default-language: GHC2021
     default-extensions: Strict

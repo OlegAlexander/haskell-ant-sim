@@ -17,7 +17,7 @@ data Ant = Ant { antId            :: Int,
                  antMode          :: Mode,
                  antFoodPheremone :: FoodPheremone,
                  antNestPheremone :: NestPheremone}
-                 deriving Show
+                 deriving (Eq, Show)
 
 data Mode = SeekFood | SeekNest deriving (Eq, Show)
 
@@ -30,7 +30,7 @@ data Direction
     | Southwest
     | West
     | Northwest
-    deriving (Enum, Bounded, Show)
+    deriving (Eq, Enum, Bounded, Show)
 
 
 type FoodPheremone = Float
@@ -73,6 +73,8 @@ getPatch x y = M.getElem y x
 setPatch :: Patch -> (Int, Int) -> Grid -> Grid
 setPatch p (x, y) = M.setElem p (y, x)
 
+setPatchState :: Patch -> (Int, Int) -> State -> State
+setPatchState p (x, y) (g, ants, gen) = (setPatch p (x, y) g, ants, gen)
 
 drawPatch :: Int -> Int -> Patch -> Grid -> Grid
 drawPatch x y p g = case getPatch x y g of
@@ -142,6 +144,19 @@ initGrid w h = setNest $ setBorder $ mkGrid w h
 -- putStrLn $ showGrid $ initGrid 20 10
 
 
+initState :: Int -> Int -> Int -> StdGen -> State
+initState w h numAnts gen =
+    let grid = initGrid w h
+        (ants, gen') = mkAnts (w `div` 2) (h `div` 2) gen numAnts
+    in (grid, ants, gen')
+
+showAnts :: [Ant] -> String
+showAnts = unlines . map show
+
+showState :: State -> String
+showState (g, ants, gen) = show g ++ "\n" ++ showAnts ants ++ "\n" ++ show gen
+-- putStrLn $ showState $ initState 5 7 1 (mkStdGen 0)
+
 randomDir :: StdGen -> (Direction, StdGen)
 randomDir gen =
     let minDir = fromEnum (minBound :: Direction)
@@ -153,7 +168,7 @@ randomDir gen =
 mkAnt :: Int -> Int -> Int -> StdGen -> (Ant, StdGen)
 mkAnt id' x y gen =
     let (dir, gen') = randomDir gen
-    in (Ant id' x y dir SeekFood 0 200, gen')
+    in (Ant id' (x+1) (y+1) dir SeekFood 0 200, gen')
 
 
 mkAnts :: Int -> Int -> StdGen -> Int -> ([Ant], StdGen)
@@ -247,11 +262,11 @@ dropPheremones :: Grid -> [Ant] -> ([Ant], Grid)
 dropPheremones g ants = foldl' dropPheremone' ([], g) ants
     where
         dropPheremone' :: ([Ant], Grid) -> Ant -> ([Ant], Grid)
-        dropPheremone' (ants, g) a =
+        dropPheremone' (ants', g') a =
             let (x, y) = (antX a, antY a)
-                p = getPatch x y g
+                p = getPatch x y g'
                 (a', p') = dropPheremone p a
-            in (a':ants, setPatch p' (x, y) g)
+            in (a':ants', setPatch p' (x, y) g')
 
 step :: Int -> Int -> Direction -> (Int, Int)
 step x y dir = case dir of
@@ -281,30 +296,35 @@ stepAnt g a gen =
                    Just d  -> (d, gen)
                    Nothing -> randomNextDir (antDir a) gen
                | otherwise -> error "Impossible"
-        (dir', gen''') =
-            let (r, gen'') = randomR (0.0, 1.0 :: Double) gen'
-            in if r < 0.5 then randomNextDir dir gen'' else (dir, gen'')
+        (dir', gen''') = (dir, gen')
+            -- let (r, gen'') = randomR (0.0, 1.0 :: Double) gen'
+            -- in if r < 0.2 then randomNextDir dir gen'' else (dir, gen'')
         (x', y') = step x y dir'
         p = getPatch x' y' g
         a' = case p of
-            Food _      -> a {antX = x', antY = y', antDir = turnAround dir, antMode = SeekNest, antFoodPheremone = 200, antNestPheremone = 0}
-            Nest        -> a {antX = x', antY = y', antDir = turnAround dir, antMode = SeekFood, antFoodPheremone = 0, antNestPheremone = 200}
-            Border      -> a {antDir = turnAround dir}
-            Wall        -> a {antDir = turnAround dir}
-            Ground _ _  -> a {antX = x', antY = y', antDir = dir}
+            Food _      -> a {antX = x', antY = y', antDir = turnAround dir', antMode = SeekNest, antFoodPheremone = 200, antNestPheremone = 0}
+            Nest        -> a {antX = x', antY = y', antDir = turnAround dir', antMode = SeekFood, antFoodPheremone = 0, antNestPheremone = 200}
+            Border      -> a {antDir = turnAround dir'}
+            Wall        -> a {antDir = turnAround dir'}
+            Ground _ _  -> a {antX = x', antY = y', antDir = dir'}
     in (g, a', gen''')
 
 stepAnts :: State -> State
 stepAnts (g, ants, gen) = foldl' stepAnt' (g, [], gen) ants
     where
         stepAnt' :: (Grid, [Ant], StdGen) -> Ant -> (Grid, [Ant], StdGen)
-        stepAnt' (g, ants, gen) a =
-            let (g', a', gen') = stepAnt g a gen
-            in (g', a':ants, gen')
+        stepAnt' (g', ants', gen') a =
+            let (g'', a', gen'') = stepAnt g' a gen'
+            in (g'', a':ants', gen'')
 
 updateState :: State -> State
 updateState (g, ants, gen) =
     let g' = dryGrid g -- $ diffuseGrid g
-        (ants', g'') = dropPheremones g' ants
-        (g''', ants'', gen') = stepAnts (g'', ants', gen)
+        (g'', ants', gen') = stepAnts (g', ants, gen)
+        (ants'', g''') = dropPheremones g'' ants'
     in (g''', ants'', gen')
+
+
+-- import System.Random
+-- import GHC.Utils.Misc
+-- putStrLn $ showState $ nTimes 1 updateState $ setPatchState (Food 100) (2,2) $ initState 5 7 1 (mkStdGen 0)

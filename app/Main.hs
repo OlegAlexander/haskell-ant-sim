@@ -37,15 +37,19 @@ gridHeight = 60
 gridHeightF :: Float
 gridHeightF = fromIntegral gridHeight
 
+numAnts :: Int
+numAnts = 25
+
+fps :: Int
+fps = 15
+
 main :: IO ()
 main = do
     gen <- newStdGen
-    let grid = initGrid gridWidth gridHeight
-        (ants, gen') = mkAnts (gridWidth `div` 2) (gridHeight `div` 2) gen 50
-        state = (grid, ants, gen')
+    let state = initState gridWidth gridHeight numAnts gen
         (w, h) = (gridWidth * tileSize, gridHeight * tileSize)
     play (InWindow "Haskell Ant Sim" (w, h) (0,0))
-         (greyN 0.5) 10 state makePicture handleEvent stepWorld
+         (greyN 0.5) fps state makePicture handleEvent stepWorld
 
 
 
