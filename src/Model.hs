@@ -196,13 +196,11 @@ goStraight = id
 
 randomNextDir :: Direction -> StdGen -> (Direction, StdGen)
 randomNextDir d g =
-    let (rand :: Int, g') = randomR (1, 9) g
-    in if | rand == 1              -> (turnLeft d, g')
-          | rand >= 2 && rand <= 8 -> (goStraight d, g')
-          | rand == 9              -> (turnRight d, g')
-          | otherwise              -> error "Impossible"
-
-
+    let (rand :: Int, g') = randomR (1, 20) g
+    in if | rand == 1               -> (turnLeft d, g')
+          | rand >= 2 && rand <= 19 -> (goStraight d, g')
+          | rand == 20              -> (turnRight d, g')
+          | otherwise               -> error "Impossible"
 
 
 neighborhoodDirections :: [Direction]
@@ -252,10 +250,11 @@ dropPheremone :: Patch -> Ant -> (Ant, Patch)
 dropPheremone p a =
     let (antFood, antNest) = (antFoodPheremone a, antNestPheremone a)
     in case p of
-    Ground f n -> case antMode a of
-        SeekNest -> (a {antFoodPheremone = max 0 (antFood-1)}, Ground (f + antFood) n)
-        SeekFood -> (a {antNestPheremone = max 0 (antNest-1)}, Ground f (n + antNest))
-    _          -> (a,p)
+        Ground f n -> case antMode a of
+            SeekNest -> (a {antFoodPheremone = max 0 (antFood-1)}, Ground (f + antFood) n)
+            SeekFood -> (a {antNestPheremone = max 0 (antNest-1)}, Ground f (n + antNest))
+        _          -> (a,p)
+
 
 
 dropPheremones :: Grid -> [Ant] -> ([Ant], Grid)
@@ -288,14 +287,13 @@ stepAnt :: Grid -> Ant -> StdGen -> (Grid, Ant, StdGen)
 stepAnt g a gen =
     let (x, y) = (antX a, antY a)
         n = getNeighborhood x y g
-        (dir, gen') =
-            if | antMode a == SeekFood -> case maxFoodDirection n of
-                   Just d  -> (d, gen)
-                   Nothing -> randomNextDir (antDir a) gen
-               | antMode a == SeekNest -> case maxNestDirection n of
-                   Just d  -> (d, gen)
-                   Nothing -> randomNextDir (antDir a) gen
-               | otherwise -> error "Impossible"
+        (dir, gen') = case antMode a of
+            SeekFood -> case maxFoodDirection n of
+                Just d  -> (d, gen)
+                Nothing -> randomNextDir (antDir a) gen
+            SeekNest -> case maxNestDirection n of
+                Just d  -> (d, gen)
+                Nothing -> randomNextDir (antDir a) gen
         (dir', gen''') = (dir, gen')
             -- let (r, gen'') = randomR (0.0, 1.0 :: Double) gen'
             -- in if r < 0.2 then randomNextDir dir gen'' else (dir, gen'')
