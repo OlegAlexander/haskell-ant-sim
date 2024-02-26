@@ -20,28 +20,28 @@ import           System.Random                      (newStdGen)
 
 
 tileSize :: Int
-tileSize = 10
+tileSize = 8
 
 tileSizeF :: Float
 tileSizeF = fromIntegral tileSize
 
 gridWidth :: Int
-gridWidth = 80
+gridWidth = 100
 
 gridWidthF :: Float
 gridWidthF = fromIntegral gridWidth
 
 gridHeight :: Int
-gridHeight = 60
+gridHeight = 75
 
 gridHeightF :: Float
 gridHeightF = fromIntegral gridHeight
 
 numAnts :: Int
-numAnts = 25
+numAnts = 50
 
 fps :: Int
-fps = 15
+fps = 30
 
 main :: IO ()
 main = do
@@ -49,7 +49,7 @@ main = do
     let state = initState gridWidth gridHeight numAnts gen
         (w, h) = (gridWidth * tileSize, gridHeight * tileSize)
     play (InWindow "Haskell Ant Sim" (w, h) (0,0))
-         (greyN 0.5) fps state makePicture handleEvent stepWorld
+         (greyN 0.1) fps state makePicture handleEvent stepWorld
 
 
 

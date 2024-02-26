@@ -56,6 +56,7 @@ showPatch p = case p of
 
 type Grid = M.Matrix Patch
 type Neighborhood = M.Matrix Patch
+type AntLook = (Patch, Patch, Patch)
 type State = (Grid, [Ant], StdGen)
 
 mkGrid :: Int -> Int -> Grid
@@ -105,7 +106,7 @@ diffuseGrid g = M.matrix (M.nrows g) (M.ncols g) $ \(y, x) ->
         diffusePheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone)
         diffusePheremones (x, y) g =
             let n = getNeighborhood x y g
-                centerWeight = 200 -- Adjust this value to control the diffusion rate
+                centerWeight = 100 -- Adjust this value to control the diffusion rate
                 totalWeight = centerWeight + 8 -- Center weight + 8 neighbors
                 (f, n') = foldl' (countPheremones (x, y) g) (0, 0) n
                 -- Add the center patch's pheromones, weighted more heavily
@@ -121,6 +122,7 @@ diffuseGrid g = M.matrix (M.nrows g) (M.ncols g) $ \(y, x) ->
         getCenterPheremones x y g = case getPatch x y g of
             Ground f n -> (f, n)
             _          -> (0, 0)
+
 
 setBorder :: Grid -> Grid
 setBorder g =
@@ -165,10 +167,13 @@ randomDir gen =
     in (toEnum randIndex, nextGen)
 
 
+pheromoneAmount :: Float
+pheromoneAmount = 300
+
 mkAnt :: Int -> Int -> Int -> StdGen -> (Ant, StdGen)
 mkAnt id' x y gen =
     let (dir, gen') = randomDir gen
-    in (Ant id' (x+1) (y+1) dir SeekFood 0 200, gen')
+    in (Ant id' (x+1) (y+1) dir SeekFood 0 pheromoneAmount, gen')
 
 
 mkAnts :: Int -> Int -> StdGen -> Int -> ([Ant], StdGen)
@@ -196,53 +201,43 @@ goStraight = id
 
 randomNextDir :: Direction -> StdGen -> (Direction, StdGen)
 randomNextDir d g =
-    let (rand :: Int, g') = randomR (1, 20) g
+    let (rand :: Int, g') = randomR (1, 12) g
     in if | rand == 1               -> (turnLeft d, g')
-          | rand >= 2 && rand <= 19 -> (goStraight d, g')
-          | rand == 20              -> (turnRight d, g')
+          | rand >= 2 && rand <= 11 -> (goStraight d, g')
+          | rand == 12              -> (turnRight d, g')
           | otherwise               -> error "Impossible"
 
 
-neighborhoodDirections :: [Direction]
-neighborhoodDirections = [Northwest, North, Northeast, West, North, East, Southwest, South, Southeast]
+patchFood :: Patch -> FoodPheremone
+patchFood p = case p of
+    Ground f _ -> f
+    Food _     -> 1_000_000_000
+    _          -> 0
 
-neighborhoodFood :: Neighborhood -> [FoodPheremone]
-neighborhoodFood n =
-    let patches = M.toList $ setPatch Wall (2,2) n
-    in map patchFood patches
-    where
-        patchFood :: Patch -> FoodPheremone
-        patchFood p = case p of
-            Ground f _ -> f
-            Food _     -> 10000000000
-            _          -> 0
+patchNest :: Patch -> NestPheremone
+patchNest p = case p of
+    Ground _ n -> n
+    Nest       -> 1_000_000_000
+    _          -> 0
 
-neighborhoodNest :: Neighborhood -> [NestPheremone]
-neighborhoodNest n =
-    let patches = M.toList $ setPatch Wall (2,2) n
-    in map patchNest patches
-    where
-        patchNest :: Patch -> NestPheremone
-        patchNest p = case p of
-            Ground _ n' -> n'
-            Nest        -> 10000000000
-            _           -> 0
-
-
-maxFoodDirection :: Neighborhood -> Maybe Direction
-maxFoodDirection n =
-    let food = neighborhoodFood n
-        maxFood = maximum food
+maxFoodDirection :: AntLook -> Direction -> Maybe Direction
+maxFoodDirection (l, c, r) dir =
+    let (lf, cf, rf) = (patchFood l, patchFood c, patchFood r)
+        maxFood = maximum [lf, cf, rf]
     in if maxFood == 0 then Nothing
-       else Just $ neighborhoodDirections !! head (filter ((== maxFood) . (food !!)) [0..8])
+        else Just $ if | maxFood == lf -> turnLeft   dir
+                       | maxFood == cf -> goStraight dir
+                       | maxFood == rf -> turnRight  dir
 
 
-maxNestDirection :: Neighborhood -> Maybe Direction
-maxNestDirection n =
-    let nest = neighborhoodNest n
-        maxNest = maximum nest
+maxNestDirection :: AntLook -> Direction -> Maybe Direction
+maxNestDirection (l, c, r) dir =
+    let (ln, cn, rn) = (patchNest l, patchNest c, patchNest r)
+        maxNest = maximum [ln, cn, rn]
     in if maxNest == 0 then Nothing
-       else Just $ neighborhoodDirections !! head (filter ((== maxNest) . (nest !!)) [0..8])
+        else Just $ if | maxNest == ln -> turnLeft   dir
+                       | maxNest == cn -> goStraight dir
+                       | maxNest == rn -> turnRight  dir
 
 
 
@@ -251,8 +246,8 @@ dropPheremone p a =
     let (antFood, antNest) = (antFoodPheremone a, antNestPheremone a)
     in case p of
         Ground f n -> case antMode a of
-            SeekNest -> (a {antFoodPheremone = max 0 (antFood-1)}, Ground (f + antFood) n)
-            SeekFood -> (a {antNestPheremone = max 0 (antNest-1)}, Ground f (n + antNest))
+            SeekNest -> (a {antFoodPheremone = max 0 (antFood*0.99)}, Ground (f + antFood) n)
+            SeekFood -> (a {antNestPheremone = max 0 (antNest*0.99)}, Ground f (n + antNest))
         _          -> (a,p)
 
 
@@ -278,6 +273,15 @@ step x y dir = case dir of
     West      -> (x - 1, y)
     Northwest -> (x - 1, y - 1)
 
+lookAtPatch :: Int -> Int -> Direction -> Grid -> Patch
+lookAtPatch x y dir g = let (x', y') = step x y dir in getPatch x' y' g
+
+antLook :: Ant -> Grid -> AntLook
+antLook a g =
+    let (x, y, dir) = (antX a, antY a, antDir a)
+    in (lookAtPatch x y (turnLeft   dir) g,
+        lookAtPatch x y (goStraight dir) g,
+        lookAtPatch x y (turnRight  dir) g)
 
 getNeighborhood :: Int -> Int -> Grid -> Neighborhood
 getNeighborhood x y g = M.submatrix (y - 1) (y + 1) (x - 1) (x + 1) g
@@ -285,23 +289,23 @@ getNeighborhood x y g = M.submatrix (y - 1) (y + 1) (x - 1) (x + 1) g
 
 stepAnt :: Grid -> Ant -> StdGen -> (Grid, Ant, StdGen)
 stepAnt g a gen =
-    let (x, y) = (antX a, antY a)
-        n = getNeighborhood x y g
+    let (x, y, direction) = (antX a, antY a, antDir a)
+        look = antLook a g
         (dir, gen') = case antMode a of
-            SeekFood -> case maxFoodDirection n of
+            SeekFood -> case maxFoodDirection look direction of
                 Just d  -> (d, gen)
                 Nothing -> randomNextDir (antDir a) gen
-            SeekNest -> case maxNestDirection n of
+            SeekNest -> case maxNestDirection look direction of
                 Just d  -> (d, gen)
                 Nothing -> randomNextDir (antDir a) gen
-        (dir', gen''') = (dir, gen')
-            -- let (r, gen'') = randomR (0.0, 1.0 :: Double) gen'
-            -- in if r < 0.2 then randomNextDir dir gen'' else (dir, gen'')
+        (dir', gen''') =
+            let (r, gen'') = randomR (0.0, 1.0 :: Double) gen'
+            in if r < 0.01 then randomNextDir dir gen'' else (dir, gen'')
         (x', y') = step x y dir'
         p = getPatch x' y' g
         a' = case p of
-            Food _      -> a {antX = x', antY = y', antDir = turnAround dir', antMode = SeekNest, antFoodPheremone = 200, antNestPheremone = 0}
-            Nest        -> a {antX = x', antY = y', antDir = turnAround dir', antMode = SeekFood, antFoodPheremone = 0, antNestPheremone = 200}
+            Food _      -> a {antX = x', antY = y', antDir = turnAround dir', antMode = SeekNest, antFoodPheremone = pheromoneAmount, antNestPheremone = 0}
+            Nest        -> a {antX = x', antY = y', antDir = turnAround dir', antMode = SeekFood, antFoodPheremone = 0, antNestPheremone = pheromoneAmount}
             Border      -> a {antDir = turnAround dir'}
             Wall        -> a {antDir = turnAround dir'}
             Ground _ _  -> a {antX = x', antY = y', antDir = dir'}
