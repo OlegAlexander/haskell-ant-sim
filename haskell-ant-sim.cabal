@@ -56,7 +56,7 @@ common warnings
 
 library
     hs-source-dirs:      src
-    exposed-modules:     Model
+    exposed-modules:     Model, Convolve
     build-depends:      base ^>=4.17.2.0,
                         matrix ^>=0.3.6.3,
                         random ^>=1.2.1.2,

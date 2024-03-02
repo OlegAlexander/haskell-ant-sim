@@ -6,6 +6,7 @@
 
 module Model where
 
+import           Convolve      (convolve2DSeparable)
 import           Data.List     (foldl')
 import qualified Data.Matrix   as M
 import           System.Random (StdGen, randomR)
@@ -45,6 +46,8 @@ data Patch
     | Ground FoodPheremone NestPheremone
     deriving (Eq, Show)
 
+type PatchWithPos = (Patch, (Int, Int))
+
 showPatch :: Patch -> Char
 showPatch p = case p of
     Border     -> 'B'
@@ -55,6 +58,7 @@ showPatch p = case p of
 
 
 type Grid = M.Matrix Patch
+type PatchWithPosGrid = M.Matrix PatchWithPos
 type Neighborhood = M.Matrix Patch
 type AntLook = (Patch, Patch, Patch)
 type State = (Grid, [Ant], StdGen)
@@ -93,35 +97,46 @@ dryGrid = fmap dryPatch
             Food 0     -> Ground 0 0
             _          -> p
 
+getPatchWithPosGrid :: Grid -> PatchWithPosGrid
+getPatchWithPosGrid g = M.matrix (M.nrows g) (M.ncols g) $ \(y, x) -> (getPatch x y g, (x, y))
+
+
+
+diffusePatch :: PatchWithPos -> Patch
+diffusePatch = undefined
 
 
 diffuseGrid :: Grid -> Grid
-diffuseGrid g = M.matrix (M.nrows g) (M.ncols g) $ \(y, x) ->
-    let p = getPatch x y g
-    in case p of
-        Ground f n -> let (f', n') = diffusePheremones (x, y) g
-                      in Ground f' n'
-        _          -> p
-    where
-        diffusePheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone)
-        diffusePheremones (x, y) g =
-            let n = getNeighborhood x y g
-                centerWeight = 100 -- Adjust this value to control the diffusion rate
-                totalWeight = centerWeight + 8 -- Center weight + 8 neighbors
-                (f, n') = foldl' (countPheremones (x, y) g) (0, 0) n
-                -- Add the center patch's pheromones, weighted more heavily
-                (cf, cn) = getCenterPheremones x y g
-            in ((f + cf * centerWeight) / totalWeight, (n' + cn * centerWeight) / totalWeight)
+diffuseGrid = fmap diffusePatch . getPatchWithPosGrid
 
-        countPheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone) -> Patch -> (FoodPheremone, NestPheremone)
-        countPheremones (cx, cy) g (f, n) p = case p of
-            Ground f' n' -> (f + f', n + n')
-            _            -> (f, n)
 
-        getCenterPheremones :: Int -> Int -> Grid -> (FoodPheremone, NestPheremone)
-        getCenterPheremones x y g = case getPatch x y g of
-            Ground f n -> (f, n)
-            _          -> (0, 0)
+-- diffuseGrid :: Grid -> Grid
+-- diffuseGrid g = M.matrix (M.nrows g) (M.ncols g) $ \(y, x) ->
+--     let p = getPatch x y g
+--     in case p of
+--         Ground f n -> let (f', n') = diffusePheremones (x, y) g
+--                       in Ground f' n'
+--         _          -> p
+--     where
+--         diffusePheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone)
+--         diffusePheremones (x, y) g =
+--             let n = getNeighborhood x y g
+--                 centerWeight = 100 -- Adjust this value to control the diffusion rate
+--                 totalWeight = centerWeight + 8 -- Center weight + 8 neighbors
+--                 (f, n') = foldl' (countPheremones (x, y) g) (0, 0) n
+--                 -- Add the center patch's pheromones, weighted more heavily
+--                 (cf, cn) = getCenterPheremones x y g
+--             in ((f + cf * centerWeight) / totalWeight, (n' + cn * centerWeight) / totalWeight)
+
+--         countPheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone) -> Patch -> (FoodPheremone, NestPheremone)
+--         countPheremones (cx, cy) g (f, n) p = case p of
+--             Ground f' n' -> (f + f', n + n')
+--             _            -> (f, n)
+
+--         getCenterPheremones :: Int -> Int -> Grid -> (FoodPheremone, NestPheremone)
+--         getCenterPheremones x y g = case getPatch x y g of
+--             Ground f n -> (f, n)
+--             _          -> (0, 0)
 
 
 setBorder :: Grid -> Grid
