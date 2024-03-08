@@ -1,4 +1,4 @@
--- This module was written with help from ChagGPT.
+-- This module was written with help from ChatGPT.
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
@@ -64,53 +64,10 @@ testNormalize = do
     let m = M.fromLists [[1, 2, 1], [2, 4, 2], [1, 2, 1]] :: Matrix Float
     print (M.toLists (normalizeMatrix m))
 
--- image
--- array([[ 1,  2,  3,  4,  5],
---        [ 6,  7,  8,  9, 10],
---        [11, 12, 13, 14, 15],
---        [16, 17, 18, 19, 20],
---        [21, 22, 23, 24, 25]])
 
--- 3x3
--- >>> kernelX = np.array([[1,2,1]])
--- >>> kernelX
--- array([[1, 2, 1]])
-
--- >>> kernelY = np.array([[1],[2],[1]])
--- >>> kernelY
--- array([[1],
---        [2],
---        [1]])
-
--- >>> kernel = np.dot(kernelY, kernelX)
--- >>> kernel
--- array([[1, 2, 1],
---        [2, 4, 2],
---        [1, 2, 1]])
-
--- >>> res = convolve2d(image, kernel, mode='same', boundary='fill', fillvalue=0)
--- >>> res
--- array([[ 27,  44,  56,  68,  57],
---        [ 76, 112, 128, 144, 116],
---        [136, 192, 208, 224, 176],
---        [196, 272, 288, 304, 236],
---        [177, 244, 256, 268, 207]])
-
--- 5x5
-
--- >>> kernelX = np.array([[1,4,6,4,1]])
--- >>> kernelY = np.array([[1],[4],[6],[4],[1]])
--- >>> kernel = np.dot(kernelY, kernelX)
--- >>> kernel
--- array([[ 1,  4,  6,  4,  1],
---        [ 4, 16, 24, 16,  4],
---        [ 6, 24, 36, 24,  6],
---        [ 4, 16, 24, 16,  4],
---        [ 1,  4,  6,  4,  1]])
--- >>> res = convolve2d(image, kernel, mode='same', boundary='fill', fillvalue=0)
--- >>> res
--- array([[ 517,  802, 1008, 1088,  869],
---        [1190, 1755, 2080, 2145, 1670],
---        [2032, 2912, 3328, 3328, 2544],
---        [2620, 3705, 4160, 4095, 3100],
---        [2277, 3202, 3568, 3488, 2629]])
+testNormalize2 :: IO ()
+testNormalize2 = do
+    let kernelX = normalizeMatrix(M.fromList 1 3 [1, 2, 1] :: Matrix Float)
+        kernelY = normalizeMatrix(M.fromList 3 1 [1, 2, 1] :: Matrix Float)
+        resultMatrix = M.multStd2 kernelY kernelX
+    print resultMatrix

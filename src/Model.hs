@@ -6,7 +6,7 @@
 
 module Model where
 
-import           Convolve      (convolve2DSeparable)
+import           Convolve      (convolve2DSeparable, normalizeMatrix)
 import           Data.List     (foldl')
 import qualified Data.Matrix   as M
 import           System.Random (StdGen, randomR)
@@ -47,6 +47,11 @@ data Patch
     deriving (Eq, Show)
 
 type PatchWithPos = (Patch, (Int, Int))
+type Grid = M.Matrix Patch
+type PatchWithPosGrid = M.Matrix PatchWithPos
+type Neighborhood = M.Matrix Patch
+type AntLook = (Patch, Patch, Patch)
+type State = (Grid, [Ant], StdGen)
 
 showPatch :: Patch -> Char
 showPatch p = case p of
@@ -55,13 +60,6 @@ showPatch p = case p of
     Nest       -> 'N'
     Food _     -> 'F'
     Ground _ _ -> '.'
-
-
-type Grid = M.Matrix Patch
-type PatchWithPosGrid = M.Matrix PatchWithPos
-type Neighborhood = M.Matrix Patch
-type AntLook = (Patch, Patch, Patch)
-type State = (Grid, [Ant], StdGen)
 
 mkGrid :: Int -> Int -> Grid
 mkGrid w h = M.matrix h w $ const $ Ground 0 0
@@ -97,46 +95,21 @@ dryGrid = fmap dryPatch
             Food 0     -> Ground 0 0
             _          -> p
 
-getPatchWithPosGrid :: Grid -> PatchWithPosGrid
-getPatchWithPosGrid g = M.matrix (M.nrows g) (M.ncols g) $ \(y, x) -> (getPatch x y g, (x, y))
-
-
-
-diffusePatch :: PatchWithPos -> Patch
-diffusePatch = undefined
-
 
 diffuseGrid :: Grid -> Grid
-diffuseGrid = fmap diffusePatch . getPatchWithPosGrid
-
-
--- diffuseGrid :: Grid -> Grid
--- diffuseGrid g = M.matrix (M.nrows g) (M.ncols g) $ \(y, x) ->
---     let p = getPatch x y g
---     in case p of
---         Ground f n -> let (f', n') = diffusePheremones (x, y) g
---                       in Ground f' n'
---         _          -> p
---     where
---         diffusePheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone)
---         diffusePheremones (x, y) g =
---             let n = getNeighborhood x y g
---                 centerWeight = 100 -- Adjust this value to control the diffusion rate
---                 totalWeight = centerWeight + 8 -- Center weight + 8 neighbors
---                 (f, n') = foldl' (countPheremones (x, y) g) (0, 0) n
---                 -- Add the center patch's pheromones, weighted more heavily
---                 (cf, cn) = getCenterPheremones x y g
---             in ((f + cf * centerWeight) / totalWeight, (n' + cn * centerWeight) / totalWeight)
-
---         countPheremones :: (Int, Int) -> Grid -> (FoodPheremone, NestPheremone) -> Patch -> (FoodPheremone, NestPheremone)
---         countPheremones (cx, cy) g (f, n) p = case p of
---             Ground f' n' -> (f + f', n + n')
---             _            -> (f, n)
-
---         getCenterPheremones :: Int -> Int -> Grid -> (FoodPheremone, NestPheremone)
---         getCenterPheremones x y g = case getPatch x y g of
---             Ground f n -> (f, n)
---             _          -> (0, 0)
+diffuseGrid g =
+    let kernelX = normalizeMatrix(M.fromList 1 3 [1, 4, 1] :: M.Matrix Float)
+        kernelY = normalizeMatrix(M.fromList 3 1 [1, 4, 1] :: M.Matrix Float)
+        foodGrid = fmap patchFood g
+        nestGrid = fmap patchNest g
+        foodGridBlurred = convolve2DSeparable foodGrid kernelX kernelY
+        nestGridBlurred = convolve2DSeparable nestGrid kernelX kernelY
+        foodNestBlurredGrid = M.elementwise (,) foodGridBlurred nestGridBlurred
+        gridOverFoodNestBlurredGrid =
+            M.elementwise (\p (f, n) -> case p of
+                Ground _ _ -> Ground f n
+                _          -> p) g foodNestBlurredGrid
+        in gridOverFoodNestBlurredGrid
 
 
 setBorder :: Grid -> Grid
@@ -183,7 +156,7 @@ randomDir gen =
 
 
 pheromoneAmount :: Float
-pheromoneAmount = 300
+pheromoneAmount = 500
 
 mkAnt :: Int -> Int -> Int -> StdGen -> (Ant, StdGen)
 mkAnt id' x y gen =
@@ -226,13 +199,13 @@ randomNextDir d g =
 patchFood :: Patch -> FoodPheremone
 patchFood p = case p of
     Ground f _ -> f
-    Food _     -> 1_000_000_000
+    Food _     -> pheromoneAmount + 100
     _          -> 0
 
 patchNest :: Patch -> NestPheremone
 patchNest p = case p of
     Ground _ n -> n
-    Nest       -> 1_000_000_000
+    Nest       -> pheromoneAmount + 100
     _          -> 0
 
 maxFoodDirection :: AntLook -> Direction -> Maybe Direction
@@ -261,8 +234,8 @@ dropPheremone p a =
     let (antFood, antNest) = (antFoodPheremone a, antNestPheremone a)
     in case p of
         Ground f n -> case antMode a of
-            SeekNest -> (a {antFoodPheremone = max 0 (antFood*0.99)}, Ground (f + antFood) n)
-            SeekFood -> (a {antNestPheremone = max 0 (antNest*0.99)}, Ground f (n + antNest))
+            SeekNest -> (a {antFoodPheremone = max 0 (antFood*0.99)}, Ground (min (f + antFood) pheromoneAmount) n)
+            SeekFood -> (a {antNestPheremone = max 0 (antNest*0.99)}, Ground f (min (n + antNest) pheromoneAmount))
         _          -> (a,p)
 
 
@@ -315,7 +288,7 @@ stepAnt g a gen =
                 Nothing -> randomNextDir (antDir a) gen
         (dir', gen''') =
             let (r, gen'') = randomR (0.0, 1.0 :: Double) gen'
-            in if r < 0.01 then randomNextDir dir gen'' else (dir, gen'')
+            in if r < 0.10 then randomNextDir dir gen'' else (dir, gen'')
         (x', y') = step x y dir'
         p = getPatch x' y' g
         a' = case p of
@@ -336,7 +309,7 @@ stepAnts (g, ants, gen) = foldl' stepAnt' (g, [], gen) ants
 
 updateState :: State -> State
 updateState (g, ants, gen) =
-    let g' = dryGrid g -- $ diffuseGrid g
+    let g' = dryGrid $ diffuseGrid g
         (g'', ants', gen') = stepAnts (g', ants, gen)
         (ants'', g''') = dropPheremones g'' ants'
     in (g''', ants'', gen')

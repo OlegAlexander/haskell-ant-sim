@@ -44,4 +44,11 @@ main = hspec $ do
         it "normalizes a matrix" $ do
             let m = M.fromLists [[1, 2, 1], [2, 4, 2], [1, 2, 1]] :: Matrix Float
             let resultMatrix = normalizeMatrix m
-            resultMatrix `shouldBe` M.fromLists [[6.25e-2,0.125,6.25e-2],[0.125,0.25,0.125],[6.25e-2,0.125,6.25e-2]]
+            resultMatrix `shouldBe` M.fromLists [[0.0625,0.125,0.0625],[0.125,0.25,0.125],[0.0625,0.125,0.0625]]
+
+        it "proves that normalizing the separable kernels and then combining them equals the normalized combined kernel" $ do
+            let kernelX = normalizeMatrix (M.fromList 1 3 [1, 2, 1] :: Matrix Float)
+                kernelY = normalizeMatrix (M.fromList 3 1 [1, 2, 1] :: Matrix Float)
+                combinedKernel1 = M.multStd2 kernelY kernelX
+                combinedKernel2 = normalizeMatrix( M.fromLists [[1, 2, 1], [2, 4, 2], [1, 2, 1]] :: Matrix Float)
+            combinedKernel1 `shouldBe` combinedKernel2

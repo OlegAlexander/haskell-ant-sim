@@ -20,28 +20,28 @@ import           System.Random                      (newStdGen)
 
 
 tileSize :: Int
-tileSize = 8
+tileSize = 10
 
 tileSizeF :: Float
 tileSizeF = fromIntegral tileSize
 
 gridWidth :: Int
-gridWidth = 100
+gridWidth = 80
 
 gridWidthF :: Float
 gridWidthF = fromIntegral gridWidth
 
 gridHeight :: Int
-gridHeight = 75
+gridHeight = 60
 
 gridHeightF :: Float
 gridHeightF = fromIntegral gridHeight
 
 numAnts :: Int
-numAnts = 50
+numAnts = 25
 
 fps :: Int
-fps = 30
+fps = 15
 
 main :: IO ()
 main = do
