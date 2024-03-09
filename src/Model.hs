@@ -6,7 +6,7 @@
 
 module Model where
 
-import           Convolve      (convolve2DSeparable, normalizeMatrix)
+import           Convolve      (convolve2DSeparable, normalizeList)
 import           Data.List     (foldl')
 import qualified Data.Matrix   as M
 import           System.Random (StdGen, randomR)
@@ -98,8 +98,8 @@ dryGrid = fmap dryPatch
 
 diffuseGrid :: Grid -> Grid
 diffuseGrid g =
-    let kernelX = normalizeMatrix(M.fromList 1 3 [1, 4, 1] :: M.Matrix Float)
-        kernelY = normalizeMatrix(M.fromList 3 1 [1, 4, 1] :: M.Matrix Float)
+    let kernelX = normalizeList [1, 4, 1]
+        kernelY = kernelX
         foodGrid = fmap patchFood g
         nestGrid = fmap patchNest g
         foodGridBlurred = convolve2DSeparable foodGrid kernelX kernelY
