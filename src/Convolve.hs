@@ -9,6 +9,7 @@ module Convolve where
 import           Data.Matrix (Matrix)
 import qualified Data.Matrix as M
 import           Data.Maybe  (catMaybes, fromMaybe)
+import           Debug.Trace (trace, traceShow)
 
 
 convolve2DSeparable :: Num a => Matrix a -> Matrix a -> Matrix a -> Matrix a
@@ -40,6 +41,33 @@ convolveVertical input kernelY =
 
 normalizeMatrix :: Fractional a => Matrix a -> Matrix a
 normalizeMatrix m = M.scaleMatrix (1 / sum (M.toList m)) m
+
+
+
+convolve1D :: Num a => [a] -> [a] -> [a]
+convolve1D x w
+    | length x < length w = convolve1D w x -- Ensure that x is the longer list
+    | otherwise =
+        let (lx, lw) = (length x, length w)
+            lPad = lw `div` 2
+            rPad = lw - lPad
+            xPadded = replicate lPad 0 ++ x ++ replicate rPad 0
+            wR = reverse w
+            convolveAt i = sum $ zipWith (*) (take lw (drop i xPadded)) wR
+        in map convolveAt [0..lx - 1]
+
+
+
+testConvolve1D :: IO ()
+testConvolve1D = do
+  -- Expected results based on numpy's convolve function in 'same' mode
+  print $ convolve1D [0..9] [0..2]  -- [0, 1, 4, 7, 10, 13, 16, 19, 22, 25]
+  print $ convolve1D [0..2] [0..9]  -- [0, 1, 4, 7, 10, 13, 16, 19, 22, 25]
+  print $ convolve1D [0..9] [0..3]  -- [0, 1, 4, 10, 16, 22, 28, 34, 40, 46]
+  print $ convolve1D [0..3] [0..9]  -- [0, 1, 4, 10, 16, 22, 28, 34, 40, 46]
+  print $ convolve1D [0..9] [0..4]  -- [1, 4, 10, 20, 30, 40, 50, 60, 70, 70]
+  print $ convolve1D [0..4] [0..9]  -- [1, 4, 10, 20, 30, 40, 50, 60, 70, 70]
+
 
 
 test3x3 :: IO ()

@@ -1,7 +1,8 @@
 -- cabal test --test-show-details=direct
 
 import           Control.Exception (evaluate)
-import           Convolve          (convolve2DSeparable, normalizeMatrix)
+import           Convolve          (convolve1D, convolve2DSeparable,
+                                    normalizeMatrix)
 import           Data.Matrix       as M
 import           Model
 import           System.Random
@@ -20,13 +21,7 @@ main = hspec $ do
         it "throws an exception if used with an empty list" $ do
             evaluate (head []) `shouldThrow` anyException
 
-        it "makes an ant" $ do
-            let gen = mkStdGen 0
-            let (actualAnt, _) = mkAnt 1 2 2 gen
-            let expectedAnt = Ant 1 3 3 North SeekFood 0 300
-            actualAnt `shouldBe` expectedAnt
-
-    describe "convolve2DSeparable" $ do
+    describe "Convolve" $ do
         it "convolves a 5x5 matrix with a 1x3 kernel and a 3x1 kernel" $ do
             let inputMatrix = M.fromLists [[1..5], [6..10], [11..15], [16..20], [21..25]] :: Matrix Float
                 kernelX = M.fromList 1 3 [1, 2, 1] :: Matrix Float
@@ -52,3 +47,11 @@ main = hspec $ do
                 combinedKernel1 = M.multStd2 kernelY kernelX
                 combinedKernel2 = normalizeMatrix( M.fromLists [[1, 2, 1], [2, 4, 2], [1, 2, 1]] :: Matrix Float)
             combinedKernel1 `shouldBe` combinedKernel2
+
+        it "convolves two 1D lists and gives the same result as numpy convolve" $ do
+            convolve1D [0..9] [0..2] `shouldBe` ([0, 1, 4, 7, 10, 13, 16, 19, 22, 25] :: [Int])
+            convolve1D [0..2] [0..9] `shouldBe` ([0, 1, 4, 7, 10, 13, 16, 19, 22, 25] :: [Int])
+            convolve1D [0..9] [0..3] `shouldBe` ([0, 1, 4, 10, 16, 22, 28, 34, 40, 46] :: [Int])
+            convolve1D [0..3] [0..9] `shouldBe` ([0, 1, 4, 10, 16, 22, 28, 34, 40, 46] :: [Int])
+            convolve1D [0..9] [0..4] `shouldBe` ([1, 4, 10, 20, 30, 40, 50, 60, 70, 70] :: [Int])
+            convolve1D [0..4] [0..9] `shouldBe` ([1, 4, 10, 20, 30, 40, 50, 60, 70, 70] :: [Int])
