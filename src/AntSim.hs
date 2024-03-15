@@ -4,7 +4,7 @@
 
 
 
-module Model where
+module AntSim where
 
 import           Convolve      (convolve2DSeparable, normalizeList)
 import           Data.List     (foldl')

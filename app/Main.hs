@@ -11,34 +11,34 @@
 --
 module Main where
 
+import           AntSim
 import qualified Data.Matrix                        as M
 import           Debug.Trace                        (traceShow)
 import           Graphics.Gloss
 import           Graphics.Gloss.Interface.Pure.Game
-import           Model
 import           System.Random                      (newStdGen)
 
 
 tileSize :: Int
-tileSize = 10
+tileSize = 20
 
 tileSizeF :: Float
 tileSizeF = fromIntegral tileSize
 
 gridWidth :: Int
-gridWidth = 80
+gridWidth = 40
 
 gridWidthF :: Float
 gridWidthF = fromIntegral gridWidth
 
 gridHeight :: Int
-gridHeight = 60
+gridHeight = 30
 
 gridHeightF :: Float
 gridHeightF = fromIntegral gridHeight
 
 numAnts :: Int
-numAnts = 25
+numAnts = 20
 
 fps :: Int
 fps = 15
@@ -48,7 +48,7 @@ main = do
     gen <- newStdGen
     let state = initState gridWidth gridHeight numAnts gen
         (w, h) = (gridWidth * tileSize, gridHeight * tileSize)
-    play (InWindow "Haskell Ant Sim" (w, h) (0,0))
+    play (InWindow "Haskell Ant Sim" (w, h) (50,50))
          (greyN 0.1) fps state makePicture handleEvent stepWorld
 
 

@@ -1,10 +1,10 @@
 -- cabal test --test-show-details=direct
 
+import           AntSim
 import           Control.Exception (evaluate)
 import           Convolve          (convolve1D, convolve2DSeparable,
                                     normalizeList, normalizeMatrix)
 import           Data.Matrix       as M
-import           Model
 import           System.Random
 import           Test.Hspec
 import           Test.QuickCheck
