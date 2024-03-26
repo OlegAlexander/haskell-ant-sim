@@ -29,10 +29,10 @@ synopsis:           Ant simulation in Haskell.
 -- description:
 
 -- The license under which the package is released.
-license:            MIT
+-- license:            MIT
 
 -- The file containing the license text.
-license-file:       LICENSE
+-- license-file:       LICENSE
 
 -- The package author(s).
 author:             Oleg Alexander
@@ -46,7 +46,7 @@ category:           Game
 build-type:         Simple
 
 -- Extra doc files to be distributed with the package, such as a CHANGELOG or a README.
-extra-doc-files:    CHANGELOG.md
+-- extra-doc-files:    CHANGELOG.md
 
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 -- extra-source-files:
@@ -56,15 +56,16 @@ common warnings
 
 library
     hs-source-dirs:      src
-    exposed-modules:     AntSim, Convolve
+    exposed-modules:    AntSim, Convolve, Ant
     build-depends:      base ^>=4.17.2.0,
                         matrix ^>=0.3.6.3,
                         random ^>=1.2.1.2,
+                        containers
     default-language:    GHC2021
     default-extensions: Strict
 
 
-executable haskell-ant-sim
+executable main
     -- Import common warning flags.
     import:           warnings
 
@@ -93,6 +94,38 @@ executable haskell-ant-sim
 
     -- Extensions to enable.
     default-extensions: Strict
+
+
+executable ant-driver
+    -- Import common warning flags.
+    import:           warnings
+
+    -- .hs or .lhs file containing the Main module.
+    main-is:          AntDriver.hs
+
+    -- Modules included in this executable, other than Main.
+    --other-modules: Model
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    -- Other library packages from which modules are imported.
+    build-depends:  base ^>=4.17.2.0,
+                    matrix ^>=0.3.6.3,
+                    random ^>=1.2.1.2,
+                    gloss ^>=1.13.2.2,
+                    haskell-ant-sim
+                    
+
+    -- Directories containing source files.
+    hs-source-dirs:   app
+
+    -- Base language which the package is written in.
+    default-language: GHC2021
+
+    -- Extensions to enable.
+    default-extensions: Strict
+
 
 test-suite spec
     -- cabal test --test-show-details=direct
