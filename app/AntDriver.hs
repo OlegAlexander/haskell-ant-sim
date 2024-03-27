@@ -18,38 +18,47 @@ import           System.Random                      (newStdGen, randoms)
 
 
 numAnts :: Int
-numAnts = 500
+numAnts = 100
 
 fps :: Int
 fps = 30
 
+antScale :: Float
+antScale = 1
+
+antStepSize :: Float
+antStepSize = 4
+
 main :: IO ()
 main = do
     gen <- newStdGen
-    let seeds = take numAnts $ randoms gen :: [Int]
+    let seeds = (randoms gen :: [Int]) & take numAnts
         ants = mkAnts 0 0 seeds
-    -- printAnts ants
     play (InWindow "Ant Driver" (1200, 800) (20,20))
-         (greyN 0.8) fps ants makePicture handleEvent stepWorld
+         (greyN 0.9) fps ants makePicture handleEvent stepWorld
 
 
 makePicture :: [Ant] -> Picture
 makePicture ants =
     let antPics = map antToPicture ants
-        nestPic = [nestToPicture]
-        in pictures (antPics ++ nestPic)
+        in pictures (antPics ++ nestPicture)
     where
         antToPicture :: Ant -> Picture
         antToPicture (Ant x y theta mode gen) =
-            let antPolygon = [(100, -50/4), (-100, -50), (-100, 50), (100, 50/4)]
-            in
-                polygon antPolygon
-                & scale 0.2 0.2
-                & rotate (theta * (180 / pi) * (-1))
-                & translate x y
+            antShapes
+            & scale antScale antScale
+            & rotate (theta * (180 / pi) * (-1))
+            & translate x y
 
-        nestToPicture :: Picture
-        nestToPicture = circleSolid 3 & color red
+        antShapes :: Picture
+        antShapes =
+            let head'   = circleSolid 2.5 & scale 1 0.8 & translate 5.6 0
+                thorax  = circleSolid 2 & scale 1.6 0.6 & translate 0 0
+                abdomen = circleSolid 2 & scale 1.8 1.3 & translate (-6.6) 0
+            in pictures [head', thorax, abdomen]
+
+        nestPicture :: [Picture]
+        nestPicture = [circleSolid 2 & color red]
 
 
 
@@ -87,4 +96,4 @@ handleEvent _ ants = id ants -- case e of
 
 
 stepWorld :: Float -> [Ant] -> [Ant]
-stepWorld _ ants = map (stepAnt 2) ants
+stepWorld _ ants = map (rotateAnt 0.02 . stepAnt antStepSize) ants

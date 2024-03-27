@@ -51,88 +51,49 @@ build-type:         Simple
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 -- extra-source-files:
 
-common warnings
-    ghc-options: -Wall
+common options
+    ghc-options:        -Wall -O2
+    default-language:   GHC2021
+    default-extensions: Strict
 
 library
-    hs-source-dirs:      src
+    import:             options
+    hs-source-dirs:     src
     exposed-modules:    AntSim, Convolve, Ant
     build-depends:      base ^>=4.17.2.0,
                         matrix ^>=0.3.6.3,
                         random ^>=1.2.1.2,
                         containers
-    default-language:    GHC2021
-    default-extensions: Strict
 
 
 executable main
-    -- Import common warning flags.
-    import:           warnings
-
-    -- .hs or .lhs file containing the Main module.
-    main-is:          Main.hs
-
-    -- Modules included in this executable, other than Main.
-    --other-modules: Model
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- Other library packages from which modules are imported.
+    import:         options
+    main-is:        Main.hs
     build-depends:  base ^>=4.17.2.0,
                     matrix ^>=0.3.6.3,
                     random ^>=1.2.1.2,
                     gloss ^>=1.13.2.2,
                     haskell-ant-sim
-                    
-
-    -- Directories containing source files.
-    hs-source-dirs:   app
-
-    -- Base language which the package is written in.
-    default-language: GHC2021
-
-    -- Extensions to enable.
-    default-extensions: Strict
+    hs-source-dirs: app
 
 
 executable ant-driver
-    -- Import common warning flags.
-    import:           warnings
-
-    -- .hs or .lhs file containing the Main module.
-    main-is:          AntDriver.hs
-
-    -- Modules included in this executable, other than Main.
-    --other-modules: Model
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- Other library packages from which modules are imported.
+    import:         options
+    main-is:        AntDriver.hs
     build-depends:  base ^>=4.17.2.0,
                     matrix ^>=0.3.6.3,
                     random ^>=1.2.1.2,
                     gloss ^>=1.13.2.2,
                     haskell-ant-sim
-                    
+    hs-source-dirs: app
 
-    -- Directories containing source files.
-    hs-source-dirs:   app
-
-    -- Base language which the package is written in.
-    default-language: GHC2021
-
-    -- Extensions to enable.
-    default-extensions: Strict
 
 
 test-suite spec
-    -- cabal test --test-show-details=direct
-    type: exitcode-stdio-1.0
-    main-is: Spec.hs
+    import:         options
+    type:           exitcode-stdio-1.0
+    main-is:        Spec.hs
     hs-source-dirs: test
-    ghc-options: -Wall
     build-depends:
         base ==4.*, 
         matrix ^>=0.3.6.3, 
@@ -140,5 +101,3 @@ test-suite spec
         hspec ==2.*, 
         QuickCheck ==2.*,
         haskell-ant-sim
-    default-language: GHC2021
-    default-extensions: Strict
