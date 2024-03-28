@@ -17,8 +17,20 @@ import           Graphics.Gloss.Interface.Pure.Game
 import           System.Random                      (newStdGen, randoms)
 
 
+screenWidth :: Int
+screenWidth = 1200
+
+screenHeight :: Int
+screenHeight = 800
+
+screenWidthF :: Float
+screenWidthF = fromIntegral screenWidth
+
+screenHeightF :: Float
+screenHeightF = fromIntegral screenHeight
+
 numAnts :: Int
-numAnts = 100
+numAnts = 10
 
 fps :: Int
 fps = 30
@@ -27,24 +39,30 @@ antScale :: Float
 antScale = 1
 
 antStepSize :: Float
-antStepSize = 4
+antStepSize = 3
+
+antAngleRange :: Float
+antAngleRange = pi / 15 -- 15: 12, 20:9, 30:6 degrees
+
+antAccelerationRange :: Float
+antAccelerationRange = 0.1
 
 main :: IO ()
 main = do
     gen <- newStdGen
     let seeds = (randoms gen :: [Int]) & take numAnts
         ants = mkAnts 0 0 seeds
-    play (InWindow "Ant Driver" (1200, 800) (20,20))
+    play (InWindow "Ant Driver" (screenWidth, screenHeight) (20,20))
          (greyN 0.9) fps ants makePicture handleEvent stepWorld
 
 
 makePicture :: [Ant] -> Picture
 makePicture ants =
     let antPics = map antToPicture ants
-        in pictures (antPics ++ nestPicture)
+        in pictures antPics -- (antPics ++ nestPicture)
     where
         antToPicture :: Ant -> Picture
-        antToPicture (Ant x y theta mode gen) =
+        antToPicture (Ant x y theta speed mode gen) =
             antShapes
             & scale antScale antScale
             & rotate (theta * (180 / pi) * (-1))
@@ -96,4 +114,6 @@ handleEvent _ ants = id ants -- case e of
 
 
 stepWorld :: Float -> [Ant] -> [Ant]
-stepWorld _ ants = map (rotateAnt 0.02 . stepAnt antStepSize) ants
+stepWorld _ ants =
+    map (wrapAroundAnt screenWidthF screenHeightF
+        . moveAntRandomly antStepSize antAngleRange antAccelerationRange) ants

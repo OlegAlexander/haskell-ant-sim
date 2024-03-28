@@ -14,6 +14,7 @@ import           System.Random (StdGen, mkStdGen, newStdGen, randomR, randoms)
 data Ant = Ant { antX     :: Float,
                  antY     :: Float,
                  antTheta :: Float, -- in radians
+                 antSpeed :: Float,
                  antMode  :: Mode,
                  antRng   :: StdGen }
                  deriving (Eq, Show)
@@ -27,7 +28,7 @@ type RngSeed = Int
 mkAnt :: Float -> Float -> RngSeed -> Ant
 mkAnt x y seed =
     let (theta, rng) = randomR (0, 2 * pi) (mkStdGen seed)
-    in Ant x y theta SeekFood rng
+    in Ant x y theta 1 SeekFood rng
 
 mkAnts :: Float -> Float -> [RngSeed] -> [Ant]
 mkAnts x y seeds = map (mkAnt x y) seeds
@@ -38,14 +39,23 @@ printAnts = putStrLn . unlines . map show
 stepAnt :: Float -> Ant -> Ant
 stepAnt stepSize ant =
     let theta = antTheta ant
-        x' = antX ant + stepSize * cos theta
-        y' = antY ant + stepSize * sin theta
+        speed = antSpeed ant
+        x' = antX ant + stepSize * speed * cos theta
+        y' = antY ant + stepSize * speed * sin theta
     in ant { antX = x', antY = y' }
 
 -- Rotate the ant by the given angle in radians wrapping around if needed
 rotateAnt :: Float -> Ant -> Ant
 rotateAnt angle ant = ant { antTheta = (antTheta ant + angle) `mod'` (2 * pi) }
 
+
+moveAntRandomly :: Float -> Float -> Float -> Ant -> Ant
+moveAntRandomly stepSize angleRange accelerationRange ant =
+    let (angle, rng') = randomR (-angleRange, angleRange) (antRng ant)
+        (acceleration, rng'') = randomR (-accelerationRange, accelerationRange) rng'
+        newSpeed = max 1 (min 2 (antSpeed ant + acceleration)) -- TODO Magic numbers
+        movedAnt = rotateAnt angle ant & stepAnt stepSize
+    in movedAnt { antRng = rng'', antSpeed = newSpeed }
 
 -- Reflect the ant theta about the normal vector
 reflectAnt :: Float -> Float -> Ant -> Ant
@@ -62,6 +72,21 @@ reflectAnt nx ny ant =
 turnAroundAnt :: Ant -> Ant
 turnAroundAnt ant = rotateAnt pi ant
 
+
+wrapAroundAnt :: Float -> Float -> Ant -> Ant
+wrapAroundAnt w h ant =
+    let top = h/2
+        bottom = -(h/2)
+        right = w/2
+        left = -(w/2)
+        x = antX ant
+        y = antY ant
+        x' = if x > right then (x - w) else if x < left then (x + w) else x
+        y' = if y > top then (y - h) else if y < bottom then (y + h) else y
+    in ant { antX = x', antY = y' }
+
+
+-- TODO Control an ant (different color)
 
 spawnAnt :: Float -> Float -> RngSeed -> [Ant] -> [Ant]
 spawnAnt x y seed ants = mkAnt x y seed : ants
