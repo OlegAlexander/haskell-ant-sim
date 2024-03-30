@@ -30,7 +30,7 @@ screenHeightF :: Float
 screenHeightF = fromIntegral screenHeight
 
 numAnts :: Int
-numAnts = 10
+numAnts = 1
 
 fps :: Int
 fps = 30
@@ -106,14 +106,21 @@ makePicture ants =
 
 
 handleEvent :: Event -> [Ant] -> [Ant]
-handleEvent _ ants = id ants -- case e of
-    -- EventKey (MouseButton LeftButton) Down (Modifiers Down _ _) (x, y) -> let (x', y') = mouseToGrid (x, y) in (drawPatch x' y' (Ground 0 0) g, ants, gen)
-    -- EventKey (MouseButton LeftButton)  Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in (drawPatch x' y' Wall g, ants, gen)
-    -- EventKey (MouseButton RightButton) Down _ (x, y) -> let (x', y') = mouseToGrid (x, y) in (drawPatch x' y' (Food 100) g, ants, gen)
-    -- _    -> (g, ants, gen)
+handleEvent e ants = case e of
+    EventKey (SpecialKey KeyUp)    Down _ _ -> let ant = head ants in goAnt 0.25 3 ant : tail ants
+    EventKey (SpecialKey KeyDown)  Down _ _ -> let ant = head ants in stopAnt 0.5 ant : tail ants
+    EventKey (SpecialKey KeyLeft)  Down _ _ -> let ant = head ants in leftAnt (pi / 8) ant : tail ants
+    EventKey (SpecialKey KeyRight) Down _ _ -> let ant = head ants in rightAnt (pi / 8) ant : tail ants
+    _                                       -> ants
 
 
 stepWorld :: Float -> [Ant] -> [Ant]
 stepWorld _ ants =
-    map (wrapAroundAnt screenWidthF screenHeightF
-        . moveAntRandomly antStepSize antAngleRange antAccelerationRange) ants
+    let ant = head ants
+        movedAnt = ant
+                   & jitterRotation (pi/30)
+                   & stepAnt antStepSize
+                   & wrapAroundAnt screenWidthF screenHeightF
+        movedOtherAnts = map (wrapAroundAnt screenWidthF screenHeightF
+            . moveAntRandomly antStepSize antAngleRange antAccelerationRange) (tail ants)
+    in movedAnt : movedOtherAnts

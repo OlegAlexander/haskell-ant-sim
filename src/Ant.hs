@@ -28,7 +28,7 @@ type RngSeed = Int
 mkAnt :: Float -> Float -> RngSeed -> Ant
 mkAnt x y seed =
     let (theta, rng) = randomR (0, 2 * pi) (mkStdGen seed)
-    in Ant x y theta 1 SeekFood rng
+    in Ant x y theta 0 SeekFood rng
 
 mkAnts :: Float -> Float -> [RngSeed] -> [Ant]
 mkAnts x y seeds = map (mkAnt x y) seeds
@@ -44,11 +44,38 @@ stepAnt stepSize ant =
         y' = antY ant + stepSize * speed * sin theta
     in ant { antX = x', antY = y' }
 
+-- -------------------------------- Controls -------------------------------- --
+
+goAnt :: Float -> Float -> Ant -> Ant
+goAnt acceleration maxSpeed ant =
+    let speed' = min maxSpeed (antSpeed ant + acceleration)
+    in ant { antSpeed = speed' }
+
+stopAnt :: Float -> Ant -> Ant
+stopAnt deceleration ant =
+    let speed' = max 0 (antSpeed ant - deceleration)
+    in ant { antSpeed = speed' }
+
+leftAnt :: Float -> Ant -> Ant
+leftAnt angle ant = rotateAnt angle ant
+
+rightAnt :: Float -> Ant -> Ant
+rightAnt angle ant = rotateAnt (-angle) ant
+
+-- -------------------------------------------------------------------------- --
+
 -- Rotate the ant by the given angle in radians wrapping around if needed
 rotateAnt :: Float -> Ant -> Ant
-rotateAnt angle ant = ant { antTheta = (antTheta ant + angle) `mod'` (2 * pi) }
+rotateAnt angle ant =
+    let theta' = (antTheta ant + angle) `mod'` (2 * pi)
+    in ant { antTheta = theta' }
 
+jitterRotation :: Float -> Ant -> Ant
+jitterRotation angleRange ant =
+    let (angle, rng') = randomR (-angleRange, angleRange) (antRng ant)
+    in rotateAnt (angle * antSpeed ant) ant { antRng = rng' }
 
+-- TODO Real ants stop a lot when exploring.
 moveAntRandomly :: Float -> Float -> Float -> Ant -> Ant
 moveAntRandomly stepSize angleRange accelerationRange ant =
     let (angle, rng') = randomR (-angleRange, angleRange) (antRng ant)
@@ -68,32 +95,37 @@ reflectAnt nx ny ant =
         (rx, ry) = (dx - 2 * dot * nx', dy - 2 * dot * ny')
     in ant { antTheta = atan2 ry rx `mod'` (2 * pi) }
 
-
+-- TODO Consider having the ant go into a rotating state instead of rotating instantly
 turnAroundAnt :: Ant -> Ant
 turnAroundAnt ant = rotateAnt pi ant
 
 
+
+-- TODO Consider having this be an option. The other option is to reflect of the border.
 wrapAroundAnt :: Float -> Float -> Ant -> Ant
 wrapAroundAnt w h ant =
-    let top = h/2
-        bottom = -(h/2)
-        right = w/2
-        left = -(w/2)
-        x = antX ant
+    let x = antX ant
         y = antY ant
         x' = if x > right then (x - w) else if x < left then (x + w) else x
         y' = if y > top then (y - h) else if y < bottom then (y + h) else y
     in ant { antX = x', antY = y' }
+    where
+        top = h/2
+        bottom = -(h/2)
+        right = w/2
+        left = -(w/2)
 
 
 -- TODO Control an ant (different color)
+-- TODO Consider having a local mode where the ant stays still and the world moves around it.
+-- Alternatively, the ant can move around the world but only its visual field is shown like fog of war.
 
 spawnAnt :: Float -> Float -> RngSeed -> [Ant] -> [Ant]
 spawnAnt x y seed ants = mkAnt x y seed : ants
 
 
 -- TODO Consider leaving the squished ants in a dead state.
--- Maybe other ants can freak out whenever they encounter a dead ant.
+-- Maybe other ants can panic whenever they encounter a dead ant.
 squishAnts :: Float -> Float -> Float -> [Ant] -> [Ant]
 squishAnts x y width ants = filter (not . isSquished) ants
     where
@@ -113,6 +145,11 @@ squishAnts x y width ants = filter (not . isSquished) ants
 -- an ant is in by doing a floor division of the ant's x and y by the cell width
 -- and height. Then you only need to see which drops are within the ant's fov in
 -- that cell. You can do the same with the nest, food, and walls.
+
+
+-- TODO Consider making a separate module for the Ant control/states and the AntBrain.
+-- Consider using the WorldTurtle module for the ant controls.
+-- The AntBrain can even be ML-based and its vision can be FlatWorld-based.
 
 
 
