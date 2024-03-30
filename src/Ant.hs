@@ -11,15 +11,21 @@ import           System.Random (StdGen, mkStdGen, newStdGen, randomR, randoms)
 
 -- -------------------------------------------------------------------------- --
 
-data Ant = Ant { antX     :: Float,
-                 antY     :: Float,
-                 antTheta :: Float, -- in radians
-                 antSpeed :: Float,
-                 antMode  :: Mode,
-                 antRng   :: StdGen }
+data Ant = Ant { antX        :: Float,
+                 antY        :: Float,
+                 antTheta    :: Float, -- in radians
+                 antSpeed    :: Float,
+                 antMode     :: Mode,
+                 antRng      :: StdGen,
+                 antStopGo   :: StopGo,
+                 antWheelPos :: WheelPos }
                  deriving (Eq, Show)
 
 data Mode = SeekFood | SeekNest deriving (Eq, Show)
+
+data StopGo = Stop | Neutral | Go deriving (Eq, Show)
+
+data WheelPos = Left | Center | Right deriving (Eq, Show)
 
 type RngSeed = Int
 
@@ -28,7 +34,7 @@ type RngSeed = Int
 mkAnt :: Float -> Float -> RngSeed -> Ant
 mkAnt x y seed =
     let (theta, rng) = randomR (0, 2 * pi) (mkStdGen seed)
-    in Ant x y theta 0 SeekFood rng
+    in Ant x y theta 0 SeekFood rng Neutral Center
 
 mkAnts :: Float -> Float -> [RngSeed] -> [Ant]
 mkAnts x y seeds = map (mkAnt x y) seeds
@@ -43,6 +49,20 @@ stepAnt stepSize ant =
         x' = antX ant + stepSize * speed * cos theta
         y' = antY ant + stepSize * speed * sin theta
     in ant { antX = x', antY = y' }
+
+
+driveAnt :: Float -> Float -> Float -> Float -> Float -> Float -> Ant -> Ant
+driveAnt stepSize acceleration deceleration maxSpeed angle jitter ant =
+    let rotatedAnt = case antWheelPos ant of
+            Ant.Left  -> leftAnt angle ant
+            Ant.Right -> rightAnt angle ant
+            Center    -> ant
+        translatedAnt = case antStopGo rotatedAnt of
+            Stop    -> stopAnt deceleration rotatedAnt
+            Neutral -> rotatedAnt
+            Go      -> goAnt acceleration maxSpeed rotatedAnt
+    in translatedAnt & jitterRotation jitter & stepAnt stepSize
+
 
 -- -------------------------------- Controls -------------------------------- --
 

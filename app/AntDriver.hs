@@ -53,7 +53,7 @@ main = do
     let seeds = (randoms gen :: [Int]) & take numAnts
         ants = mkAnts 0 0 seeds
     play (InWindow "Ant Driver" (screenWidth, screenHeight) (20,20))
-         (greyN 0.9) fps ants makePicture handleEvent stepWorld
+         (greyN 0.8) fps ants makePicture handleEvent stepWorld
 
 
 makePicture :: [Ant] -> Picture
@@ -62,7 +62,7 @@ makePicture ants =
         in pictures antPics -- (antPics ++ nestPicture)
     where
         antToPicture :: Ant -> Picture
-        antToPicture (Ant x y theta speed mode gen) =
+        antToPicture (Ant x y theta speed mode gen stopGo wheelPos) =
             antShapes
             & scale antScale antScale
             & rotate (theta * (180 / pi) * (-1))
@@ -79,38 +79,16 @@ makePicture ants =
         nestPicture = [circleSolid 2 & color red]
 
 
-
--- | Handle mouse click and motion events.
--- handleEvent :: Event -> State -> State
--- handleEvent event state
---         -- If the mouse has moved, then extend the current line.
---         | EventMotion (x, y)    <- event
---         , State (Just ps) ss    <- state
---         = State (Just ((x, y):ps)) ss
-
---         -- Start drawing a new line.
---         | EventKey (MouseButton LeftButton) Down _ pt@(x,y) <- event
---         , State Nothing ss       <- state
---         = State (Just [pt])
---                 ((Translate x y $ Scale 0.1 0.1 $ Text "Down") : ss)
-
---         -- Finish drawing a line, and add it to the picture.
---         | EventKey (MouseButton LeftButton) Up _ pt@(x,y)      <- event
---         , State (Just ps) ss    <- state
---         = State Nothing
---                 ((Translate x y $ Scale 0.1 0.1 $ Text "up") : Line (pt:ps) : ss)
-
---         | otherwise
---         = state
-
-
-
 handleEvent :: Event -> [Ant] -> [Ant]
 handleEvent e ants = case e of
-    EventKey (SpecialKey KeyUp)    Down _ _ -> let ant = head ants in goAnt 0.25 3 ant : tail ants
-    EventKey (SpecialKey KeyDown)  Down _ _ -> let ant = head ants in stopAnt 0.5 ant : tail ants
-    EventKey (SpecialKey KeyLeft)  Down _ _ -> let ant = head ants in leftAnt (pi / 8) ant : tail ants
-    EventKey (SpecialKey KeyRight) Down _ _ -> let ant = head ants in rightAnt (pi / 8) ant : tail ants
+    EventKey (SpecialKey KeyUp)    Down _ _ -> let ant = head ants in ant {antStopGo = Go } : tail ants
+    EventKey (SpecialKey KeyUp)    Up _ _   -> let ant = head ants in ant {antStopGo = Neutral } : tail ants
+    EventKey (SpecialKey KeyDown)  Down _ _ -> let ant = head ants in ant {antStopGo = Stop } : tail ants
+    EventKey (SpecialKey KeyDown)  Up _ _   -> let ant = head ants in ant {antStopGo = Neutral } : tail ants
+    EventKey (SpecialKey KeyLeft)  Down _ _ -> let ant = head ants in ant {antWheelPos = Ant.Left } : tail ants
+    EventKey (SpecialKey KeyLeft)  Up _ _   -> let ant = head ants in ant {antWheelPos = Center } : tail ants
+    EventKey (SpecialKey KeyRight) Down _ _ -> let ant = head ants in ant {antWheelPos = Ant.Right } : tail ants
+    EventKey (SpecialKey KeyRight) Up _ _   -> let ant = head ants in ant {antWheelPos = Center } : tail ants
     _                                       -> ants
 
 
@@ -118,8 +96,7 @@ stepWorld :: Float -> [Ant] -> [Ant]
 stepWorld _ ants =
     let ant = head ants
         movedAnt = ant
-                   & jitterRotation (pi/30)
-                   & stepAnt antStepSize
+                   & driveAnt antStepSize 0.1 0.2 3 (pi/15) (pi/30)
                    & wrapAroundAnt screenWidthF screenHeightF
         movedOtherAnts = map (wrapAroundAnt screenWidthF screenHeightF
             . moveAntRandomly antStepSize antAngleRange antAccelerationRange) (tail ants)
