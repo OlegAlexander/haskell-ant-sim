@@ -6,7 +6,6 @@ module Ant where
 
 import           Data.Fixed    (div', mod')
 import           Data.Function ((&))
-import           GHC.Conc      (ThreadStatus)
 import           System.Random (StdGen, mkStdGen, newStdGen, randomR, randoms)
 
 -- -------------------------------------------------------------------------- --
@@ -18,7 +17,8 @@ data Ant = Ant { antX        :: Float,
                  antMode     :: Mode,
                  antRng      :: StdGen,
                  antStopGo   :: StopGo,
-                 antWheelPos :: WheelPos }
+                 antWheelPos :: WheelPos,
+                 antSprite   :: Sprite }
                  deriving (Eq, Show)
 
 data Mode = SeekFood | SeekNest deriving (Eq, Show)
@@ -27,6 +27,8 @@ data StopGo = Stop | Neutral | Go deriving (Eq, Show)
 
 data WheelPos = Left | Center | Right deriving (Eq, Show)
 
+data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
+
 type RngSeed = Int
 
 -- -------------------------------------------------------------------------- --
@@ -34,7 +36,7 @@ type RngSeed = Int
 mkAnt :: Float -> Float -> RngSeed -> Ant
 mkAnt x y seed =
     let (theta, rng) = randomR (0, 2 * pi) (mkStdGen seed)
-    in Ant x y theta 0 SeekFood rng Neutral Center
+    in Ant x y theta 0 SeekFood rng Neutral Center LeftSprite
 
 mkAnts :: Float -> Float -> [RngSeed] -> [Ant]
 mkAnts x y seeds = map (mkAnt x y) seeds
@@ -48,7 +50,14 @@ stepAnt stepSize ant =
         speed = antSpeed ant
         x' = antX ant + stepSize * speed * cos theta
         y' = antY ant + stepSize * speed * sin theta
-    in ant { antX = x', antY = y' }
+        -- TODO How can I make this be based on the ant speed?
+        sprite' = if speed == 0 then
+            antSprite ant
+            else
+                case antSprite ant of
+                    LeftSprite  -> RightSprite
+                    RightSprite -> LeftSprite
+    in ant { antX = x', antY = y', antSprite = sprite'}
 
 
 driveAnt :: Float -> Float -> Float -> Float -> Float -> Float -> Ant -> Ant
@@ -87,8 +96,11 @@ rightAnt angle ant = rotateAnt (-angle) ant
 -- Rotate the ant by the given angle in radians wrapping around if needed
 rotateAnt :: Float -> Ant -> Ant
 rotateAnt angle ant =
-    let theta' = (antTheta ant + angle) `mod'` (2 * pi)
-    in ant { antTheta = theta' }
+    if antSpeed ant == 0 then -- Don't rotate in place
+        ant
+    else
+        let theta' = (antTheta ant + angle) `mod'` (2 * pi)
+        in ant { antTheta = theta' }
 
 jitterRotation :: Float -> Ant -> Ant
 jitterRotation angleRange ant =
