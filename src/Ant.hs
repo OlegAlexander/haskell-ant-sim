@@ -50,14 +50,22 @@ stepAnt stepSize ant =
         speed = antSpeed ant
         x' = antX ant + stepSize * speed * cos theta
         y' = antY ant + stepSize * speed * sin theta
-        -- TODO How can I make this be based on the ant speed?
-        sprite' = if speed == 0 then
-            antSprite ant
+    in ant { antX = x', antY = y' }
+
+-- TODO I don't like having the sprite logic in this module. Look into ECS.
+-- TODO I don't like the random movement, but it's ok for now.
+cycleAntSprite :: Float -> Ant -> Ant
+cycleAntSprite maxSpeed ant =
+    let speed = antSpeed ant
+        (chance, rng') = randomR (0, 1) (antRng ant)
+        sprite' = if chance < sqrt(speed / maxSpeed) then
+            case antSprite ant of
+                LeftSprite  -> RightSprite
+                RightSprite -> LeftSprite
             else
-                case antSprite ant of
-                    LeftSprite  -> RightSprite
-                    RightSprite -> LeftSprite
-    in ant { antX = x', antY = y', antSprite = sprite'}
+                antSprite ant
+    in ant { antSprite = sprite', antRng = rng' }
+
 
 
 driveAnt :: Float -> Float -> Float -> Float -> Float -> Float -> Ant -> Ant

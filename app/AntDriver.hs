@@ -38,6 +38,9 @@ fps = 30
 antScale :: Float
 antScale = 2
 
+antMaxSpeed :: Float
+antMaxSpeed = 4
+
 antStepSize :: Float
 antStepSize = 3
 
@@ -123,7 +126,8 @@ stepWorld :: Float -> [Ant] -> [Ant]
 stepWorld _ ants =
     let ant = head ants
         movedAnt = ant
-                   & driveAnt antStepSize 0.25 0.25 4 (pi/15) (pi/60)
+                   & driveAnt antStepSize 0.25 0.25 antMaxSpeed (pi/15) (pi/60)
+                   & cycleAntSprite antMaxSpeed
                    & wrapAroundAnt screenWidthF screenHeightF
         movedOtherAnts = map (wrapAroundAnt screenWidthF screenHeightF
             . moveAntRandomly antStepSize antAngleRange antAccelerationRange) (tail ants)
