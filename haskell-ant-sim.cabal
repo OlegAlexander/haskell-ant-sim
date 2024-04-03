@@ -87,6 +87,17 @@ executable ant-driver
                     haskell-ant-sim
     hs-source-dirs: app
 
+executable ecs-poc
+    import:         options
+    main-is:        ECSPOC.hs
+    build-depends:  base ^>=4.17.2.0,
+                    matrix ^>=0.3.6.3,
+                    random ^>=1.2.1.2,
+                    gloss ^>=1.13.2.2,
+                    vector ^>= 0.13.1.0,
+                    haskell-ant-sim
+    hs-source-dirs: app
+
 
 
 test-suite spec
