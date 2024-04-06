@@ -98,7 +98,17 @@ executable ecs-poc
                     haskell-ant-sim
     hs-source-dirs: app
 
-
+executable raylib-poc
+    import:         options
+    main-is:        RaylibPoc.hs
+    build-depends:  base ^>=4.17.2.0,
+                    matrix ^>=0.3.6.3,
+                    random ^>=1.2.1.2,
+                    vector ^>= 0.13.1.0,
+                    haskell-ant-sim,
+                    h-raylib ^>= 5.1.1.0,
+                    apecs ^>= 0.9.6
+    hs-source-dirs: app
 
 test-suite spec
     import:         options

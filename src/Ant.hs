@@ -94,10 +94,10 @@ stopAnt deceleration ant =
     in ant { antSpeed = speed' }
 
 leftAnt :: Float -> Ant -> Ant
-leftAnt angle ant = rotateAnt angle ant
+leftAnt angle ant = rotateAnt (-angle) ant
 
 rightAnt :: Float -> Ant -> Ant
-rightAnt angle ant = rotateAnt (-angle) ant
+rightAnt angle ant = rotateAnt angle ant
 
 -- -------------------------------------------------------------------------- --
 
@@ -154,6 +154,16 @@ wrapAroundAnt w h ant =
         bottom = -(h/2)
         right = w/2
         left = -(w/2)
+
+
+wrapAroundAntRaylib :: Float -> Float -> Ant -> Ant
+wrapAroundAntRaylib w h ant =
+    let x = antX ant
+        y = antY ant
+        x' = if x > w then 0 else if x < 0 then w else x
+        y' = if y > h then 0 else if y < 0 then h else y
+    in ant { antX = x', antY = y' }
+
 
 
 -- TODO Control an ant (different color)

@@ -18,10 +18,10 @@ import           System.Random                      (newStdGen, randoms)
 
 
 screenWidth :: Int
-screenWidth = 1200
+screenWidth = 1600
 
 screenHeight :: Int
-screenHeight = 800
+screenHeight = 980
 
 screenWidthF :: Float
 screenWidthF = fromIntegral screenWidth
@@ -39,7 +39,7 @@ antScale :: Float
 antScale = 2
 
 antMaxSpeed :: Float
-antMaxSpeed = 4
+antMaxSpeed = 5
 
 antStepSize :: Float
 antStepSize = 3
@@ -55,7 +55,7 @@ main = do
     gen <- newStdGen
     let seeds = (randoms gen :: [Int]) & take numAnts
         ants = mkAnts 0 0 seeds
-    play (InWindow "Ant Driver" (screenWidth, screenHeight) (20,20))
+    play (InWindow "Ant Driver" (screenWidth, screenHeight) (5,5))
          (greyN 0.8) fps ants makePicture handleEvent stepWorld
 
 
@@ -126,7 +126,7 @@ stepWorld :: Float -> [Ant] -> [Ant]
 stepWorld _ ants =
     let ant = head ants
         movedAnt = ant
-                   & driveAnt antStepSize 0.25 0.25 antMaxSpeed (pi/15) (pi/60)
+                   & driveAnt antStepSize 0.5 0.5 antMaxSpeed (pi/15) (pi/60)
                    & cycleAntSprite antMaxSpeed
                    & wrapAroundAnt screenWidthF screenHeightF
         movedOtherAnts = map (wrapAroundAnt screenWidthF screenHeightF
