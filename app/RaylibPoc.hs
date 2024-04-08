@@ -44,8 +44,15 @@ antStepSize :: Float
 antStepSize = 2
 
 
-handleEvents :: Ant -> IO Ant
-handleEvents ant = do
+initWorld :: IO Ant
+initWorld = do
+    rng <- newStdGen
+    let (seed, _) = random rng
+        ant = mkAnt screenCenterW screenCenterH seed
+    return ant
+
+handleInput :: Ant -> IO Ant
+handleInput ant = do
     go <- isKeyDown KeyUp
     stop <- isKeyDown KeyDown
     left <- isKeyDown KeyLeft
@@ -56,32 +63,35 @@ handleEvents ant = do
             }
     return ant'
 
-
-loop :: Ant -> IO Ant
-loop ant = do
-    hideCursor
-
-    -- toggle fullscreen
-    f11Pressed <- isKeyPressed KeyF11
-    when f11Pressed toggleFullscreen
-
-    currentFps <- getFPS
-    ant' <- handleEvents ant
-    let movedAnt = ant'
+updateWorld :: Ant -> Ant
+updateWorld ant = ant
                 & driveAnt antStepSize 0.5 0.5 antMaxSpeed (pi/15) (pi/60)
                 & cycleAntSprite antMaxSpeed
                 & wrapAroundAntRaylib (fromIntegral screenWidth) (fromIntegral screenHeight)
+
+drawWorld :: Ant -> IO ()
+drawWorld ant = do
+    hideCursor
+
+    f11Pressed <- isKeyPressed KeyF11
+    when f11Pressed toggleFullscreen
+
     drawing $ do
         clearBackground lightGray
-        drawText (show currentFps ++ " fps") 10 10 25 darkGray
-        drawCircleV (Vector2 (antX movedAnt) (antY movedAnt)) antScale black
+        drawFPS 10 10
+        drawCircleV (Vector2 (antX ant) (antY ant)) antScale black
+
+
+gameLoop :: Ant -> IO Ant
+gameLoop ant = do
+    ant' <- handleInput ant
+    let movedAnt = updateWorld ant'
+    drawWorld movedAnt
     return movedAnt
 
 main :: IO ()
 main = do
-    rng <- newStdGen
-    let (seed, _) = random rng
-        ant = mkAnt screenCenterW screenCenterH seed
+    ant <- initWorld
     withWindow screenWidth screenHeight title fps $ const $
-        whileWindowOpen_ loop ant
+        whileWindowOpen_ gameLoop ant
 
