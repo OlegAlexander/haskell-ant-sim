@@ -65,9 +65,9 @@ handleInput ant = do
 
 updateWorld :: Ant -> Ant
 updateWorld ant = ant
-                & driveAnt antStepSize 0.5 0.5 antMaxSpeed (pi/15) (pi/60)
-                & cycleAntSprite antMaxSpeed
-                & wrapAroundAntRaylib (fromIntegral screenWidth) (fromIntegral screenHeight)
+    & driveAnt antStepSize 0.5 0.5 antMaxSpeed (pi/15) (pi/60)
+    & cycleAntSprite antMaxSpeed
+    & wrapAroundAntRaylib (fromIntegral screenWidth) (fromIntegral screenHeight)
 
 drawWorld :: Ant -> IO ()
 drawWorld ant = do
