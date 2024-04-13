@@ -5,16 +5,17 @@ module Main where
 
 import           Ant
 import           Control.Monad
-import           Data.Function      ((&))
-import           Debug.Trace        (traceShow)
+import           Data.Function        ((&))
+import           Debug.Trace          (traceShow)
 import           Raylib.Core
 import           Raylib.Core.Shapes
 import           Raylib.Core.Text
+import           Raylib.Core.Textures
 import           Raylib.Types
 import           Raylib.Util
 import           Raylib.Util.Colors
 import           Raylib.Util.Math
-import           System.Random      (newStdGen, random)
+import           System.Random        (newStdGen, random)
 
 screenWidth :: Int
 screenWidth = 1920
@@ -35,13 +36,27 @@ fps :: Int
 fps = 60
 
 antScale :: Float
-antScale = 5
+antScale = 0.5
 
 antMaxSpeed :: Float
 antMaxSpeed = 5
 
 antStepSize :: Float
-antStepSize = 2
+antStepSize = 3
+
+
+
+drawTextureCentered :: Texture -> Rectangle -> Float -> Float -> Vector2 -> Color -> IO ()
+drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y) color = do
+    let w' = w * scale
+        h' = h * scale
+    drawTexturePro
+        texture
+        source
+        (Rectangle x y w' h')
+        (Vector2 (w' / 2) (h' / 2)) -- center of the scaled rect
+        angle
+        color
 
 
 initWorld :: IO Ant
@@ -65,33 +80,45 @@ handleInput ant = do
 
 updateWorld :: Ant -> Ant
 updateWorld ant = ant
-    & driveAnt antStepSize 0.5 0.5 antMaxSpeed (pi/15) (pi/60)
+    & driveAnt antStepSize 0.33 0.33 antMaxSpeed (pi/15) (pi/60)
     & cycleAntSprite antMaxSpeed
     & wrapAroundAntRaylib (fromIntegral screenWidth) (fromIntegral screenHeight)
 
-drawWorld :: Ant -> IO ()
-drawWorld ant = do
+drawWorld :: Texture -> Ant -> IO ()
+drawWorld antTexture ant = do
     hideCursor
 
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
     drawing $ do
+        let texW = texture'width antTexture
+            texH = texture'height antTexture
         clearBackground lightGray
         drawFPS 10 10
-        drawCircleV (Vector2 (antX ant) (antY ant)) antScale black
+        drawTextureCentered
+            antTexture
+            (Rectangle 0 0 (fromIntegral texW/2) (fromIntegral texH))
+            antScale
+            (antTheta ant * rad2Deg)
+            (Vector2 (antX ant) (antY ant))
+            white
 
 
-gameLoop :: Ant -> IO Ant
-gameLoop ant = do
+
+gameLoop :: (Texture, Ant) -> IO ()
+gameLoop (antTexture, ant) = do
     ant' <- handleInput ant
     let movedAnt = updateWorld ant'
-    drawWorld movedAnt
-    return movedAnt
+    drawWorld antTexture movedAnt
+    shouldClose <- windowShouldClose
+    unless shouldClose $ gameLoop (antTexture, movedAnt)
 
 main :: IO ()
 main = do
     ant <- initWorld
-    withWindow screenWidth screenHeight title fps $ const $
-        whileWindowOpen_ gameLoop ant
+    window <- initWindow screenWidth screenHeight title
+    setTargetFPS 60
+    antTexture <- loadTexture "ant.png" window
+    gameLoop (antTexture, ant)
 
