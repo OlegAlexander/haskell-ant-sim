@@ -36,7 +36,7 @@ fps :: Int
 fps = 60
 
 antScale :: Float
-antScale = 0.5
+antScale = 0.33
 
 antMaxSpeed :: Float
 antMaxSpeed = 5
@@ -45,7 +45,7 @@ antStepSize :: Float
 antStepSize = 3
 
 
-
+-- TODO Recommend this function to Raylib author
 drawTextureCentered :: Texture -> Rectangle -> Float -> Float -> Vector2 -> Color -> IO ()
 drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y) color = do
     let w' = w * scale
@@ -94,11 +94,15 @@ drawWorld antTexture ant = do
     drawing $ do
         let texW = texture'width antTexture
             texH = texture'height antTexture
+            sprite = antSprite ant
+            spriteRect = case sprite of
+                LeftSprite  -> Rectangle 0 0 (fromIntegral texW/2) (fromIntegral texH)
+                RightSprite -> Rectangle (fromIntegral texW/2) 0 (fromIntegral texW/2) (fromIntegral texH)
         clearBackground lightGray
         drawFPS 10 10
         drawTextureCentered
             antTexture
-            (Rectangle 0 0 (fromIntegral texW/2) (fromIntegral texH))
+            spriteRect
             antScale
             (antTheta ant * rad2Deg)
             (Vector2 (antX ant) (antY ant))
