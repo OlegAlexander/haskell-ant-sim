@@ -7,6 +7,7 @@ import           Ant
 import           Control.Monad
 import           Data.Function        ((&))
 import           Debug.Trace          (traceShow)
+import           GHC.Float            (int2Float)
 import           Raylib.Core
 import           Raylib.Core.Shapes
 import           Raylib.Core.Text
@@ -24,10 +25,10 @@ screenHeight :: Int
 screenHeight = 1080
 
 screenCenterW :: Float
-screenCenterW = fromIntegral screenWidth / 2
+screenCenterW = int2Float screenWidth / 2
 
 screenCenterH :: Float
-screenCenterH = fromIntegral screenHeight / 2
+screenCenterH = int2Float screenHeight / 2
 
 title :: String
 title = "Raylib POC"
@@ -36,13 +37,16 @@ fps :: Int
 fps = 60
 
 antScale :: Float
-antScale = 0.33
+antScale = 0.5
 
 antMaxSpeed :: Float
 antMaxSpeed = 5
 
 antStepSize :: Float
 antStepSize = 3
+
+antPng :: String
+antPng = "assets/ant.png"
 
 
 -- TODO Recommend this function to Raylib author
@@ -82,7 +86,7 @@ updateWorld :: Ant -> Ant
 updateWorld ant = ant
     & driveAnt antStepSize 0.33 0.33 antMaxSpeed (pi/15) (pi/60)
     & cycleAntSprite antMaxSpeed
-    & wrapAroundAntRaylib (fromIntegral screenWidth) (fromIntegral screenHeight)
+    & wrapAroundAntRaylib (int2Float screenWidth) (int2Float screenHeight)
 
 drawWorld :: Texture -> Ant -> IO ()
 drawWorld antTexture ant = do
@@ -96,8 +100,8 @@ drawWorld antTexture ant = do
             texH = texture'height antTexture
             sprite = antSprite ant
             spriteRect = case sprite of
-                LeftSprite  -> Rectangle 0 0 (fromIntegral texW/2) (fromIntegral texH)
-                RightSprite -> Rectangle (fromIntegral texW/2) 0 (fromIntegral texW/2) (fromIntegral texH)
+                LeftSprite  -> Rectangle 0 0 (int2Float texW/2) (int2Float texH)
+                RightSprite -> Rectangle (int2Float texW/2) 0 (int2Float texW/2) (int2Float texH)
         clearBackground lightGray
         drawFPS 10 10
         drawTextureCentered
@@ -123,6 +127,6 @@ main = do
     ant <- initWorld
     window <- initWindow screenWidth screenHeight title
     setTargetFPS 60
-    antTexture <- loadTexture "ant.png" window
+    antTexture <- loadTexture antPng window
     gameLoop (antTexture, ant)
 

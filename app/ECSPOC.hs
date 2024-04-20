@@ -10,8 +10,10 @@
 module Main where
 
 import           Ant
+import           AntSim                             (pheromoneAmount)
 import           Data.Function                      ((&))
 import qualified Data.Vector                        as V
+import           Data.Vector.Generic                (new)
 import           Debug.Trace                        (traceShow)
 import           Graphics.Gloss
 import           Graphics.Gloss.Interface.Pure.Game
@@ -23,39 +25,79 @@ import           System.Random                      (newStdGen, randoms)
 type Position = (Float, Float)
 type Angle = Float -- in radians
 type Speed = Float
+type PheremoneAmount = Float
 
-data EntityType = BlackAnt | RedAnt deriving (Eq, Show)
+data Archetype = BlackAnt | PheremoneDrop deriving (Eq, Show)
 
+
+-- To maintain type safety, you must add new components to World, NOT Entity!
+-- Need TemplateHaskell to generate World? Hopefully there's an easier way...
 data World = World {
-    wTypes     :: V.Vector EntityType,
-    wPositions :: V.Vector (Maybe Position),
-    wAngles    :: V.Vector (Maybe Angle),
-    wSpeeds    :: V.Vector (Maybe Speed)
+    wTypes           :: [Archetype],
+    wPositions       :: [Maybe Position],
+    wAngles          :: [Maybe Angle],
+    wSpeeds          :: [Maybe Speed],
+    wPheremoneAmount :: [Maybe Float]
+} deriving (Eq, Show)
+
+data Entity = Entity {
+    eType            :: Archetype,
+    ePosition        :: Maybe Position,
+    eAngle           :: Maybe Angle,
+    eSpeed           :: Maybe Speed,
+    ePheremoneAmount :: Maybe PheremoneAmount
 } deriving (Eq, Show)
 
 initWorld :: World
-initWorld = World {
-    wTypes     = V.fromList [BlackAnt, RedAnt],
-    wPositions = V.fromList [Just (0, 0), Just (10, 10)],
-    wAngles    = V.fromList [Just 0, Just (pi/2)],
-    wSpeeds    = V.fromList [Just 3, Just 2]
+initWorld =
+    let world = World [] [] [] [] []
+        entities = [newBlackAnt (0, 0) (pi/4) 3, newPheremoneDrop (10, 10) 5]
+    in appendToWorld entities world
+
+appendToWorld :: [Entity] -> World -> World
+appendToWorld entities world = World {
+    wTypes     = wTypes world ++ map eType entities,
+    wPositions = wPositions world ++ map ePosition entities,
+    wAngles    = wAngles world ++ map eAngle entities,
+    wSpeeds    = wSpeeds world ++ map eSpeed entities,
+    wPheremoneAmount = wPheremoneAmount world ++ map ePheremoneAmount entities
 }
+
+newBlackAnt :: Position -> Angle -> Speed -> Entity
+newBlackAnt pos angle speed = Entity {
+    eType     = BlackAnt,
+    ePosition = Just pos,
+    eAngle    = Just angle,
+    eSpeed    = Just speed,
+    ePheremoneAmount = Just 0
+}
+
+newPheremoneDrop :: Position -> PheremoneAmount -> Entity
+newPheremoneDrop pos amount = Entity {
+    eType     = PheremoneDrop,
+    ePosition = Just pos,
+    eAngle    = Nothing,
+    eSpeed    = Nothing,
+    ePheremoneAmount = Just amount
+}
+
+
 
 calcMovement :: Position -> Angle -> Speed -> Position
 calcMovement (x, y) angle speed = (x + speed * cos angle, y + speed * sin angle)
 
-updateMovement :: V.Vector (Maybe Position)
-                  -> V.Vector (Maybe Angle)
-                  -> V.Vector (Maybe Speed)
-                  -> V.Vector (Maybe Position)
-updateMovement positions angles speeds =
-    V.zipWith3 (\pos angle speed -> case (pos, angle, speed) of
+updatePositions :: [Maybe Position]
+               -> [Maybe Angle]
+               -> [Maybe Speed]
+               -> [Maybe Position]
+updatePositions =
+    zipWith3 (\pos angle speed -> case (pos, angle, speed) of
         (Just p, Just a, Just s) -> Just (calcMovement p a s)
-        _                        -> pos) positions angles speeds
+        _                        -> pos)
 
 updateWorld :: World -> World
-updateWorld world@(World types positions angles speeds) =
-    world { wPositions = updateMovement positions angles speeds}
+updateWorld world@(World types positions angles speeds pheromoneAmounts) =
+    world { wPositions = updatePositions positions angles speeds}
 
 -- -------------------------------------------------------------------------- --
 
@@ -100,22 +142,22 @@ main = do
 
 
 makePicture :: World -> Picture
-makePicture (World types positions _ _) =
-    let antPics = V.zipWith antToPicture types positions
-    in pictures (V.toList antPics)
+makePicture (World types positions _ _ amounts) =
+    let antPics = zipWith antToPicture types positions
+    in pictures antPics
     where
-        antToPicture :: EntityType -> Maybe Position -> Picture
+        antToPicture :: Archetype -> Maybe Position -> Picture
         antToPicture BlackAnt (Just (x, y)) =
             antShapes
             & translate x y
-        antToPicture RedAnt (Just (x, y)) =
-            antShapes
-            & color red
+        antToPicture PheremoneDrop (Just (x, y)) =
+            rectangleSolid 10 10
+            & color green
             & translate x y
         antToPicture _ _ = Blank
 
         antShapes :: Picture
-        antShapes = circleSolid 10
+        antShapes = circleSolid 5
 
 
 

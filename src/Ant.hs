@@ -104,9 +104,9 @@ rightAnt angle ant = rotateAnt angle ant
 -- Rotate the ant by the given angle in radians wrapping around if needed
 rotateAnt :: Float -> Ant -> Ant
 rotateAnt angle ant =
-    if antSpeed ant == 0 then -- Don't rotate in place
-        ant
-    else
+    -- if antSpeed ant == 0 then -- Don't rotate in place
+    --     ant
+    -- else
         let theta' = (antTheta ant + angle) `mod'` (2 * pi)
         in ant { antTheta = theta' }
 
