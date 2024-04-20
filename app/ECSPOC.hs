@@ -12,6 +12,7 @@ module Main where
 import           Ant
 import           AntSim                             (pheromoneAmount)
 import           Data.Function                      ((&))
+import           Data.List                          (transpose, unzip5, zip5)
 import qualified Data.Vector                        as V
 import           Data.Vector.Generic                (new)
 import           Debug.Trace                        (traceShow)
@@ -32,12 +33,13 @@ data Archetype = BlackAnt | PheremoneDrop deriving (Eq, Show)
 
 -- To maintain type safety, you must add new components to World, NOT Entity!
 -- Need TemplateHaskell to generate World? Hopefully there's an easier way...
+-- Maybe use Tuples instead of Records? Tuples are easier to unzip/zip.
 data World = World {
     wTypes           :: [Archetype],
     wPositions       :: [Maybe Position],
     wAngles          :: [Maybe Angle],
     wSpeeds          :: [Maybe Speed],
-    wPheremoneAmount :: [Maybe Float]
+    wPheremoneAmount :: [Maybe PheremoneAmount]
 } deriving (Eq, Show)
 
 data Entity = Entity {
@@ -47,6 +49,19 @@ data Entity = Entity {
     eSpeed           :: Maybe Speed,
     ePheremoneAmount :: Maybe PheremoneAmount
 } deriving (Eq, Show)
+
+type WorldT = ([Archetype], [Maybe Position], [Maybe Angle], [Maybe Speed], [Maybe PheremoneAmount])
+
+type EntityT = (Archetype, Maybe Position, Maybe Angle, Maybe Speed, Maybe PheremoneAmount)
+
+-- If this function is used in initWorld, then we should be type safe.
+-- Just need much longer zips and unzips!
+zipUnzip :: WorldT -> WorldT
+zipUnzip (a, b, c, d, e) =
+    let entities = (zip5 a b c d e :: [EntityT]) -- Force type checking
+    in unzip5 entities
+
+
 
 initWorld :: World
 initWorld =
