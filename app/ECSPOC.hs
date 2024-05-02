@@ -12,9 +12,10 @@ module Main where
 import           Ant
 import           AntSim                             (pheromoneAmount)
 import           Data.Function                      ((&))
-import           Data.List                          (transpose, unzip5, zip5)
+import           Data.List                          (foldl', transpose, unzip5,
+                                                     zip5)
 import qualified Data.Vector                        as V
-import           Data.Vector.Generic                (new)
+import           Data.Vector.Generic                (foldl', new)
 import           Debug.Trace                        (traceShow)
 import           Graphics.Gloss
 import           Graphics.Gloss.Interface.Pure.Game
@@ -30,10 +31,6 @@ type PheremoneAmount = Float
 
 data Archetype = BlackAnt | PheremoneDrop deriving (Eq, Show)
 
-
--- To maintain type safety, you must add new components to World, NOT Entity!
--- Need TemplateHaskell to generate World? Hopefully there's an easier way...
--- Maybe use Tuples instead of Records? Tuples are easier to unzip/zip.
 data World = World {
     wTypes           :: [Archetype],
     wPositions       :: [Maybe Position],
@@ -42,77 +39,57 @@ data World = World {
     wPheremoneAmount :: [Maybe PheremoneAmount]
 } deriving (Eq, Show)
 
-data Entity = Entity {
-    eType            :: Archetype,
-    ePosition        :: Maybe Position,
-    eAngle           :: Maybe Angle,
-    eSpeed           :: Maybe Speed,
-    ePheremoneAmount :: Maybe PheremoneAmount
-} deriving (Eq, Show)
-
-type WorldT = ([Archetype], [Maybe Position], [Maybe Angle], [Maybe Speed], [Maybe PheremoneAmount])
-
-type EntityT = (Archetype, Maybe Position, Maybe Angle, Maybe Speed, Maybe PheremoneAmount)
-
--- If this function is used in initWorld, then we should be type safe.
--- Just need much longer zips and unzips!
-zipUnzip :: WorldT -> WorldT
-zipUnzip (a, b, c, d, e) =
-    let entities = (zip5 a b c d e :: [EntityT]) -- Force type checking
-    in unzip5 entities
-
-
 
 initWorld :: World
 initWorld =
     let world = World [] [] [] [] []
         entities = [newBlackAnt (0, 0) (pi/4) 3, newPheremoneDrop (10, 10) 5]
-    in appendToWorld entities world
+    in Data.List.foldl' concatWorlds world entities
 
-appendToWorld :: [Entity] -> World -> World
-appendToWorld entities world = World {
-    wTypes     = wTypes world ++ map eType entities,
-    wPositions = wPositions world ++ map ePosition entities,
-    wAngles    = wAngles world ++ map eAngle entities,
-    wSpeeds    = wSpeeds world ++ map eSpeed entities,
-    wPheremoneAmount = wPheremoneAmount world ++ map ePheremoneAmount entities
+concatWorlds :: World -> World -> World
+concatWorlds targetWorld sourceWorld = World {
+    wTypes           = wTypes targetWorld ++ wTypes sourceWorld,
+    wPositions       = wPositions targetWorld ++ wPositions sourceWorld,
+    wAngles          = wAngles targetWorld ++ wAngles sourceWorld,
+    wSpeeds          = wSpeeds targetWorld ++ wSpeeds sourceWorld,
+    wPheremoneAmount = wPheremoneAmount targetWorld ++ wPheremoneAmount sourceWorld
+
 }
 
-newBlackAnt :: Position -> Angle -> Speed -> Entity
-newBlackAnt pos angle speed = Entity {
-    eType     = BlackAnt,
-    ePosition = Just pos,
-    eAngle    = Just angle,
-    eSpeed    = Just speed,
-    ePheremoneAmount = Just 0
+newBlackAnt :: Position -> Angle -> Speed -> World
+newBlackAnt pos angle speed = World {
+    wTypes     = [BlackAnt],
+    wPositions = [Just pos],
+    wAngles    = [Just angle],
+    wSpeeds    = [Just speed],
+    wPheremoneAmount = [Nothing]
 }
 
-newPheremoneDrop :: Position -> PheremoneAmount -> Entity
-newPheremoneDrop pos amount = Entity {
-    eType     = PheremoneDrop,
-    ePosition = Just pos,
-    eAngle    = Nothing,
-    eSpeed    = Nothing,
-    ePheremoneAmount = Just amount
+newPheremoneDrop :: Position -> PheremoneAmount -> World
+newPheremoneDrop pos amount = World {
+    wTypes     = [PheremoneDrop],
+    wPositions = [Just pos],
+    wAngles    = [Nothing],
+    wSpeeds    = [Nothing],
+    wPheremoneAmount = [Just amount]
 }
-
-
 
 calcMovement :: Position -> Angle -> Speed -> Position
 calcMovement (x, y) angle speed = (x + speed * cos angle, y + speed * sin angle)
 
-updatePositions :: [Maybe Position]
-               -> [Maybe Angle]
-               -> [Maybe Speed]
-               -> [Maybe Position]
-updatePositions =
-    zipWith3 (\pos angle speed -> case (pos, angle, speed) of
-        (Just p, Just a, Just s) -> Just (calcMovement p a s)
-        _                        -> pos)
+movementSystem :: World -> World
+movementSystem world =
+    -- Notice how we pull out the fields we need
+    let positions = wPositions world
+        angles = wAngles world
+        speeds = wSpeeds world
+        positions' = zipWith3 (\pos angle speed -> case (pos, angle, speed) of
+            (Just p, Just a, Just s) -> Just $ calcMovement p a s
+            _                        -> pos) positions angles speeds
+    in world { wPositions = positions' }
 
 updateWorld :: World -> World
-updateWorld world@(World types positions angles speeds pheromoneAmounts) =
-    world { wPositions = updatePositions positions angles speeds}
+updateWorld world = movementSystem world
 
 -- -------------------------------------------------------------------------- --
 
