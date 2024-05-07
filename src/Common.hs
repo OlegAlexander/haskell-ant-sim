@@ -22,7 +22,7 @@ data EntityType
 data AntMode = SeekFood | SeekNest deriving (Eq, Show)
 
 
-data PedalPos = Stop | Neutral | Go deriving (Eq, Show)
+data PedalPos = Decelerate | Neutral | Accelerate deriving (Eq, Show)
 
 
 data WheelPos = Left | Center | Right deriving (Eq, Show)

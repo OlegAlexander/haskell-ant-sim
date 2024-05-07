@@ -19,7 +19,8 @@ library
                         vector ^>= 0.13.1.0,
                         random ^>=1.2.1.2,
                         h-raylib ^>= 5.1.1.0,
-                        containers
+                        containers,
+                        apecs ^>= 0.9.6
 
 executable main
     import:         options
@@ -29,5 +30,16 @@ executable main
                     random ^>=1.2.1.2,
                     vector ^>= 0.13.1.0,
                     h-raylib ^>= 5.1.1.0,
+                    apecs ^>= 0.9.6
     hs-source-dirs: app
 
+executable apecs-poc
+    import:         options
+    main-is:        ApecsPoc.hs
+    build-depends:  haskell-ant-sim,  
+                    base ^>=4.17.2.0,
+                    random ^>=1.2.1.2,
+                    vector ^>= 0.13.1.0,
+                    h-raylib ^>= 5.1.1.0,
+                    apecs ^>= 0.9.6
+    hs-source-dirs: app
