@@ -20,6 +20,7 @@ library
                         random ^>=1.2.1.2,
                         h-raylib ^>= 5.1.1.0,
                         containers,
+                        transformers
 
 executable main
     import:         options

@@ -89,7 +89,7 @@ handleInput ant = do
     let ant' =
             ant
                 { antStopGo = if go then Go else if stop then Stop else Neutral,
-                  antWheelPos = if left then Ant.Left else if right then Ant.Right else Center
+                  antWheelPos = if left then TurnLeft else if right then TurnRight else Center
                 }
     return ant'
 

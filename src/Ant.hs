@@ -29,7 +29,7 @@ data Mode = SeekFood | SeekNest deriving (Eq, Show)
 data StopGo = Stop | Neutral | Go deriving (Eq, Show)
 
 
-data WheelPos = Left | Center | Right deriving (Eq, Show)
+data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
 
 
 data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
@@ -60,7 +60,7 @@ stepAnt stepSize ant =
         speed = antSpeed ant
         x' = antX ant + stepSize * speed * cos theta
         y' = antY ant + stepSize * speed * sin theta
-    in  ant {antX = x', antY = y'}
+    in  ant{antX = x', antY = y'}
 
 
 -- TODO I don't like having the sprite logic in this module. Look into ECS.
@@ -75,14 +75,14 @@ cycleAntSprite maxSpeed ant =
                     LeftSprite -> RightSprite
                     RightSprite -> LeftSprite
                 else antSprite ant
-    in  ant {antSprite = sprite', antRng = rng'}
+    in  ant{antSprite = sprite', antRng = rng'}
 
 
 driveAnt :: Float -> Float -> Float -> Float -> Float -> Float -> Ant -> Ant
 driveAnt stepSize acceleration deceleration maxSpeed angle jitter ant =
     let rotatedAnt = case antWheelPos ant of
-            Ant.Left -> leftAnt angle ant
-            Ant.Right -> rightAnt angle ant
+            TurnLeft -> leftAnt angle ant
+            TurnRight -> rightAnt angle ant
             Center -> ant
         translatedAnt = case antStopGo rotatedAnt of
             Stop -> stopAnt deceleration rotatedAnt
@@ -96,13 +96,13 @@ driveAnt stepSize acceleration deceleration maxSpeed angle jitter ant =
 goAnt :: Float -> Float -> Ant -> Ant
 goAnt acceleration maxSpeed ant =
     let speed' = min maxSpeed (antSpeed ant + acceleration)
-    in  ant {antSpeed = speed'}
+    in  ant{antSpeed = speed'}
 
 
 stopAnt :: Float -> Ant -> Ant
 stopAnt deceleration ant =
     let speed' = max 0 (antSpeed ant - deceleration)
-    in  ant {antSpeed = speed'}
+    in  ant{antSpeed = speed'}
 
 
 leftAnt :: Float -> Ant -> Ant
@@ -122,13 +122,13 @@ rotateAnt angle ant =
     --     ant
     -- else
     let theta' = (antTheta ant + angle) `mod'` (2 * pi)
-    in  ant {antTheta = theta'}
+    in  ant{antTheta = theta'}
 
 
 jitterRotation :: Float -> Ant -> Ant
 jitterRotation angleRange ant =
     let (angle, rng') = randomR (-angleRange, angleRange) (antRng ant)
-    in  rotateAnt (angle * antSpeed ant) ant {antRng = rng'}
+    in  rotateAnt (angle * antSpeed ant) ant{antRng = rng'}
 
 
 -- TODO Real ants stop a lot when exploring.
@@ -138,7 +138,7 @@ moveAntRandomly stepSize angleRange accelerationRange ant =
         (acceleration, rng'') = randomR (-accelerationRange, accelerationRange) rng'
         newSpeed = max 1 (min 2 (antSpeed ant + acceleration)) -- TODO Magic numbers
         movedAnt = rotateAnt angle ant & stepAnt stepSize
-    in  movedAnt {antRng = rng'', antSpeed = newSpeed}
+    in  movedAnt{antRng = rng'', antSpeed = newSpeed}
 
 
 -- Reflect the ant theta about the normal vector
@@ -150,7 +150,7 @@ reflectAnt nx ny ant =
         (dx, dy) = (cos theta, sin theta)
         dot = dx * nx' + dy * ny'
         (rx, ry) = (dx - 2 * dot * nx', dy - 2 * dot * ny')
-    in  ant {antTheta = atan2 ry rx `mod'` (2 * pi)}
+    in  ant{antTheta = atan2 ry rx `mod'` (2 * pi)}
 
 
 -- TODO Consider having the ant go into a rotating state instead of rotating instantly
@@ -165,7 +165,7 @@ wrapAroundAnt w h ant =
         y = antY ant
         x' = if x > right then (x - w) else if x < left then (x + w) else x
         y' = if y > top then (y - h) else if y < bottom then (y + h) else y
-    in  ant {antX = x', antY = y'}
+    in  ant{antX = x', antY = y'}
   where
     top = h / 2
     bottom = -(h / 2)
@@ -179,7 +179,7 @@ wrapAroundAntRaylib w h ant =
         y = antY ant
         x' = if x > w then 0 else if x < 0 then w else x
         y' = if y > h then 0 else if y < 0 then h else y
-    in  ant {antX = x', antY = y'}
+    in  ant{antX = x', antY = y'}
 
 
 -- TODO Control an ant (different color)
@@ -199,20 +199,20 @@ squishAnts x y width ants = filter (not . isSquished) ants
             y' = antY ant
         in  x'
                 > x
-                - width
-                / 2
+                    - width
+                        / 2
                 && x'
-                < x
-                + width
-                / 2
+                    < x
+                        + width
+                            / 2
                 && y'
-                > y
-                - width
-                / 2
+                    > y
+                        - width
+                            / 2
                 && y'
-                < y
-                + width
-                / 2
+                    < y
+                        + width
+                            / 2
 
 
 -- TODO Move nest
