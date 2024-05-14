@@ -3,8 +3,9 @@
 module Common where
 
 import Control.Monad (replicateM)
-import Control.Monad.Trans.State
+import Control.Monad.Trans.State.Strict
 import Data.Function ((&))
+import Data.List (foldl')
 import Data.Vector qualified as V
 import Raylib.Types
 import System.Random (StdGen, mkStdGen)
@@ -96,21 +97,39 @@ mkWorld seeds =
     in  V.singleton $ mkPlayerAnt (Vector2 0 0) playerAntSeed
 
 
--- ---------------------------- State Monad Test ---------------------------- --
+-- ----------------------------- Fold World Test ---------------------------- --
 
-data WorldState = WorldState {nextEntityId :: Int, entities :: [Int]} deriving (Eq, Show)
+data WorldState = WorldState
+    { nextEntityId :: Int,
+      entities :: [Int]
+    }
+    deriving (Eq, Show)
 
 
-newEntity :: State WorldState ()
-newEntity = do
-    n <- gets nextEntityId
-    es <- gets entities
-    modify (\s -> s{nextEntityId = n + 1, entities = es ++ [n]})
+newEntity :: WorldState -> () -> WorldState
+newEntity (WorldState x es) _ = WorldState (x + 1) (es ++ [x])
 
 
 mkWorldState :: Int -> WorldState
-mkWorldState n = execState (replicateM n newEntity) (WorldState 1 [])
+mkWorldState n = foldl' newEntity (WorldState 1 []) (replicate n ())
 
+
+-- ghci> mkWorldState 10
+-- WorldState {nextEntityId = 11, entities = [1,2,3,4,5,6,7,8,9,10]}
+
+-- ---------------------------- State Monad Test ---------------------------- --
+
+-- newEntity :: State WorldState ()
+-- newEntity = do
+--     n <- gets nextEntityId
+--     es <- gets entities
+--     modify (\s -> s{nextEntityId = n + 1, entities = es ++ [n]})
+
+-- mkWorldState :: Int -> WorldState
+-- mkWorldState n = execState (replicateM n newEntity) (WorldState 1 [])
+
+-- -- ghci> mkWorldState 10
+-- -- WorldState {nextEntityId = 11, entities = [1,2,3,4,5,6,7,8,9,10]}
 
 tick :: State Int Int
 tick = do
