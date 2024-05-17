@@ -7,7 +7,7 @@ import System.Random
 
 -- ---------------------------------- MODEL --------------------------------- --
 
-data GameModel = GameModel
+data Model = GameModel
     { mTick :: Int,
       mRng :: StdGen,
       mSequence :: [Int]
@@ -15,7 +15,7 @@ data GameModel = GameModel
     deriving (Show)
 
 
-initModel :: IO GameModel
+initModel :: IO Model
 initModel = do
     seed <- randomIO
     return $ GameModel 0 (mkStdGen seed) []
@@ -26,7 +26,7 @@ initModel = do
 data Msg = Next | Wait
 
 
-update :: Msg -> GameModel -> GameModel
+update :: Msg -> Model -> Model
 update msg model = case msg of
     Next ->
         let (n, rng') = random (mRng model)
@@ -37,7 +37,7 @@ update msg model = case msg of
 
 -- ---------------------------------- VIEW ---------------------------------- --
 
-view :: GameModel -> IO ()
+view :: Model -> IO ()
 view model = print (mTick model, mSequence model)
 
 
@@ -49,17 +49,24 @@ parseMsg "wait" = Wait
 parseMsg _ = error "Unknown command"
 
 
-loop :: (GameModel -> IO ()) -> (Msg -> GameModel -> GameModel) -> GameModel -> IO ()
-loop viewFunc updateFunc model = do
+loop
+    :: (m -> IO ()) -- View function
+    -> (msg -> m -> m) -- Update function
+    -> (String -> msg) -- Message parsing function
+    -> m -- Initial model
+    -> IO ()
+loop viewFunc updateFunc parseMsgFunc model = do
     viewFunc model
-    putStrLn "Enter 'next' or 'wait': "
+    putStrLn "Enter command: "
     command <- getLine
-    let msg = parseMsg command
+    let msg = parseMsgFunc command
     let newModel = updateFunc msg model
-    loop viewFunc updateFunc newModel
+    loop viewFunc updateFunc parseMsgFunc newModel
 
+
+-- ---------------------------------- MAIN ---------------------------------- --
 
 main :: IO ()
 main = do
     model <- initModel
-    loop view update model
+    loop view update parseMsg model
