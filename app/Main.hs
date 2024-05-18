@@ -15,7 +15,7 @@ import Raylib.Types
 import Raylib.Util
 import Raylib.Util.Colors
 import Raylib.Util.Math
-import System.Random (newStdGen, random)
+import System.Random (randomIO)
 
 
 screenWidth :: Int
@@ -72,16 +72,18 @@ drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y)
         color
 
 
-initWorld :: IO Ant
+initWorld :: IO (Texture, Ant)
 initWorld = do
-    rng <- newStdGen
-    let (seed, _) = random rng
-        ant = mkAnt screenCenterW screenCenterH seed
-    return ant
+    seed <- randomIO
+    let ant = mkAnt screenCenterW screenCenterH seed
+    window <- initWindow screenWidth screenHeight title
+    setTargetFPS 60
+    antTexture <- loadTexture antPng window
+    return (antTexture, ant)
 
 
-handleInput :: Ant -> IO Ant
-handleInput ant = do
+handleInput :: (Texture, Ant) -> IO (Texture, Ant)
+handleInput (tex, ant) = do
     go <- isKeyDown KeyUp
     stop <- isKeyDown KeyDown
     left <- isKeyDown KeyLeft
@@ -91,19 +93,21 @@ handleInput ant = do
                 { antStopGo = if go then Go else if stop then Stop else Neutral,
                   antWheelPos = if left then TurnLeft else if right then TurnRight else Center
                 }
-    return ant'
+    return (tex, ant')
 
 
-updateWorld :: Ant -> Ant
-updateWorld ant =
-    ant
-        & driveAnt antStepSize 0.33 0.33 antMaxSpeed (pi / 15) (pi / 60)
-        & cycleAntSprite antMaxSpeed
-        & wrapAroundAntRaylib (int2Float screenWidth) (int2Float screenHeight)
+updateWorld :: (Texture, Ant) -> (Texture, Ant)
+updateWorld (antTexture, ant) =
+    let ant' =
+            ant
+                & driveAnt antStepSize 0.33 0.33 antMaxSpeed (pi / 15) (pi / 60)
+                & cycleAntSprite antMaxSpeed
+                & wrapAroundAntRaylib (int2Float screenWidth) (int2Float screenHeight)
+    in  (antTexture, ant')
 
 
-drawWorld :: Texture -> Ant -> IO ()
-drawWorld antTexture ant = do
+drawWorld :: (Texture, Ant) -> IO ()
+drawWorld (antTexture, ant) = do
     hideCursor
 
     f11Pressed <- isKeyPressed KeyF11
@@ -127,19 +131,15 @@ drawWorld antTexture ant = do
             white
 
 
-gameLoop :: (Texture, Ant) -> IO ()
-gameLoop (antTexture, ant) = do
-    ant' <- handleInput ant
-    let movedAnt = updateWorld ant'
-    drawWorld antTexture movedAnt
+-- A generic game loop!
+gameLoop :: (w -> IO w) -> (w -> w) -> (w -> IO ()) -> w -> IO ()
+gameLoop handleInputFunc updateFunc renderFunc world = do
+    world' <- handleInputFunc world
+    let world'' = updateFunc world'
+    renderFunc world''
     shouldClose <- windowShouldClose
-    unless shouldClose $ gameLoop (antTexture, movedAnt)
+    unless shouldClose $ gameLoop handleInputFunc updateFunc renderFunc world''
 
 
 main :: IO ()
-main = do
-    ant <- initWorld
-    window <- initWindow screenWidth screenHeight title
-    setTargetFPS 60
-    antTexture <- loadTexture antPng window
-    gameLoop (antTexture, ant)
+main = initWorld >>= gameLoop handleInput updateWorld drawWorld
