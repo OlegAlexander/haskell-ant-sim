@@ -67,6 +67,4 @@ loop viewFunc updateFunc parseMsgFunc model = do
 -- ---------------------------------- MAIN ---------------------------------- --
 
 main :: IO ()
-main = do
-    model <- initModel
-    loop view update parseMsg model
+main = initModel >>= loop view update parseMsg
