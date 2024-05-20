@@ -31,13 +31,3 @@ executable main
                     vector ^>= 0.13.1.0,
                     h-raylib ^>= 5.1.1.0,
     hs-source-dirs: app
-
-executable elm-arch
-    import:         options
-    main-is:        ElmArch.hs
-    build-depends:  haskell-ant-sim,  
-                    base ^>=4.17.2.0,
-                    random ^>=1.2.1.2,
-                    vector ^>= 0.13.1.0,
-                    h-raylib ^>= 5.1.1.0,
-    hs-source-dirs: app
