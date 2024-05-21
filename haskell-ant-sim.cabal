@@ -14,7 +14,7 @@ common options
 library
     import:             options
     hs-source-dirs:     src
-    exposed-modules:    Ant, Common
+    exposed-modules:    Common
     build-depends:      base ^>=4.17.2.0,
                         vector ^>= 0.13.1.0,
                         random ^>=1.2.1.2,
