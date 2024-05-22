@@ -1,4 +1,5 @@
 {-# HLINT ignore "Eta reduce" #-}
+{-# HLINT ignore "Use <$>" #-}
 
 module Main (main) where
 
@@ -7,14 +8,16 @@ module Main (main) where
 import Control.Monad (unless, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
+import Data.List (foldl')
+import Data.Vector qualified as V
 import Debug.Trace (traceShow)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
-    hideCursor,
     initWindow,
     isKeyDown,
     isKeyPressed,
+    setMouseCursor,
     setTargetFPS,
     toggleFullscreen,
     windowShouldClose,
@@ -24,6 +27,7 @@ import Raylib.Core.Textures (drawTexturePro, loadTexture)
 import Raylib.Types (
     Color,
     KeyboardKey (KeyDown, KeyF11, KeyLeft, KeyRight, KeyUp),
+    MouseCursor (MouseCursorCrosshair),
     Rectangle (Rectangle),
     Texture (texture'height, texture'width),
     Vector2 (Vector2),
@@ -61,7 +65,7 @@ fps = 60
 
 
 antScale :: Float
-antScale = 0.5
+antScale = 0.3
 
 
 antMaxSpeed :: Float
@@ -78,7 +82,7 @@ antPng = "assets/ant.png"
 
 -- -------------------------------- PART Ant -------------------------------- --
 
-data Ant = Ant
+data PlayerAnt = PlayerAnt
     { antX :: Float,
       antY :: Float,
       antTheta :: Float, -- in radians
@@ -109,21 +113,21 @@ type RngSeed = Int
 
 -- -------------------------------------------------------------------------- --
 
-mkAnt :: Float -> Float -> RngSeed -> Ant
+mkAnt :: Float -> Float -> RngSeed -> PlayerAnt
 mkAnt x y seed =
     let (theta, rng) = randomR (0, 2 * pi) (mkStdGen seed)
-    in  Ant x y theta 0 SeekFood rng Neutral Center LeftSprite
+    in  PlayerAnt x y theta 0 SeekFood rng Neutral Center LeftSprite
 
 
-mkAnts :: Float -> Float -> [RngSeed] -> [Ant]
+mkAnts :: Float -> Float -> [RngSeed] -> [PlayerAnt]
 mkAnts x y seeds = map (mkAnt x y) seeds
 
 
-printAnts :: [Ant] -> IO ()
+printAnts :: [PlayerAnt] -> IO ()
 printAnts = putStrLn . unlines . map show
 
 
-stepAnt :: Float -> Ant -> Ant
+stepAnt :: Float -> PlayerAnt -> PlayerAnt
 stepAnt stepSize ant =
     let theta = antTheta ant
         speed = antSpeed ant
@@ -135,7 +139,7 @@ stepAnt stepSize ant =
 -- TODO I don't like having the sprite logic in this module. Look into ECS.
 -- TODO I don't like the random leg movement, but it's ok for now.
 -- TODO The legs should still move when rotating in place.
-cycleAntSprite :: Float -> Ant -> Ant
+cycleAntSprite :: Float -> PlayerAnt -> PlayerAnt
 cycleAntSprite maxSpeed ant =
     let speed = antSpeed ant
         (chance, rng') = randomR (0, 1) (antRng ant)
@@ -148,7 +152,7 @@ cycleAntSprite maxSpeed ant =
     in  ant{antSprite = sprite', antRng = rng'}
 
 
-driveAnt :: Float -> Float -> Float -> Float -> Float -> Float -> Ant -> Ant
+driveAnt :: Float -> Float -> Float -> Float -> Float -> Float -> PlayerAnt -> PlayerAnt
 driveAnt stepSize acceleration deceleration maxSpeed angle jitter ant =
     let rotatedAnt = case antWheelPos ant of
             TurnLeft -> leftAnt angle ant
@@ -163,30 +167,30 @@ driveAnt stepSize acceleration deceleration maxSpeed angle jitter ant =
 
 -- -------------------------------- Controls -------------------------------- --
 
-goAnt :: Float -> Float -> Ant -> Ant
+goAnt :: Float -> Float -> PlayerAnt -> PlayerAnt
 goAnt acceleration maxSpeed ant =
     let speed' = min maxSpeed (antSpeed ant + acceleration)
     in  ant{antSpeed = speed'}
 
 
-stopAnt :: Float -> Ant -> Ant
+stopAnt :: Float -> PlayerAnt -> PlayerAnt
 stopAnt deceleration ant =
     let speed' = max 0 (antSpeed ant - deceleration)
     in  ant{antSpeed = speed'}
 
 
-leftAnt :: Float -> Ant -> Ant
+leftAnt :: Float -> PlayerAnt -> PlayerAnt
 leftAnt angle ant = rotateAnt (-angle) ant
 
 
-rightAnt :: Float -> Ant -> Ant
+rightAnt :: Float -> PlayerAnt -> PlayerAnt
 rightAnt angle ant = rotateAnt angle ant
 
 
 -- -------------------------------------------------------------------------- --
 
 -- Rotate the ant by the given angle in radians wrapping around if needed
-rotateAnt :: Float -> Ant -> Ant
+rotateAnt :: Float -> PlayerAnt -> PlayerAnt
 rotateAnt angle ant =
     -- if antSpeed ant == 0 then -- Don't rotate in place
     --     ant
@@ -195,14 +199,14 @@ rotateAnt angle ant =
     in  ant{antTheta = theta'}
 
 
-jitterRotation :: Float -> Ant -> Ant
+jitterRotation :: Float -> PlayerAnt -> PlayerAnt
 jitterRotation angleRange ant =
     let (angle, rng') = randomR (-angleRange, angleRange) (antRng ant)
     in  rotateAnt (angle * antSpeed ant) ant{antRng = rng'}
 
 
 -- TODO Real ants stop a lot when exploring.
-moveAntRandomly :: Float -> Float -> Float -> Ant -> Ant
+moveAntRandomly :: Float -> Float -> Float -> PlayerAnt -> PlayerAnt
 moveAntRandomly stepSize angleRange accelerationRange ant =
     let (angle, rng') = randomR (-angleRange, angleRange) (antRng ant)
         (acceleration, rng'') = randomR (-accelerationRange, accelerationRange) rng'
@@ -212,7 +216,7 @@ moveAntRandomly stepSize angleRange accelerationRange ant =
 
 
 -- Reflect the ant theta about the normal vector
-reflectAnt :: Float -> Float -> Ant -> Ant
+reflectAnt :: Float -> Float -> PlayerAnt -> PlayerAnt
 reflectAnt nx ny ant =
     let mag = sqrt (nx ^ 2 + ny ^ 2)
         (nx', ny') = (nx / mag, ny / mag)
@@ -224,12 +228,12 @@ reflectAnt nx ny ant =
 
 
 -- TODO Consider having the ant go into a rotating state instead of rotating instantly
-turnAroundAnt :: Ant -> Ant
+turnAroundAnt :: PlayerAnt -> PlayerAnt
 turnAroundAnt ant = rotateAnt pi ant
 
 
 -- TODO Consider having this be an option. The other option is to reflect of the border.
-wrapAroundAnt :: Float -> Float -> Ant -> Ant
+wrapAroundAnt :: Float -> Float -> PlayerAnt -> PlayerAnt
 wrapAroundAnt w h ant =
     let x = antX ant
         y = antY ant
@@ -243,7 +247,7 @@ wrapAroundAnt w h ant =
         left = -(w / 2)
 
 
-wrapAroundAntRaylib :: Float -> Float -> Ant -> Ant
+wrapAroundAntRaylib :: Float -> Float -> PlayerAnt -> PlayerAnt
 wrapAroundAntRaylib w h ant =
     let x = antX ant
         y = antY ant
@@ -255,13 +259,13 @@ wrapAroundAntRaylib w h ant =
 -- TODO Control an ant (different color)
 -- TODO Consider having a local mode where the ant stays still and the world moves around it.
 -- Alternatively, the ant can move around the world but only its visual field is shown like fog of war.
-spawnAnt :: Float -> Float -> RngSeed -> [Ant] -> [Ant]
+spawnAnt :: Float -> Float -> RngSeed -> [PlayerAnt] -> [PlayerAnt]
 spawnAnt x y seed ants = mkAnt x y seed : ants
 
 
 -- TODO Consider leaving the squished ants in a dead state.
 -- Maybe other ants can panic whenever they encounter a dead ant.
-squishAnts :: Float -> Float -> Float -> [Ant] -> [Ant]
+squishAnts :: Float -> Float -> Float -> [PlayerAnt] -> [PlayerAnt]
 squishAnts x y width ants = filter (not . isSquished) ants
     where
         isSquished ant =
@@ -297,6 +301,97 @@ squishAnts x y width ants = filter (not . isSquished) ants
 -- Consider using the WorldTurtle module for the ant controls.
 -- The AntBrain can even be ML-based and its vision can be FlatWorld-based.
 
+-- -------------------------------- PART ECS -------------------------------- --
+
+-- ------------------------------- Components ------------------------------- --
+
+-- data EntityType
+--     = PlayerAnt
+--     | Ant
+--     | DeadAnt
+--     | Pheromone
+--     | Food
+--     | Nest
+--     | Rock
+--     deriving (Eq, Show)
+
+-- data AntMode = SeekFood | SeekNest deriving (Eq, Show)
+
+-- data PedalPos = Decelerate | Neutral | Accelerate deriving (Eq, Show)
+
+-- data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
+
+-- data AntSprite = LeftSprite | RightSprite deriving (Eq, Show)
+
+-- type RngSeed = Int
+
+-- type Position = Vector2
+
+-- type Angle = Float
+
+-- -- type Speed = Float
+
+-- -- --------------------------------- Entity --------------------------------- --
+
+-- data Entity = Entity
+--     { eType :: EntityType,
+--       ePos :: Position,
+--       eAngle :: Angle,
+--       eSpeed :: Speed,
+--       eMode :: AntMode,
+--       eRng :: StdGen,
+--       eStopGo :: PedalPos,
+--       eWheel :: WheelPos,
+--       eSprite :: AntSprite
+--     }
+--     deriving (Eq, Show)
+
+-- defaultEntity :: Entity
+-- defaultEntity =
+--     Entity
+--         { eType = Ant,
+--           ePos = Vector2 0 0,
+--           eAngle = 0,
+--           eSpeed = 0,
+--           eMode = SeekFood,
+--           eRng = undefined,
+--           eStopGo = Neutral,
+--           eWheel = Center,
+--           eSprite = LeftSprite
+--         }
+
+-- type World = V.Vector Entity
+
+-- -- --------------------------- Entity Constructors -------------------------- --
+
+-- mkPlayerAnt :: Position -> RngSeed -> Entity
+-- mkPlayerAnt pos seed =
+--     defaultEntity{eType = PlayerAnt, ePos = pos, eRng = mkStdGen seed}
+
+-- mkWorld :: [RngSeed] -> World
+-- mkWorld seeds =
+--     let (playerAntSeed, antSeeds) = case seeds of
+--             [] -> error "mkWorld: empty seed list"
+--             (x : xs) -> (x, xs)
+--     in  V.singleton $ mkPlayerAnt (Vector2 0 0) playerAntSeed
+
+-- ----------------------------- Fold World Test ---------------------------- --
+
+data WorldState = WorldState
+    { nextEntityId :: Int,
+      entities :: [Int]
+    }
+    deriving (Eq, Show)
+
+
+newEntity :: WorldState -> () -> WorldState
+newEntity (WorldState x es) _ = WorldState (x + 1) (es ++ [x])
+
+
+mkWorldState :: Int -> WorldState
+mkWorldState n = foldl' newEntity (WorldState 1 []) (replicate n ())
+
+
 -- ------------------------------- PART Utils ------------------------------- --
 
 -- TODO Recommend this function to Raylib author
@@ -315,21 +410,26 @@ drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y)
 
 -- ----------------------------- PART Game Loop ----------------------------- --
 
-type Exit = Bool
+data World = World
+    { wAntTexture :: Texture,
+      wPlayerAnt :: PlayerAnt,
+      wShouldExit :: Bool
+    }
 
 
-initWorld :: IO (Texture, Ant, Exit)
+initWorld :: IO World
 initWorld = do
     seed <- randomIO
     let ant = mkAnt screenCenterW screenCenterH seed
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
+    setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return (antTexture, ant, False)
+    return (World antTexture ant False)
 
 
-handleInput :: (Texture, Ant, Exit) -> IO (Texture, Ant, Exit)
-handleInput (tex, ant, exit) = do
+handleInput :: World -> IO World
+handleInput (World tex ant exit) = do
     go <- isKeyDown KeyUp
     stop <- isKeyDown KeyDown
     left <- isKeyDown KeyLeft
@@ -340,23 +440,21 @@ handleInput (tex, ant, exit) = do
                   antWheelPos = if left then TurnLeft else if right then TurnRight else Center
                 }
     exit' <- windowShouldClose
-    return (tex, ant', exit')
+    return (World tex ant' exit')
 
 
-updateWorld :: (Texture, Ant, Exit) -> (Texture, Ant, Exit)
-updateWorld (antTexture, ant, exit) =
+updateWorld :: World -> World
+updateWorld (World antTexture ant exit) =
     let ant' =
             ant
                 & driveAnt antStepSize 0.33 0.33 antMaxSpeed (pi / 15) (pi / 60)
                 & cycleAntSprite antMaxSpeed
                 & wrapAroundAntRaylib (int2Float screenWidth) (int2Float screenHeight)
-    in  (antTexture, ant', exit)
+    in  World antTexture ant' exit
 
 
-renderWorld :: (Texture, Ant, Exit) -> IO ()
-renderWorld (antTexture, ant, exit) = do
-    hideCursor
-
+renderWorld :: World -> IO ()
+renderWorld (World antTexture ant exit) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
@@ -368,7 +466,6 @@ renderWorld (antTexture, ant, exit) = do
                 LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
                 RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
         clearBackground lightGray
-        drawFPS 10 10
         drawTextureCentered
             antTexture
             spriteRect
@@ -376,10 +473,11 @@ renderWorld (antTexture, ant, exit) = do
             (antTheta ant * rad2Deg)
             (Vector2 (antX ant) (antY ant))
             white
+        drawFPS 10 10
 
 
-shouldExit :: (Texture, Ant, Exit) -> Bool
-shouldExit (_, _, exit) = exit
+shouldExit :: World -> Bool
+shouldExit w = wShouldExit w
 
 
 -- A generic game loop!
