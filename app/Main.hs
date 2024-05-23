@@ -69,11 +69,11 @@ antScale = 0.3
 
 
 antMaxSpeed :: Float
-antMaxSpeed = 5
+antMaxSpeed = 6
 
 
 antStepSize :: Float
-antStepSize = 3
+antStepSize = 2
 
 
 antPng :: String
@@ -305,15 +305,16 @@ squishAnts x y width ants = filter (not . isSquished) ants
 
 -- ------------------------------- Components ------------------------------- --
 
--- data EntityType
---     = PlayerAnt
---     | Ant
---     | DeadAnt
---     | Pheromone
---     | Food
---     | Nest
---     | Rock
---     deriving (Eq, Show)
+data EntityType
+    = PlayerAntEntity
+    | Ant
+    | DeadAnt
+    | Pheromone
+    | Food
+    | Nest
+    | Obstacle
+    deriving (Eq, Show)
+
 
 -- data AntMode = SeekFood | SeekNest deriving (Eq, Show)
 
@@ -333,40 +334,65 @@ squishAnts x y width ants = filter (not . isSquished) ants
 
 -- -- --------------------------------- Entity --------------------------------- --
 
--- data Entity = Entity
---     { eType :: EntityType,
---       ePos :: Position,
---       eAngle :: Angle,
---       eSpeed :: Speed,
---       eMode :: AntMode,
---       eRng :: StdGen,
---       eStopGo :: PedalPos,
---       eWheel :: WheelPos,
---       eSprite :: AntSprite
+-- data PlayerAnt = PlayerAnt
+--     { antX :: Float,
+--       antY :: Float,
+--       antTheta :: Float, -- in radians
+--       antSpeed :: Float,
+--       antMode :: Mode,
+--       antRng :: StdGen,
+--       antStopGo :: StopGo,
+--       antWheelPos :: WheelPos,
+--       antSprite :: Sprite
 --     }
 --     deriving (Eq, Show)
 
--- defaultEntity :: Entity
--- defaultEntity =
---     Entity
---         { eType = Ant,
---           ePos = Vector2 0 0,
---           eAngle = 0,
---           eSpeed = 0,
---           eMode = SeekFood,
---           eRng = undefined,
---           eStopGo = Neutral,
---           eWheel = Center,
---           eSprite = LeftSprite
---         }
+data Entity = Entity
+    { eType :: EntityType,
+      ePos :: Maybe Vector2,
+      eAngle :: Maybe Float,
+      eSpeed :: Maybe Float,
+      eMode :: Maybe Mode,
+      eRng :: Maybe StdGen,
+      eStopGo :: Maybe StopGo,
+      eWheel :: Maybe WheelPos,
+      eSprite :: Maybe Sprite
+    }
+    deriving (Eq, Show)
 
--- type World = V.Vector Entity
+
+defaultEntity :: Entity
+defaultEntity =
+    Entity
+        { eType = Ant,
+          ePos = Nothing,
+          eAngle = Nothing,
+          eSpeed = Nothing,
+          eMode = Nothing,
+          eRng = Nothing,
+          eStopGo = Nothing,
+          eWheel = Nothing,
+          eSprite = Nothing
+        }
+
 
 -- -- --------------------------- Entity Constructors -------------------------- --
 
--- mkPlayerAnt :: Position -> RngSeed -> Entity
--- mkPlayerAnt pos seed =
---     defaultEntity{eType = PlayerAnt, ePos = pos, eRng = mkStdGen seed}
+mkPlayerAnt :: Vector2 -> RngSeed -> Entity
+mkPlayerAnt pos seed =
+    let rng = mkStdGen seed
+    in  Entity
+            { eType = PlayerAntEntity,
+              ePos = Just pos,
+              eAngle = Just 0,
+              eSpeed = Just 0,
+              eMode = Just SeekFood,
+              eRng = Just rng,
+              eStopGo = Just Neutral,
+              eWheel = Just Center,
+              eSprite = Just LeftSprite
+            }
+
 
 -- mkWorld :: [RngSeed] -> World
 -- mkWorld seeds =
@@ -413,7 +439,8 @@ drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y)
 data World = World
     { wAntTexture :: Texture,
       wPlayerAnt :: PlayerAnt,
-      wShouldExit :: Bool
+      wShouldExit :: Bool,
+      wEntities :: V.Vector Entity
     }
 
 
@@ -421,15 +448,16 @@ initWorld :: IO World
 initWorld = do
     seed <- randomIO
     let ant = mkAnt screenCenterW screenCenterH seed
+        playerAntEntity = mkPlayerAnt (Vector2 (screenCenterW + 10) (screenCenterH + 10)) seed
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return (World antTexture ant False)
+    return (World antTexture ant False (V.singleton playerAntEntity))
 
 
 handleInput :: World -> IO World
-handleInput (World tex ant exit) = do
+handleInput (World tex ant exit entities) = do
     go <- isKeyDown KeyUp
     stop <- isKeyDown KeyDown
     left <- isKeyDown KeyLeft
@@ -439,32 +467,47 @@ handleInput (World tex ant exit) = do
                 { antStopGo = if go then Go else if stop then Stop else Neutral,
                   antWheelPos = if left then TurnLeft else if right then TurnRight else Center
                 }
+        entities' =
+            V.map
+                ( \e -> case eType e of
+                    PlayerAntEntity -> e{ePos = Just (Vector2 (antX ant') (antY ant')), eStopGo = Just (antStopGo ant'), eWheel = Just (antWheelPos ant')}
+                    _ -> e
+                )
+                entities
     exit' <- windowShouldClose
-    return (World tex ant' exit')
+    return (World tex ant' exit' entities')
 
 
 updateWorld :: World -> World
-updateWorld (World antTexture ant exit) =
+updateWorld (World antTexture ant exit entities) =
     let ant' =
             ant
                 & driveAnt antStepSize 0.33 0.33 antMaxSpeed (pi / 15) (pi / 60)
                 & cycleAntSprite antMaxSpeed
                 & wrapAroundAntRaylib (int2Float screenWidth) (int2Float screenHeight)
-    in  World antTexture ant' exit
+        entities' =
+            V.map
+                ( \e -> case eType e of
+                    PlayerAntEntity -> e{ePos = Just (Vector2 (antX ant' + 50) (antY ant' + 50)), eAngle = Just (antTheta ant'), eSpeed = Just (antSpeed ant')}
+                    _ -> e
+                )
+                entities
+    in  World antTexture ant' exit entities'
 
 
 renderWorld :: World -> IO ()
-renderWorld (World antTexture ant exit) = do
+renderWorld (World antTexture ant exit entities) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
+    let texW = texture'width antTexture
+        texH = texture'height antTexture
+        sprite = antSprite ant
+        spriteRect = case sprite of
+            LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
+            RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
+
     drawing $ do
-        let texW = texture'width antTexture
-            texH = texture'height antTexture
-            sprite = antSprite ant
-            spriteRect = case sprite of
-                LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
-                RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
         clearBackground lightGray
         drawTextureCentered
             antTexture
@@ -473,11 +516,26 @@ renderWorld (World antTexture ant exit) = do
             (antTheta ant * rad2Deg)
             (Vector2 (antX ant) (antY ant))
             white
+        mapM_
+            ( \e -> case eType e of
+                PlayerAntEntity ->
+                    drawTextureCentered
+                        antTexture
+                        spriteRect
+                        antScale
+                        ( case eAngle e of
+                            Just a -> a * rad2Deg
+                            Nothing -> 0
+                        )
+                        ( case ePos e of
+                            Just (Vector2 x y) -> Vector2 x y
+                            Nothing -> Vector2 0 0
+                        )
+                        white
+                _ -> return ()
+            )
+            entities
         drawFPS 10 10
-
-
-shouldExit :: World -> Bool
-shouldExit w = wShouldExit w
 
 
 -- A generic game loop!
@@ -491,4 +549,4 @@ gameLoop handleInputFunc updateFunc renderFunc shouldExitFunc world = do
 
 
 main :: IO ()
-main = initWorld >>= gameLoop handleInput updateWorld renderWorld shouldExit
+main = initWorld >>= gameLoop handleInput updateWorld renderWorld wShouldExit
