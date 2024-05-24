@@ -1,5 +1,6 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use <$>" #-}
+{-# HLINT ignore "Use lambda-case" #-}
 
 module Main (main) where
 
@@ -305,8 +306,18 @@ squishAnts x y width ants = filter (not . isSquished) ants
 
 -- ------------------------------- Components ------------------------------- --
 
-data EntityType
+data Entity
     = PlayerAntEntity
+        { eAntX :: Float,
+          eAntY :: Float,
+          eAntTheta :: Float, -- in radians
+          eAntSpeed :: Float,
+          eAntMode :: Mode,
+          eAntRng :: StdGen,
+          eAntStopGo :: StopGo,
+          eAntWheelPos :: WheelPos,
+          eAntSprite :: Sprite
+        }
     | Ant
     | DeadAnt
     | Pheromone
@@ -347,51 +358,12 @@ data EntityType
 --     }
 --     deriving (Eq, Show)
 
-data Entity = Entity
-    { eType :: EntityType,
-      ePos :: Maybe Vector2,
-      eAngle :: Maybe Float,
-      eSpeed :: Maybe Float,
-      eMode :: Maybe Mode,
-      eRng :: Maybe StdGen,
-      eStopGo :: Maybe StopGo,
-      eWheel :: Maybe WheelPos,
-      eSprite :: Maybe Sprite
-    }
-    deriving (Eq, Show)
-
-
-defaultEntity :: Entity
-defaultEntity =
-    Entity
-        { eType = Ant,
-          ePos = Nothing,
-          eAngle = Nothing,
-          eSpeed = Nothing,
-          eMode = Nothing,
-          eRng = Nothing,
-          eStopGo = Nothing,
-          eWheel = Nothing,
-          eSprite = Nothing
-        }
-
-
 -- -- --------------------------- Entity Constructors -------------------------- --
 
-mkPlayerAnt :: Vector2 -> RngSeed -> Entity
-mkPlayerAnt pos seed =
+mkPlayerAnt :: Float -> Float -> RngSeed -> Entity
+mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Entity
-            { eType = PlayerAntEntity,
-              ePos = Just pos,
-              eAngle = Just 0,
-              eSpeed = Just 0,
-              eMode = Just SeekFood,
-              eRng = Just rng,
-              eStopGo = Just Neutral,
-              eWheel = Just Center,
-              eSprite = Just LeftSprite
-            }
+    in  PlayerAntEntity x y 0 0 SeekFood rng Neutral Center LeftSprite
 
 
 -- mkWorld :: [RngSeed] -> World
@@ -448,7 +420,7 @@ initWorld :: IO World
 initWorld = do
     seed <- randomIO
     let ant = mkAnt screenCenterW screenCenterH seed
-        playerAntEntity = mkPlayerAnt (Vector2 (screenCenterW + 10) (screenCenterH + 10)) seed
+        playerAntEntity = mkPlayerAnt (screenCenterW + 10) (screenCenterH + 10) seed
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
@@ -469,8 +441,9 @@ handleInput (World tex ant exit entities) = do
                 }
         entities' =
             V.map
-                ( \e -> case eType e of
-                    PlayerAntEntity -> e{ePos = Just (Vector2 (antX ant') (antY ant')), eStopGo = Just (antStopGo ant'), eWheel = Just (antWheelPos ant')}
+                ( \e -> case e of
+                    PlayerAntEntity x y theta speed mode rng stopGo wheelPos sprite ->
+                        e{eAntStopGo = if go then Go else if stop then Stop else Neutral, eAntWheelPos = if left then TurnLeft else if right then TurnRight else Center}
                     _ -> e
                 )
                 entities
@@ -487,8 +460,9 @@ updateWorld (World antTexture ant exit entities) =
                 & wrapAroundAntRaylib (int2Float screenWidth) (int2Float screenHeight)
         entities' =
             V.map
-                ( \e -> case eType e of
-                    PlayerAntEntity -> e{ePos = Just (Vector2 (antX ant' + 50) (antY ant' + 50)), eAngle = Just (antTheta ant'), eSpeed = Just (antSpeed ant')}
+                ( \e -> case e of
+                    PlayerAntEntity x y theta speed mode rng stopGo wheelPos sprite ->
+                        e{eAntX = antX ant' + 50, eAntY = antY ant' + 50, eAntTheta = antTheta ant', eAntSpeed = antSpeed ant', eAntSprite = antSprite ant'}
                     _ -> e
                 )
                 entities
@@ -517,20 +491,14 @@ renderWorld (World antTexture ant exit entities) = do
             (Vector2 (antX ant) (antY ant))
             white
         mapM_
-            ( \e -> case eType e of
-                PlayerAntEntity ->
+            ( \e -> case e of
+                PlayerAntEntity x y theta speed mode rng stopGo wheelPos sprite ->
                     drawTextureCentered
                         antTexture
                         spriteRect
                         antScale
-                        ( case eAngle e of
-                            Just a -> a * rad2Deg
-                            Nothing -> 0
-                        )
-                        ( case ePos e of
-                            Just (Vector2 x y) -> Vector2 x y
-                            Nothing -> Vector2 0 0
-                        )
+                        (theta * rad2Deg)
+                        (Vector2 x y)
                         white
                 _ -> return ()
             )
