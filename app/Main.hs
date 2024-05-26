@@ -1,6 +1,7 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use lambda-case" #-}
+{-# HLINT ignore "Use guards" #-}
 
 module Main (main) where
 
@@ -27,7 +28,7 @@ import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (drawTexturePro, loadTexture)
 import Raylib.Types (
     Color,
-    KeyboardKey (KeyDown, KeyF11, KeyLeft, KeyRight, KeyUp),
+    KeyboardKey (KeyF11, KeyLeft, KeyRight, KeyUp),
     MouseCursor (MouseCursorCrosshair),
     Rectangle (Rectangle),
     Texture (texture'height, texture'width),
@@ -254,7 +255,7 @@ moveAntRandomly stepSize angleRange accelerationRange ant =
 -- Reflect the ant theta about the normal vector
 reflectAnt :: Float -> Float -> PlayerAnt -> PlayerAnt
 reflectAnt nx ny ant =
-    let mag = sqrt (nx ^ 2 + ny ^ 2)
+    let mag = sqrt (nx ^ (2 :: Int) + ny ^ (2 :: Int))
         (nx', ny') = (nx / mag, ny / mag)
         theta = antAngle ant
         (dx, dy) = (cos theta, sin theta)
@@ -273,8 +274,8 @@ wrapAroundAnt :: Float -> Float -> PlayerAnt -> PlayerAnt
 wrapAroundAnt w h ant =
     let x = vector2'x (antPos ant)
         y = vector2'y (antPos ant)
-        x' = if x > right then (x - w) else if x < left then (x + w) else x
-        y' = if y > top then (y - h) else if y < bottom then (y + h) else y
+        x' = if x > right then x - w else if x < left then x + w else x
+        y' = if y > top then y - h else if y < bottom then y + h else y
     in  ant{antPos = Vector2 x' y'}
     where
         top = h / 2
@@ -410,7 +411,7 @@ initWorld = do
 
 
 handleInput :: World -> IO World
-handleInput (World tex exit entities) = do
+handleInput (World tex _ entities) = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
@@ -448,7 +449,7 @@ updateWorld (World antTexture exit entities) =
 
 
 renderWorld :: World -> IO ()
-renderWorld (World antTexture exit entities) = do
+renderWorld (World antTexture _ entities) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
@@ -466,7 +467,7 @@ renderWorld (World antTexture exit entities) = do
                         antTexture
                         spriteRect
                         antScale
-                        ((antAngle ant) * rad2Deg)
+                        (antAngle ant * rad2Deg)
                         (antPos ant)
                         white
                 _ -> return ()
