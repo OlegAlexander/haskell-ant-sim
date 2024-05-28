@@ -24,6 +24,7 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
+import Raylib.Core.Shapes (drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (drawTexturePro, loadTexture)
 import Raylib.Types (
@@ -32,7 +33,7 @@ import Raylib.Types (
     MouseCursor (MouseCursorCrosshair),
     Rectangle (Rectangle),
     Texture (texture'height, texture'width),
-    Vector2 (Vector2, vector2'x, vector2'y),
+    Vector2 (Vector2),
  )
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (lightGray, white)
@@ -48,14 +49,6 @@ screenWidth = 1920
 
 screenHeight :: Int
 screenHeight = 1080
-
-
-screenCenterW :: Float
-screenCenterW = int2Float screenWidth / 2
-
-
-screenCenterH :: Float
-screenCenterH = int2Float screenHeight / 2
 
 
 title :: String
@@ -120,7 +113,7 @@ data Entity
     | PheromoneE
     | FoodE
     | NestE
-    | ObstacleE
+    | WallE Rectangle
     deriving (Eq, Show)
 
 
@@ -167,8 +160,7 @@ stepAnt :: PlayerAnt -> PlayerAnt
 stepAnt ant =
     let theta = antAngle ant
         speed = antSpeed ant
-        x = vector2'x (antPos ant)
-        y = vector2'y (antPos ant)
+        Vector2 x y = antPos ant
         x' = x + antStepSize * speed * cos theta
         y' = y + antStepSize * speed * sin theta
     in  ant{antPos = Vector2 x' y'}
@@ -272,8 +264,7 @@ turnAroundAnt ant = rotateAnt pi ant
 -- TODO Consider having this be an option. The other option is to reflect of the border.
 wrapAroundAnt :: Float -> Float -> PlayerAnt -> PlayerAnt
 wrapAroundAnt w h ant =
-    let x = vector2'x (antPos ant)
-        y = vector2'y (antPos ant)
+    let Vector2 x y = antPos ant
         x' = if x > right then x - w else if x < left then x + w else x
         y' = if y > top then y - h else if y < bottom then y + h else y
     in  ant{antPos = Vector2 x' y'}
@@ -284,10 +275,11 @@ wrapAroundAnt w h ant =
         left = -(w / 2)
 
 
-wrapAroundAntRaylib :: Float -> Float -> PlayerAnt -> PlayerAnt
-wrapAroundAntRaylib w h ant =
-    let x = vector2'x (antPos ant)
-        y = vector2'y (antPos ant)
+wrapAroundAntRaylib :: PlayerAnt -> PlayerAnt
+wrapAroundAntRaylib ant =
+    let w = int2Float screenWidth
+        h = int2Float screenHeight
+        Vector2 x y = antPos ant
         x' = if x > w then 0 else if x < 0 then w else x
         y' = if y > h then 0 else if y < 0 then h else y
     in  ant{antPos = Vector2 x' y'}
@@ -306,8 +298,7 @@ squishAnts :: Float -> Float -> Float -> [PlayerAnt] -> [PlayerAnt]
 squishAnts x y width ants = filter (not . isSquished) ants
     where
         isSquished ant =
-            let x' = vector2'x (antPos ant)
-                y' = vector2'y (antPos ant)
+            let Vector2 x' y' = antPos ant
             in  x'
                     > x
                         - width
@@ -402,12 +393,15 @@ drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y)
 initWorld :: IO World
 initWorld = do
     seed <- randomIO
-    let playerAntEntity = PlayerAntE (mkPlayerAnt (screenCenterW + 10) (screenCenterH + 10) seed)
+    let screenCenterW = int2Float screenWidth / 2
+        screenCenterH = int2Float screenHeight / 2
+        playerAntEntity = PlayerAntE (mkPlayerAnt screenCenterW screenCenterH seed)
+        testWall = WallE (Rectangle 200 200 500 300)
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return (World antTexture False (V.singleton playerAntEntity))
+    return (World antTexture False (V.fromList [testWall, playerAntEntity]))
 
 
 handleInput :: World -> IO World
@@ -440,7 +434,7 @@ updateWorld (World antTexture exit entities) =
                         ant
                             & driveAnt
                             & cycleAntSprite
-                            & wrapAroundAntRaylib (int2Float screenWidth) (int2Float screenHeight)
+                            & wrapAroundAntRaylib
                             & PlayerAntE
                     _ -> e
                 )
@@ -470,6 +464,8 @@ renderWorld (World antTexture _ entities) = do
                         (antAngle ant * rad2Deg)
                         (antPos ant)
                         white
+                WallE rect -> do
+                    drawRectangleRec rect white
                 _ -> return ()
             )
             entities
