@@ -24,7 +24,7 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (drawRectangleRec)
+import Raylib.Core.Shapes (drawCircleV, drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (drawTexturePro, loadTexture)
 import Raylib.Types (
@@ -36,9 +36,9 @@ import Raylib.Types (
     Vector2 (Vector2),
  )
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (lightGray, white)
-import Raylib.Util.Math (rad2Deg)
-import System.Random (RandomGen (next), StdGen, mkStdGen, randomIO, randomR)
+import Raylib.Util.Colors (blue, lightGray, white)
+import Raylib.Util.Math (deg2Rad, rad2Deg)
+import System.Random (StdGen, mkStdGen, randomIO, randomR)
 
 
 -- ----------------------------- PART Constants ----------------------------- --
@@ -80,22 +80,33 @@ antDeceleration = 0.5
 
 
 antTurnAngle :: Float
-antTurnAngle = pi / 15
+antTurnAngle = 10
 
 
 antJitterAngle :: Float
-antJitterAngle = pi / 90
+antJitterAngle = 2
 
 
 antPng :: String
 antPng = "assets/ant.png"
 
 
+wallColor :: Color
+wallColor = white
+
+
 -- ------------------------------- PART Types ------------------------------- --
+
+data Circle = Circle
+    { circlePos :: Vector2,
+      circleRadius :: Float
+    }
+    deriving (Eq, Show)
+
 
 data PlayerAnt = PlayerAnt
     { antPos :: Vector2,
-      antAngle :: Float, -- in radians TODO Change to degrees
+      antAngle :: Float, -- in degrees
       antSpeed :: Float,
       antMode :: Mode,
       antRng :: StdGen,
@@ -110,9 +121,9 @@ data Entity
     = PlayerAntE PlayerAnt
     | AntE
     | DeadAntE
-    | PheromoneE
-    | FoodE
-    | NestE
+    | PheromoneE Circle
+    | FoodE Circle
+    | NestE Circle
     | WallE Rectangle
     deriving (Eq, Show)
 
@@ -126,9 +137,9 @@ instance Ord Entity where
                 PlayerAntE _ -> 7
                 AntE -> 6
                 DeadAntE -> 5
-                PheromoneE -> 4
-                FoodE -> 3
-                NestE -> 2
+                PheromoneE _ -> 4
+                FoodE _ -> 3
+                NestE _ -> 2
                 WallE _ -> 1
 
 
@@ -159,8 +170,8 @@ data World = World
 
 mkAnt :: Float -> Float -> RngSeed -> PlayerAnt
 mkAnt x y seed =
-    let (theta, rng) = randomR (0, 2 * pi) (mkStdGen seed)
-    in  PlayerAnt (Vector2 x y) theta 0 SeekFood rng False Center LeftSprite
+    let (angle, rng) = randomR (0, 360) (mkStdGen seed)
+    in  PlayerAnt (Vector2 x y) angle 0 SeekFood rng False Center LeftSprite
 
 
 mkAnts :: Float -> Float -> [RngSeed] -> [PlayerAnt]
@@ -177,11 +188,11 @@ stepAnt nextPos ant = ant{antPos = nextPos}
 
 getNextAntPos :: PlayerAnt -> Vector2
 getNextAntPos ant =
-    let theta = antAngle ant
+    let angle = antAngle ant * deg2Rad
         speed = antSpeed ant
         Vector2 x y = antPos ant
-        x' = x + antStepSize * speed * cos theta
-        y' = y + antStepSize * speed * sin theta
+        x' = x + antStepSize * speed * cos angle
+        y' = y + antStepSize * speed * sin angle
     in  Vector2 x' y'
 
 
@@ -272,8 +283,8 @@ checkWallCollision walls nextPos =
 -- Rotate the ant by the given angle in radians wrapping around if needed
 rotateAnt :: Float -> PlayerAnt -> PlayerAnt
 rotateAnt angle ant =
-    let theta' = (antAngle ant + angle) `mod'` (2 * pi)
-    in  ant{antAngle = theta'}
+    let angle' = (antAngle ant + angle) `mod'` 360
+    in  ant{antAngle = angle'}
 
 
 jitterRotation :: PlayerAnt -> PlayerAnt
@@ -291,21 +302,21 @@ jitterRotation ant =
 --         movedAnt = rotateAnt angle ant & stepAnt
 --     in  movedAnt{antRng = rng'', antSpeed = newSpeed}
 
--- Reflect the ant theta about the normal vector
+-- Reflect the ant angle about the normal vector
 reflectAnt :: Float -> Float -> PlayerAnt -> PlayerAnt
 reflectAnt nx ny ant =
     let mag = sqrt (nx ^ (2 :: Int) + ny ^ (2 :: Int))
         (nx', ny') = (nx / mag, ny / mag)
-        theta = antAngle ant
-        (dx, dy) = (cos theta, sin theta)
+        angle = antAngle ant * deg2Rad
+        (dx, dy) = (cos angle, sin angle)
         dot = dx * nx' + dy * ny'
         (rx, ry) = (dx - 2 * dot * nx', dy - 2 * dot * ny')
-    in  ant{antAngle = atan2 ry rx `mod'` (2 * pi)}
+    in  ant{antAngle = atan2 ry rx `mod'` (2 * pi) * rad2Deg}
 
 
 -- TODO Consider having the ant go into a rotating state instead of rotating instantly
 turnAroundAnt :: PlayerAnt -> PlayerAnt
-turnAroundAnt ant = rotateAnt pi ant
+turnAroundAnt ant = rotateAnt 180 ant
 
 
 -- TODO Consider having this be an option. The other option is to reflect of the border.
@@ -449,7 +460,8 @@ initWorld = do
         playerAntEntity = PlayerAntE (mkPlayerAnt screenCenterW screenCenterH seed)
         testWall1 = WallE (Rectangle 200 200 500 300)
         testWall2 = WallE (Rectangle 100 300 800 100)
-        entities = sortByDrawOrder [playerAntEntity, testWall1, testWall2]
+        testPheromone = PheromoneE (Circle (Vector2 500 600) 10)
+        entities = sortByDrawOrder [playerAntEntity, testWall1, testWall2, testPheromone]
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
@@ -518,11 +530,13 @@ renderWorld (World antTexture _ entities) = do
                         antTexture
                         spriteRect
                         antScale
-                        (antAngle ant * rad2Deg)
+                        (antAngle ant)
                         (antPos ant)
                         white
                 WallE rect -> do
-                    drawRectangleRec rect white
+                    drawRectangleRec rect wallColor
+                PheromoneE (Circle pos r) -> do
+                    drawCircleV pos r blue
                 _ -> return ()
             )
             entities
