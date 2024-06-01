@@ -8,11 +8,13 @@ module Main (main) where
 
 -- ------------------------------ PART Imports ------------------------------ --
 
-import Control.Monad (unless, when)
+import Control.Monad (mapM_, unless, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
-import Data.List (foldl', sort)
-import Debug.Trace (traceShow)
+import Data.List (foldl', minimumBy, sort)
+import Data.Maybe (catMaybes, mapMaybe)
+import Data.Ord (comparing)
+import Debug.Trace (trace, traceShow)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -21,24 +23,32 @@ import Raylib.Core (
     isKeyPressed,
     setMouseCursor,
     setTargetFPS,
+    setTraceLogLevel,
     toggleFullscreen,
     windowShouldClose,
  )
+import Raylib.Core.Models (drawGrid)
 import Raylib.Core.Shapes (drawCircleV, drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
-import Raylib.Core.Textures (drawTexturePro, loadTexture)
+import Raylib.Core.Textures (drawTexturePro, drawTextureV, imageDrawPixel, loadImage, loadTexture, loadTextureFromImage)
 import Raylib.Types (
+    Camera3D (Camera3D),
+    CameraProjection (CameraPerspective),
     Color,
     KeyboardKey (KeyF11, KeyLeft, KeyRight, KeyUp),
     MouseCursor (MouseCursorCrosshair),
     Rectangle (Rectangle),
     Texture (texture'height, texture'width),
+    TraceLogLevel (LogWarning),
     Vector2 (Vector2),
+    Vector3 (Vector3),
  )
-import Raylib.Util (drawing)
+import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale, PixelFormatUncompressedR8G8B8))
+import Raylib.Util (WindowResources, drawing, mode3D)
 import Raylib.Util.Colors (blue, lightGray, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
 import System.Random (StdGen, mkStdGen, randomIO, randomR)
+import Text.Printf (printf)
 
 
 -- ----------------------------- PART Constants ----------------------------- --
@@ -80,11 +90,11 @@ antDeceleration = 0.5
 
 
 antTurnAngle :: Float
-antTurnAngle = 10
+antTurnAngle = 5
 
 
 antJitterAngle :: Float
-antJitterAngle = 2
+antJitterAngle = 1
 
 
 antPng :: String
@@ -159,11 +169,83 @@ type RngSeed = Int
 
 
 data World = World
-    { wAntTexture :: Texture,
+    { wWindowResources :: WindowResources,
+      wAntTexture :: Texture,
       wShouldExit :: Bool,
       wEntities :: [Entity]
     }
-    deriving (Eq, Show)
+
+
+-- ------------------------- PART Flatland Renderer ------------------------- --
+
+-- Intersect a ray with a rectangle and return the distance to the intersection
+intersectRayRect :: Vector2 -> Vector2 -> Rectangle -> Maybe Float
+intersectRayRect (Vector2 ox oy) (Vector2 dx dy) (Rectangle rx ry rw rh) =
+    let t1 = (rx - ox) / dx
+        t2 = (rx + rw - ox) / dx
+        t3 = (ry - oy) / dy
+        t4 = (ry + rh - oy) / dy
+        tmin = max (min t1 t2) (min t3 t4)
+        tmax = min (max t1 t2) (max t3 t4)
+    in  if tmax < 0 || tmin > tmax
+            then Nothing
+            else Just (if tmin < 0 then tmax else tmin)
+
+
+renderDepthMap :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [Float]
+renderDepthMap camPos camAngle camFov res maxDist rects =
+    let halfFov = camFov / 2
+        angleStep = camFov / int2Float (res - 1)
+        anglesStart = camAngle - halfFov
+        anglesNext = anglesStart + angleStep
+        anglesEnd = camAngle + halfFov
+        angles = [anglesStart, anglesNext .. anglesEnd]
+        distances = map castRay angles
+    in  map (normalizeDistance maxDist) distances
+    where
+        castRay :: Float -> Maybe Float
+        castRay angle =
+            let rad = angle * deg2Rad
+                rayDir = Vector2 (cos rad) (sin rad)
+            in  minimumDistance camPos rayDir rects
+
+
+-- Normalize the distance based on max distance
+normalizeDistance :: Float -> Maybe Float -> Float
+normalizeDistance maxDist (Just dist) = min 1.0 (dist / maxDist)
+normalizeDistance _ Nothing = 1.0
+
+
+-- Compute the minimum distance to any rectangle
+minimumDistance :: Vector2 -> Vector2 -> [Rectangle] -> Maybe Float
+minimumDistance camPos rayDir rects =
+    let intersections = mapMaybe (intersectRayRect camPos rayDir) rects
+    in  if null intersections then Nothing else Just (minimum intersections)
+
+
+depthMap2Image :: Int -> [Float] -> Image
+depthMap2Image height depthMap =
+    let width = length depthMap
+        pixels = concat $ replicate height $ map (round . (* 255) . (** 0.4545) . (1 -)) depthMap
+    in  Image pixels width height 1 PixelFormatUncompressedGrayscale
+
+
+renderPlayerAntVision :: Float -> Int -> Int -> Float -> [Rectangle] -> PlayerAnt -> Image
+renderPlayerAntVision camFov res height maxDist rects ant =
+    let depthMap = renderDepthMap (antPos ant) (antAngle ant) camFov res maxDist rects
+    in  depthMap2Image height depthMap
+
+
+testFlatlandRenderer :: IO ()
+testFlatlandRenderer = do
+    let cameraPos = Vector2 0 0
+        cameraAngle = 0
+        cameraFov = 30
+        resolution = 5
+        maxDist = 10
+        boundingBoxes = [Rectangle 5 (-5) 10 10]
+        depthMap = renderDepthMap cameraPos cameraAngle cameraFov resolution maxDist boundingBoxes
+    mapM_ (printf "%.2f ") depthMap
 
 
 -- ----------------------------- PART Player Ant ---------------------------- --
@@ -459,18 +541,20 @@ initWorld = do
         screenCenterH = int2Float screenHeight / 2
         playerAntEntity = PlayerAntE (mkPlayerAnt screenCenterW screenCenterH seed)
         testWall1 = WallE (Rectangle 200 200 500 300)
-        testWall2 = WallE (Rectangle 100 300 800 100)
+        testWall2 = WallE (Rectangle 100 300 1000 50)
+        testWall3 = WallE (Rectangle 500 600 50 50)
         testPheromone = PheromoneE (Circle (Vector2 500 600) 10)
-        entities = sortByDrawOrder [playerAntEntity, testWall1, testWall2, testPheromone]
+        entities = sortByDrawOrder [playerAntEntity, testWall1, testWall2, testWall3]
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
+    setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World antTexture False entities
+    return $ World window antTexture False entities
 
 
 handleInput :: World -> IO World
-handleInput (World tex _ entities) = do
+handleInput (World wr tex _ entities) = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
@@ -490,11 +574,11 @@ handleInput (World tex _ entities) = do
                 )
                 entities
     exit' <- windowShouldClose
-    return (World tex exit' entities')
+    return (World wr tex exit' entities')
 
 
 updateWorld :: World -> World
-updateWorld (World antTexture exit entities) =
+updateWorld (World wr antTexture exit entities) =
     let walls = filterWalls entities
         entities' =
             map
@@ -508,11 +592,11 @@ updateWorld (World antTexture exit entities) =
                     _ -> e
                 )
                 entities
-    in  World antTexture exit entities'
+    in  World wr antTexture exit entities'
 
 
 renderWorld :: World -> IO ()
-renderWorld (World antTexture _ entities) = do
+renderWorld (World wr antTexture _ entities) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
@@ -526,6 +610,16 @@ renderWorld (World antTexture _ entities) = do
                         spriteRect = case antSprite ant of
                             LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
                             RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
+                        walls =
+                            entities
+                                & filterWalls
+                                & mapMaybe
+                                    ( \case
+                                        WallE rect -> Just rect
+                                        _ -> Nothing
+                                    )
+                        -- renderPlayerAntVision camFov res height maxDist rects ant
+                        antVision = renderPlayerAntVision 60 1500 100 300 walls ant
                     drawTextureCentered
                         antTexture
                         spriteRect
@@ -533,6 +627,8 @@ renderWorld (World antTexture _ entities) = do
                         (antAngle ant)
                         (antPos ant)
                         white
+                    antVisionTexture <- loadTextureFromImage antVision wr
+                    drawTextureV antVisionTexture (Vector2 200 0) white
                 WallE rect -> do
                     drawRectangleRec rect wallColor
                 PheromoneE (Circle pos r) -> do
