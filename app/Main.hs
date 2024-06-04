@@ -127,6 +127,7 @@ data PlayerAnt = PlayerAnt
     deriving (Eq, Show)
 
 
+-- TODO Consider rendering ant vision rays
 data Entity
     = PlayerAntE PlayerAnt
     | AntE
@@ -180,16 +181,27 @@ data World = World
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
 intersectRayRect :: Vector2 -> Vector2 -> Rectangle -> Maybe Float
-intersectRayRect (Vector2 ox oy) (Vector2 dx dy) (Rectangle rx ry rw rh) =
-    let t1 = (rx - ox) / dx
-        t2 = (rx + rw - ox) / dx
-        t3 = (ry - oy) / dy
-        t4 = (ry + rh - oy) / dy
-        tmin = max (min t1 t2) (min t3 t4)
-        tmax = min (max t1 t2) (max t3 t4)
-    in  if tmax < 0 || tmin > tmax
-            then Nothing
-            else Just (if tmin < 0 then tmax else tmin)
+intersectRayRect
+    (Vector2 rayOriginX rayOriginY)
+    (Vector2 rayDirX rayDirY)
+    (Rectangle rectX rectY rectWidth rectHeight) =
+        let
+            -- Intersection distances for the vertical edges of the rectangle
+            tNearX = (rectX - rayOriginX) / rayDirX
+            tFarX = (rectX + rectWidth - rayOriginX) / rayDirX
+
+            -- Intersection distances for the horizontal edges of the rectangle
+            tNearY = (rectY - rayOriginY) / rayDirY
+            tFarY = (rectY + rectHeight - rayOriginY) / rayDirY
+
+            -- Calculate the entry and exit distances along the ray
+            tEntry = max (min tNearX tFarX) (min tNearY tFarY)
+            tExit = min (max tNearX tFarX) (max tNearY tFarY)
+        in
+            -- Determine if there is an intersection
+            if tExit < 0 || tEntry > tExit
+                then Nothing
+                else Just (if tEntry < 0 then tExit else tEntry)
 
 
 renderDepthMap :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [Float]
@@ -619,7 +631,7 @@ renderWorld (World wr antTexture _ entities) = do
                                         _ -> Nothing
                                     )
                         -- renderPlayerAntVision camFov res height maxDist rects ant
-                        antVision = renderPlayerAntVision 60 1500 100 300 walls ant
+                        antVision = renderPlayerAntVision 90 1500 100 300 walls ant
                     drawTextureCentered
                         antTexture
                         spriteRect
