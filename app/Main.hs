@@ -8,12 +8,11 @@ module Main (main) where
 
 -- ------------------------------ PART Imports ------------------------------ --
 
-import Control.Monad (mapM_, unless, when)
+import Control.Monad (forM_, unless, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
-import Data.List (foldl', minimumBy, sort)
-import Data.Maybe (catMaybes, mapMaybe)
-import Data.Ord (comparing)
+import Data.List (foldl', sort)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Debug.Trace (trace, traceShow)
 import GHC.Float (int2Float)
 import Raylib.Core (
@@ -27,25 +26,14 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Models (drawGrid)
-import Raylib.Core.Shapes (drawCircleV, drawRectangleRec)
+import Raylib.Core.Shapes (drawCircleV, drawLineV, drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (drawTexturePro, drawTextureV, imageDrawPixel, loadImage, loadTexture, loadTextureFromImage)
-import Raylib.Types (
-    Camera3D (Camera3D),
-    CameraProjection (CameraPerspective),
-    Color,
-    KeyboardKey (KeyF11, KeyLeft, KeyRight, KeyUp),
-    MouseCursor (MouseCursorCrosshair),
-    Rectangle (Rectangle),
-    Texture (texture'height, texture'width),
-    TraceLogLevel (LogWarning),
-    Vector2 (Vector2),
-    Vector3 (Vector3),
- )
+import Raylib.Types (Camera3D (Camera3D), CameraProjection (CameraPerspective), Color, KeyboardKey (..), MouseCursor (MouseCursorCrosshair), Rectangle (Rectangle), Texture (texture'height, texture'width), TraceLogLevel (LogWarning), Vector2 (Vector2), Vector3 (Vector3))
+import Raylib.Types.Core (Vector2 (..))
 import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale, PixelFormatUncompressedR8G8B8))
-import Raylib.Util (WindowResources, drawing, mode3D)
-import Raylib.Util.Colors (blue, lightGray, white)
+import Raylib.Util (WindowResources, drawing)
+import Raylib.Util.Colors (blue, green, lightGray, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
 import System.Random (StdGen, mkStdGen, randomIO, randomR)
 import Text.Printf (printf)
@@ -114,6 +102,14 @@ data Circle = Circle
     deriving (Eq, Show)
 
 
+data VisionRay = VisionRay
+    { rayPos :: Vector2,
+      rayAngle :: Float, -- in degrees
+      rayLength :: Float
+    }
+    deriving (Eq, Show)
+
+
 data PlayerAnt = PlayerAnt
     { antPos :: Vector2,
       antAngle :: Float, -- in degrees
@@ -122,7 +118,8 @@ data PlayerAnt = PlayerAnt
       antRng :: StdGen,
       antGo :: Bool,
       antWheelPos :: WheelPos,
-      antSprite :: Sprite
+      antSprite :: Sprite,
+      antVisionRays :: [VisionRay]
     }
     deriving (Eq, Show)
 
@@ -173,7 +170,8 @@ data World = World
     { wWindowResources :: WindowResources,
       wAntTexture :: Texture,
       wShouldExit :: Bool,
-      wEntities :: [Entity]
+      wEntities :: [Entity],
+      wRenderVisionRays :: Bool
     }
 
 
@@ -222,6 +220,25 @@ renderDepthMap camPos camAngle camFov res maxDist rects =
             in  minimumDistance camPos rayDir rects
 
 
+calcVisionRays :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [VisionRay]
+calcVisionRays camPos camAngle camFov res maxDist rects =
+    let halfFov = camFov / 2
+        angleStep = camFov / int2Float (res - 1)
+        anglesStart = camAngle - halfFov
+        anglesNext = anglesStart + angleStep
+        anglesEnd = camAngle + halfFov
+        angles = [anglesStart, anglesNext .. anglesEnd]
+        rays = map castRay angles
+    in  rays
+    where
+        castRay :: Float -> VisionRay
+        castRay angle =
+            let rad = angle * deg2Rad
+                rayDir = Vector2 (cos rad) (sin rad)
+                dist = fromMaybe maxDist $ minimumDistance camPos rayDir rects
+            in  VisionRay camPos angle (min dist maxDist)
+
+
 -- Normalize the distance based on max distance
 normalizeDistance :: Float -> Maybe Float -> Float
 normalizeDistance maxDist (Just dist) = min 1.0 (dist / maxDist)
@@ -242,6 +259,7 @@ depthMap2Image height depthMap =
     in  Image pixels width height 1 PixelFormatUncompressedGrayscale
 
 
+-- TODO Use calcVisionRays here instead of renderDepthMap
 renderPlayerAntVision :: Float -> Int -> Int -> Float -> [Rectangle] -> PlayerAnt -> Image
 renderPlayerAntVision camFov res height maxDist rects ant =
     let depthMap = renderDepthMap (antPos ant) (antAngle ant) camFov res maxDist rects
@@ -265,7 +283,7 @@ testFlatlandRenderer = do
 mkAnt :: Float -> Float -> RngSeed -> PlayerAnt
 mkAnt x y seed =
     let (angle, rng) = randomR (0, 360) (mkStdGen seed)
-    in  PlayerAnt (Vector2 x y) angle 0 SeekFood rng False Center LeftSprite
+    in  PlayerAnt (Vector2 x y) angle 0 SeekFood rng False Center LeftSprite []
 
 
 mkAnts :: Float -> Float -> [RngSeed] -> [PlayerAnt]
@@ -344,6 +362,15 @@ leftAnt ant = rotateAnt (-antTurnAngle) ant
 
 rightAnt :: PlayerAnt -> PlayerAnt
 rightAnt ant = rotateAnt antTurnAngle ant
+
+
+-- --------------------------------- Vision --------------------------------- --
+
+updateVisionRays :: [Entity] -> PlayerAnt -> PlayerAnt
+updateVisionRays walls ant =
+    let wallRects = walls & mapMaybe (\case WallE rect -> Just rect; _ -> Nothing)
+        visionRays = calcVisionRays (antPos ant) (antAngle ant) 90 1500 300 wallRects
+    in  ant{antVisionRays = visionRays}
 
 
 -- -------------------------------- Collision ------------------------------- --
@@ -504,7 +531,7 @@ squishAnts x y width ants = filter (not . isSquished) ants
 mkPlayerAnt :: Float -> Float -> RngSeed -> PlayerAnt
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  PlayerAnt (Vector2 x y) 0 0 SeekFood rng False Center LeftSprite
+    in  PlayerAnt (Vector2 x y) 0 0 SeekFood rng False Center LeftSprite []
 
 
 -- ----------------------------- Fold World Test ---------------------------- --
@@ -544,6 +571,14 @@ sortByDrawOrder :: [Entity] -> [Entity]
 sortByDrawOrder = sort
 
 
+visionRayToLine :: VisionRay -> (Vector2, Vector2)
+visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength) =
+    let rad = angle * deg2Rad
+        x = posX + rayLength * cos rad
+        y = posY + rayLength * sin rad
+    in  (pos, Vector2 x y)
+
+
 -- ----------------------------- PART Game Loop ----------------------------- --
 
 initWorld :: IO World
@@ -562,14 +597,15 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture False entities
+    return $ World window antTexture False entities True
 
 
 handleInput :: World -> IO World
-handleInput (World wr tex _ entities) = do
+handleInput (World wr tex _ entities renderVisionRays) = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
+    visionRays <- isKeyPressed KeyV
     let entities' =
             map
                 ( \e -> case e of
@@ -586,11 +622,11 @@ handleInput (World wr tex _ entities) = do
                 )
                 entities
     exit' <- windowShouldClose
-    return (World wr tex exit' entities')
+    return (World wr tex exit' entities' (if visionRays then not renderVisionRays else renderVisionRays))
 
 
 updateWorld :: World -> World
-updateWorld (World wr antTexture exit entities) =
+updateWorld (World wr antTexture exit entities renderVisionRays) =
     let walls = filterWalls entities
         entities' =
             map
@@ -598,17 +634,18 @@ updateWorld (World wr antTexture exit entities) =
                     PlayerAntE ant ->
                         ant
                             & driveAnt walls
+                            & updateVisionRays walls
                             & cycleAntSprite
                             & wrapAroundAntRaylib
                             & PlayerAntE
                     _ -> e
                 )
                 entities
-    in  World wr antTexture exit entities'
+    in  World wr antTexture exit entities' renderVisionRays
 
 
 renderWorld :: World -> IO ()
-renderWorld (World wr antTexture _ entities) = do
+renderWorld (World wr antTexture _ entities renderVisionRays) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
@@ -632,6 +669,10 @@ renderWorld (World wr antTexture _ entities) = do
                                     )
                         -- renderPlayerAntVision camFov res height maxDist rects ant
                         antVision = renderPlayerAntVision 90 1500 100 300 walls ant
+                        visionRayLines = antVisionRays ant & map visionRayToLine
+                    when renderVisionRays $ do
+                        forM_ visionRayLines $ \(start, end) -> do
+                            drawLineV start end green
                     drawTextureCentered
                         antTexture
                         spriteRect
