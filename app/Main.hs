@@ -85,12 +85,24 @@ antJitterAngle :: Float
 antJitterAngle = 1
 
 
+antVisionAngle :: Float
+antVisionAngle = 90
+
+
+antVisionMaxDistance :: Float
+antVisionMaxDistance = 500
+
+
 antPng :: String
 antPng = "assets/ant.png"
 
 
 wallColor :: Color
 wallColor = white
+
+
+borderWallThickness :: Float
+borderWallThickness = 30
 
 
 -- ------------------------------- PART Types ------------------------------- --
@@ -182,24 +194,24 @@ intersectRayRect :: Vector2 -> Vector2 -> Rectangle -> Maybe Float
 intersectRayRect
     (Vector2 rayOriginX rayOriginY)
     (Vector2 rayDirX rayDirY)
-    (Rectangle rectX rectY rectWidth rectHeight) =
+    (Rectangle rectX rectY rectW rectH) =
         let
             -- Intersection distances for the vertical edges of the rectangle
-            tNearX = (rectX - rayOriginX) / rayDirX
-            tFarX = (rectX + rectWidth - rayOriginX) / rayDirX
+            distNearX = (rectX - rayOriginX) / rayDirX
+            distFarX = (rectX + rectW - rayOriginX) / rayDirX
 
             -- Intersection distances for the horizontal edges of the rectangle
-            tNearY = (rectY - rayOriginY) / rayDirY
-            tFarY = (rectY + rectHeight - rayOriginY) / rayDirY
+            distNearY = (rectY - rayOriginY) / rayDirY
+            distFarY = (rectY + rectH - rayOriginY) / rayDirY
 
             -- Calculate the entry and exit distances along the ray
-            tEntry = max (min tNearX tFarX) (min tNearY tFarY)
-            tExit = min (max tNearX tFarX) (max tNearY tFarY)
+            distEntry = max (min distNearX distFarX) (min distNearY distFarY)
+            distExit = min (max distNearX distFarX) (max distNearY distFarY)
         in
             -- Determine if there is an intersection
-            if tExit < 0 || tEntry > tExit
+            if distExit < 0 || distEntry > distExit
                 then Nothing
-                else Just (if tEntry < 0 then tExit else tEntry)
+                else Just (if distEntry < 0 then distExit else distEntry)
 
 
 renderDepthMap :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [Float]
@@ -581,6 +593,18 @@ visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength) =
 
 -- ----------------------------- PART Game Loop ----------------------------- --
 
+borderWalls :: [Entity]
+borderWalls =
+    let t = borderWallThickness
+        w = int2Float screenWidth
+        h = int2Float screenHeight
+    in  [ WallE (Rectangle (-t) (-t) (w + t * 2) t),
+          WallE (Rectangle w (-t) t (h + t * 2)),
+          WallE (Rectangle (-t) h (w + t * 2) t),
+          WallE (Rectangle (-t) (-t) t (h + t * 2))
+        ]
+
+
 initWorld :: IO World
 initWorld = do
     seed <- randomIO
@@ -591,7 +615,7 @@ initWorld = do
         testWall2 = WallE (Rectangle 100 300 1000 50)
         testWall3 = WallE (Rectangle 500 600 50 50)
         testPheromone = PheromoneE (Circle (Vector2 500 600) 10)
-        entities = sortByDrawOrder [playerAntEntity, testWall1, testWall2, testWall3]
+        entities = sortByDrawOrder ([playerAntEntity, testWall1, testWall2, testWall3] ++ borderWalls)
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setTraceLogLevel LogWarning
@@ -668,7 +692,7 @@ renderWorld (World wr antTexture _ entities renderVisionRays) = do
                                         _ -> Nothing
                                     )
                         -- renderPlayerAntVision camFov res height maxDist rects ant
-                        antVision = renderPlayerAntVision 90 1500 100 300 walls ant
+                        antVision = renderPlayerAntVision antVisionAngle 1500 100 antVisionMaxDistance walls ant
                         visionRayLines = antVisionRays ant & map visionRayToLine
                     when renderVisionRays $ do
                         forM_ visionRayLines $ \(start, end) -> do
