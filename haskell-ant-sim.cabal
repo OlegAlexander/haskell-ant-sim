@@ -7,7 +7,7 @@ category:           Game
 build-type:         Simple
 
 common options
-    ghc-options:        -Wall -O2 -Wno-unrecognised-pragmas
+    ghc-options:        -Wall -O2 -Wno-unrecognised-pragmas -fwrite-ide-info
     default-language:   GHC2021
     default-extensions: Strict
 
@@ -29,5 +29,5 @@ executable main
                     base ^>=4.17.2.0,
                     random ^>=1.2.1.2,
                     vector ^>= 0.13.1.0,
-                    h-raylib ^>= 5.1.1.0,
+                    h-raylib ^>= 5.1.1.0
     hs-source-dirs: app

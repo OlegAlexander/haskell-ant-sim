@@ -4,7 +4,7 @@
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use guards" #-}
 
-module Main (main) where
+module Main where
 
 -- ------------------------------ PART Imports ------------------------------ --
 
@@ -136,7 +136,6 @@ data PlayerAnt = PlayerAnt
     deriving (Eq, Show)
 
 
--- TODO Consider rendering ant vision rays
 data Entity
     = PlayerAntE PlayerAnt
     | AntE
@@ -166,16 +165,10 @@ instance Ord Entity where
 data Mode = SeekFood | SeekNest deriving (Eq, Show)
 
 
-data StopGo = Stop | Go deriving (Eq, Show)
-
-
 data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
 
 
 data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
-
-
-type RngSeed = Int
 
 
 data World = World
@@ -267,7 +260,8 @@ minimumDistance camPos rayDir rects =
 depthMap2Image :: Int -> [Float] -> Image
 depthMap2Image height depthMap =
     let width = length depthMap
-        pixels = concat $ replicate height $ map (round . (* 255) . (** 0.4545) . (1 -)) depthMap
+        gamma = 1.0
+        pixels = concat $ replicate height $ map (round . (* 255) . (** gamma) . (1 -)) depthMap
     in  Image pixels width height 1 PixelFormatUncompressedGrayscale
 
 
@@ -292,13 +286,13 @@ testFlatlandRenderer = do
 
 -- ----------------------------- PART Player Ant ---------------------------- --
 
-mkAnt :: Float -> Float -> RngSeed -> PlayerAnt
+mkAnt :: Float -> Float -> Int -> PlayerAnt
 mkAnt x y seed =
     let (angle, rng) = randomR (0, 360) (mkStdGen seed)
     in  PlayerAnt (Vector2 x y) angle 0 SeekFood rng False Center LeftSprite []
 
 
-mkAnts :: Float -> Float -> [RngSeed] -> [PlayerAnt]
+mkAnts :: Float -> Float -> [Int] -> [PlayerAnt]
 mkAnts x y seeds = map (mkAnt x y) seeds
 
 
@@ -479,7 +473,7 @@ wrapAroundAntRaylib ant =
 -- TODO Control an ant (different color)
 -- TODO Consider having a local mode where the ant stays still and the world moves around it.
 -- Alternatively, the ant can move around the world but only its visual field is shown like fog of war.
-spawnAnt :: Float -> Float -> RngSeed -> [PlayerAnt] -> [PlayerAnt]
+spawnAnt :: Float -> Float -> Int -> [PlayerAnt] -> [PlayerAnt]
 spawnAnt x y seed ants = mkAnt x y seed : ants
 
 
@@ -540,7 +534,7 @@ squishAnts x y width ants = filter (not . isSquished) ants
 
 -- ---------------------------- PART Constructors --------------------------- --
 
-mkPlayerAnt :: Float -> Float -> RngSeed -> PlayerAnt
+mkPlayerAnt :: Float -> Float -> Int -> PlayerAnt
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
     in  PlayerAnt (Vector2 x y) 0 0 SeekFood rng False Center LeftSprite []
@@ -630,7 +624,8 @@ handleInput (World wr tex _ entities renderVisionRays) = do
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
     visionRays <- isKeyPressed KeyV
-    let entities' =
+    let toggleVisionRays = visionRays /= renderVisionRays
+        entities' =
             map
                 ( \e -> case e of
                     PlayerAntE ant ->
@@ -646,7 +641,7 @@ handleInput (World wr tex _ entities renderVisionRays) = do
                 )
                 entities
     exit' <- windowShouldClose
-    return (World wr tex exit' entities' (if visionRays then not renderVisionRays else renderVisionRays))
+    return (World wr tex exit' entities' toggleVisionRays)
 
 
 updateWorld :: World -> World
