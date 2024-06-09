@@ -11,7 +11,7 @@ module Main where
 import Control.Monad (forM_, unless, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
-import Data.List (foldl', sort)
+import Data.List (foldl', intercalate, sort)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Debug.Trace (trace, traceShow)
 import GHC.Float (int2Float)
@@ -623,6 +623,14 @@ testVectorize =
               b22 (*) data2D data2D == [[16, 25, 36], [49, 64, 81]],
               outer (*) data1D data1D == [[1, 2, 3], [2, 4, 6], [3, 6, 9]]
             ]
+
+
+newtype List2D a = List2D [[a]] deriving (Eq)
+
+
+instance (Show a) => Show (List2D a) where
+    show :: (Show a) => List2D a -> String
+    show (List2D xs) = "[" ++ intercalate ",\n " (map show xs) ++ "]"
 
 
 -- ----------------------------- PART Game Loop ----------------------------- --
