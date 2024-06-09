@@ -109,6 +109,18 @@ borderWallThickness :: Float
 borderWallThickness = 30
 
 
+borderWalls :: [Entity]
+borderWalls =
+    let t = borderWallThickness
+        w = int2Float screenWidth
+        h = int2Float screenHeight
+    in  [ WallE (Rectangle (-t) (-t) (w + t * 2) t),
+          WallE (Rectangle w (-t) t (h + t * 2)),
+          WallE (Rectangle (-t) h (w + t * 2) t),
+          WallE (Rectangle (-t) (-t) t (h + t * 2))
+        ]
+
+
 -- ------------------------------- PART Types ------------------------------- --
 
 data Circle = Circle
@@ -615,18 +627,6 @@ testVectorize =
 
 -- ----------------------------- PART Game Loop ----------------------------- --
 
-borderWalls :: [Entity]
-borderWalls =
-    let t = borderWallThickness
-        w = int2Float screenWidth
-        h = int2Float screenHeight
-    in  [ WallE (Rectangle (-t) (-t) (w + t * 2) t),
-          WallE (Rectangle w (-t) t (h + t * 2)),
-          WallE (Rectangle (-t) h (w + t * 2) t),
-          WallE (Rectangle (-t) (-t) t (h + t * 2))
-        ]
-
-
 initWorld :: IO World
 initWorld = do
     seed <- randomIO
@@ -698,45 +698,35 @@ renderWorld (World wr antTexture _ entities renderVisionRays) = do
 
     drawing $ do
         clearBackground lightGray
-        mapM_
-            ( \case
-                PlayerAntE ant -> do
-                    let texW = texture'width antTexture
-                        texH = texture'height antTexture
-                        spriteRect = case antSprite ant of
-                            LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
-                            RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
-                        walls =
-                            entities
-                                & filterWalls
-                                & mapMaybe
-                                    ( \case
-                                        WallE rect -> Just rect
-                                        _ -> Nothing
-                                    )
-                        -- renderPlayerAntVision camFov res height maxDist rects ant
-                        antVision = renderPlayerAntVision 200 ant
-                        visionRayLines = antVisionRays ant & map visionRayToLine
-                    when renderVisionRays $ do
-                        forM_ visionRayLines $ \(start, end) -> do
-                            drawLineV start end green
-                    drawTextureCentered
-                        antTexture
-                        spriteRect
-                        antScale
-                        (antAngle ant)
-                        (antPos ant)
-                        white
-                    antVisionTexture <- loadTextureFromImage antVision wr
-                    drawTextureV antVisionTexture (Vector2 200 0) white
-                WallE rect -> do
-                    drawRectangleRec rect wallColor
-                PheromoneE (Circle pos r) -> do
-                    drawCircleV pos r blue
-                _ -> return ()
-            )
-            entities
+        forM_ entities $ \case
+            PlayerAntE ant -> renderPlayerAnt ant
+            WallE rect -> drawRectangleRec rect wallColor
+            PheromoneE (Circle pos r) -> drawCircleV pos r blue
+            _ -> return ()
+
         drawFPS 10 10
+    where
+        renderPlayerAnt :: PlayerAnt -> IO ()
+        renderPlayerAnt ant = do
+            let texW = texture'width antTexture
+                texH = texture'height antTexture
+                spriteRect = case antSprite ant of
+                    LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
+                    RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
+                antVision = renderPlayerAntVision 200 ant
+                visionRayLines = antVisionRays ant & map visionRayToLine
+            when renderVisionRays $ do
+                forM_ visionRayLines $ \(start, end) -> do
+                    drawLineV start end green
+            drawTextureCentered
+                antTexture
+                spriteRect
+                antScale
+                (antAngle ant)
+                (antPos ant)
+                white
+            antVisionTexture <- loadTextureFromImage antVision wr
+            drawTextureV antVisionTexture (Vector2 200 0) white
 
 
 -- A generic game loop!
