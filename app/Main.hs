@@ -93,6 +93,10 @@ antVisionMaxDistance :: Float
 antVisionMaxDistance = 500
 
 
+antVisionResolution :: Int
+antVisionResolution = 1500
+
+
 antPng :: String
 antPng = "assets/ant.png"
 
@@ -207,24 +211,6 @@ intersectRayRect
                 else Just (if distEntry < 0 then distExit else distEntry)
 
 
-renderDepthMap :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [Float]
-renderDepthMap camPos camAngle camFov res maxDist rects =
-    let halfFov = camFov / 2
-        angleStep = camFov / int2Float (res - 1)
-        anglesStart = camAngle - halfFov
-        anglesNext = anglesStart + angleStep
-        anglesEnd = camAngle + halfFov
-        angles = [anglesStart, anglesNext .. anglesEnd]
-        distances = map castRay angles
-    in  map (normalizeDistance maxDist) distances
-    where
-        castRay :: Float -> Maybe Float
-        castRay angle =
-            let rad = angle * deg2Rad
-                rayDir = Vector2 (cos rad) (sin rad)
-            in  minimumDistance camPos rayDir rects
-
-
 calcVisionRays :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [VisionRay]
 calcVisionRays camPos camAngle camFov res maxDist rects =
     let halfFov = camFov / 2
@@ -245,9 +231,8 @@ calcVisionRays camPos camAngle camFov res maxDist rects =
 
 
 -- Normalize the distance based on max distance
-normalizeDistance :: Float -> Maybe Float -> Float
-normalizeDistance maxDist (Just dist) = min 1.0 (dist / maxDist)
-normalizeDistance _ Nothing = 1.0
+normalizeDistance :: Float -> Float
+normalizeDistance dist = min 1.0 (dist / antVisionMaxDistance)
 
 
 -- Compute the minimum distance to any rectangle
@@ -260,28 +245,15 @@ minimumDistance camPos rayDir rects =
 depthMap2Image :: Int -> [Float] -> Image
 depthMap2Image height depthMap =
     let width = length depthMap
-        gamma = 1.0
+        gamma = 0.4545
         pixels = concat $ replicate height $ map (round . (* 255) . (** gamma) . (1 -)) depthMap
     in  Image pixels width height 1 PixelFormatUncompressedGrayscale
 
 
--- TODO Use calcVisionRays here instead of renderDepthMap
-renderPlayerAntVision :: Float -> Int -> Int -> Float -> [Rectangle] -> PlayerAnt -> Image
-renderPlayerAntVision camFov res height maxDist rects ant =
-    let depthMap = renderDepthMap (antPos ant) (antAngle ant) camFov res maxDist rects
+renderPlayerAntVision :: Int -> PlayerAnt -> Image
+renderPlayerAntVision height ant =
+    let depthMap = antVisionRays ant & map (normalizeDistance . rayLength)
     in  depthMap2Image height depthMap
-
-
-testFlatlandRenderer :: IO ()
-testFlatlandRenderer = do
-    let cameraPos = Vector2 0 0
-        cameraAngle = 0
-        cameraFov = 30
-        resolution = 5
-        maxDist = 10
-        boundingBoxes = [Rectangle 5 (-5) 10 10]
-        depthMap = renderDepthMap cameraPos cameraAngle cameraFov resolution maxDist boundingBoxes
-    mapM_ (printf "%.2f ") depthMap
 
 
 -- ----------------------------- PART Player Ant ---------------------------- --
@@ -375,7 +347,7 @@ rightAnt ant = rotateAnt antTurnAngle ant
 updateVisionRays :: [Entity] -> PlayerAnt -> PlayerAnt
 updateVisionRays walls ant =
     let wallRects = walls & mapMaybe (\case WallE rect -> Just rect; _ -> Nothing)
-        visionRays = calcVisionRays (antPos ant) (antAngle ant) 90 1500 300 wallRects
+        visionRays = calcVisionRays (antPos ant) (antAngle ant) antVisionAngle antVisionResolution antVisionMaxDistance wallRects
     in  ant{antVisionRays = visionRays}
 
 
@@ -585,6 +557,62 @@ visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength) =
     in  (pos, Vector2 x y)
 
 
+-- -------------------------------- Vectorize ------------------------------- --
+
+u0 :: (a -> b) -> a -> b
+u0 f = f
+
+
+u1 :: (a -> b) -> [a] -> [b]
+u1 = map
+
+
+u2 :: (a -> b) -> [[a]] -> [[b]]
+u2 f = map (map f)
+
+
+b01 :: (a -> b -> c) -> a -> [b] -> [c]
+b01 f x = map (f x)
+
+
+b02 :: (a -> b -> c) -> a -> [[b]] -> [[c]]
+b02 f x = map (map (f x))
+
+
+b11 :: (a -> b -> c) -> [a] -> [b] -> [c]
+b11 = zipWith
+
+
+b12 :: (a -> b -> c) -> [a] -> [[b]] -> [[c]]
+b12 f xs = map (zipWith f xs)
+
+
+b22 :: (a -> b -> c) -> [[a]] -> [[b]] -> [[c]]
+b22 f = zipWith (zipWith f)
+
+
+outer :: (a -> b -> c) -> [a] -> [b] -> [[c]]
+outer f xs ys = map (\x -> map (f x) ys) xs
+
+
+testVectorize :: Bool
+testVectorize =
+    let data0D = 2 :: Int
+        data1D = [1, 2, 3] :: [Int]
+        data2D = [[4, 5, 6], [7, 8, 9]] :: [[Int]]
+    in  and
+            [ u0 negate data0D == -2,
+              u1 negate data1D == [-1, -2, -3],
+              u2 negate data2D == [[-4, -5, -6], [-7, -8, -9]],
+              b01 (*) data0D data1D == [2, 4, 6],
+              b02 (*) data0D data2D == [[8, 10, 12], [14, 16, 18]],
+              b11 (*) data1D data1D == [1, 4, 9],
+              b12 (*) data1D data2D == [[4, 10, 18], [7, 16, 27]],
+              b22 (*) data2D data2D == [[16, 25, 36], [49, 64, 81]],
+              outer (*) data1D data1D == [[1, 2, 3], [2, 4, 6], [3, 6, 9]]
+            ]
+
+
 -- ----------------------------- PART Game Loop ----------------------------- --
 
 borderWalls :: [Entity]
@@ -687,7 +715,7 @@ renderWorld (World wr antTexture _ entities renderVisionRays) = do
                                         _ -> Nothing
                                     )
                         -- renderPlayerAntVision camFov res height maxDist rects ant
-                        antVision = renderPlayerAntVision antVisionAngle 1500 100 antVisionMaxDistance walls ant
+                        antVision = renderPlayerAntVision 200 ant
                         visionRayLines = antVisionRays ant & map visionRayToLine
                     when renderVisionRays $ do
                         forM_ visionRayLines $ \(start, end) -> do
