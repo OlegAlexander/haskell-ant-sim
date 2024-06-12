@@ -13,7 +13,8 @@ import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.List (foldl', intercalate, sort)
 import Data.Maybe (fromMaybe, mapMaybe)
-import Debug.Trace (trace, traceShow)
+
+-- import Debug.Trace (trace, traceShow)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -28,15 +29,14 @@ import Raylib.Core (
  )
 import Raylib.Core.Shapes (drawCircleV, drawLineV, drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
-import Raylib.Core.Textures (drawTexturePro, drawTextureV, imageDrawPixel, loadImage, loadTexture, loadTextureFromImage)
-import Raylib.Types (Camera3D (Camera3D), CameraProjection (CameraPerspective), Color, KeyboardKey (..), MouseCursor (MouseCursorCrosshair), Rectangle (Rectangle), Texture (texture'height, texture'width), TraceLogLevel (LogWarning), Vector2 (Vector2), Vector3 (Vector3))
+import Raylib.Core.Textures (drawTexturePro, drawTextureV, loadTexture, loadTextureFromImage)
+import Raylib.Types (Color, KeyboardKey (..), MouseCursor (MouseCursorCrosshair), Rectangle (Rectangle), Texture (texture'height, texture'width), TraceLogLevel (LogWarning))
 import Raylib.Types.Core (Vector2 (..))
-import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale, PixelFormatUncompressedR8G8B8))
+import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale))
 import Raylib.Util (WindowResources, drawing)
-import Raylib.Util.Colors (blue, green, lightGray, white)
+import Raylib.Util.Colors (blue, green, lightGray, red, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
 import System.Random (StdGen, mkStdGen, randomIO, randomR)
-import Text.Printf (printf)
 
 
 -- ----------------------------- PART Constants ----------------------------- --
@@ -109,6 +109,7 @@ borderWallThickness :: Float
 borderWallThickness = 30
 
 
+-- TODO Consider using 4 different colors for the walls to orient oneself.
 borderWalls :: [Entity]
 borderWalls =
     let t = borderWallThickness
@@ -645,7 +646,16 @@ initWorld = do
         testWall2 = WallE (Rectangle 100 300 1000 50)
         testWall3 = WallE (Rectangle 500 600 50 50)
         testPheromone = PheromoneE (Circle (Vector2 500 600) 10)
-        entities = sortByDrawOrder ([playerAntEntity, testWall1, testWall2, testWall3] ++ borderWalls)
+        entities =
+            sortByDrawOrder
+                ( [ playerAntEntity,
+                    testWall1,
+                    testWall2,
+                    testWall3,
+                    testPheromone
+                  ]
+                    ++ borderWalls
+                )
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setTraceLogLevel LogWarning
@@ -673,7 +683,12 @@ handleInput (World wr tex _ entities renderVisionRays) = do
                                     (False, True) -> TurnRight
                                     _ -> Center
                                 }
-                    _ -> e
+                    AntE -> e
+                    DeadAntE -> e
+                    PheromoneE _ -> e
+                    FoodE _ -> e
+                    NestE _ -> e
+                    WallE _ -> e
                 )
                 entities
     exit' <- windowShouldClose
@@ -693,7 +708,12 @@ updateWorld (World wr antTexture exit entities renderVisionRays) =
                             & cycleAntSprite
                             & wrapAroundAntRaylib
                             & PlayerAntE
-                    _ -> e
+                    AntE -> e
+                    DeadAntE -> e
+                    PheromoneE _ -> e
+                    FoodE _ -> e
+                    NestE _ -> e
+                    WallE _ -> e
                 )
                 entities
     in  World wr antTexture exit entities' renderVisionRays
@@ -708,9 +728,12 @@ renderWorld (World wr antTexture _ entities renderVisionRays) = do
         clearBackground lightGray
         forM_ entities $ \case
             PlayerAntE ant -> renderPlayerAnt ant
-            WallE rect -> drawRectangleRec rect wallColor
+            AntE -> return ()
+            DeadAntE -> return ()
             PheromoneE (Circle pos r) -> drawCircleV pos r blue
-            _ -> return ()
+            FoodE (Circle pos r) -> drawCircleV pos r green
+            NestE (Circle pos r) -> drawCircleV pos r red
+            WallE rect -> drawRectangleRec rect wallColor
 
         drawFPS 10 10
     where
