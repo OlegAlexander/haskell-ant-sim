@@ -10,24 +10,28 @@ common options
     ghc-options:        -Wall -O2 -Wno-unrecognised-pragmas -fwrite-ide-info
     default-language:   GHC2021
     default-extensions: Strict
+    build-depends:      base ^>=4.17.2.0,
+                        random ^>=1.2.1.2,
+                        h-raylib ^>= 5.1.1.0,
+                        containers    
 
 library
     import:             options
     hs-source-dirs:     src
-    -- exposed-modules:    Common
-    build-depends:      base ^>=4.17.2.0,
-                        vector ^>= 0.13.1.0,
-                        random ^>=1.2.1.2,
-                        h-raylib ^>= 5.1.1.0,
-                        containers,
-                        transformers
+    exposed-modules:    FlatlandRenderer,
+                        Shared,
+                        MainGame
+
 
 executable main
     import:         options
     main-is:        Main.hs
-    build-depends:  haskell-ant-sim,  
-                    base ^>=4.17.2.0,
-                    random ^>=1.2.1.2,
-                    vector ^>= 0.13.1.0,
-                    h-raylib ^>= 5.1.1.0
+    build-depends:  haskell-ant-sim
+    hs-source-dirs: app
+
+
+executable flatland-renderer
+    import:         options
+    main-is:        FlatlandRendererDriver.hs
+    build-depends:  haskell-ant-sim
     hs-source-dirs: app
