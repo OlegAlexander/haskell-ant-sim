@@ -1,7 +1,7 @@
 module Main where
 
-import FlatlandRenderer qualified
+import FlatlandRenderer (driveFlatlandRenderer)
 
 
 main :: IO ()
-main = FlatlandRenderer.main
+main = driveFlatlandRenderer

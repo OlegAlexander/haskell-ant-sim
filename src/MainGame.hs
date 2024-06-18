@@ -193,7 +193,6 @@ data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
 data World = World
     { wWindowResources :: WindowResources,
       wAntTexture :: Texture,
-      wShouldExit :: Bool,
       wEntities :: [Entity],
       wRenderVisionRays :: Bool
     }
@@ -663,11 +662,11 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture False entities True
+    return $ World window antTexture entities True
 
 
 handleInput :: World -> IO World
-handleInput (World wr tex _ entities renderVisionRays) = do
+handleInput (World wr tex entities renderVisionRays) = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
@@ -693,12 +692,11 @@ handleInput (World wr tex _ entities renderVisionRays) = do
                     WallE _ -> e
                 )
                 entities
-    exit' <- windowShouldClose
-    return (World wr tex exit' entities' toggleVisionRays)
+    return (World wr tex entities' toggleVisionRays)
 
 
 updateWorld :: World -> World
-updateWorld (World wr antTexture exit entities renderVisionRays) =
+updateWorld (World wr antTexture entities renderVisionRays) =
     let walls = filterWalls entities
         entities' =
             map
@@ -718,11 +716,11 @@ updateWorld (World wr antTexture exit entities renderVisionRays) =
                     WallE _ -> e
                 )
                 entities
-    in  World wr antTexture exit entities' renderVisionRays
+    in  World wr antTexture entities' renderVisionRays
 
 
 renderWorld :: World -> IO ()
-renderWorld (World wr antTexture _ entities renderVisionRays) = do
+renderWorld (World wr antTexture entities renderVisionRays) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
@@ -763,4 +761,4 @@ renderWorld (World wr antTexture _ entities renderVisionRays) = do
 
 
 main :: IO ()
-main = initWorld >>= gameLoop handleInput updateWorld renderWorld wShouldExit
+main = initWorld >>= gameLoop handleInput updateWorld renderWorld windowShouldClose

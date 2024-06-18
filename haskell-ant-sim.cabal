@@ -19,6 +19,7 @@ library
     import:             options
     hs-source-dirs:     src
     exposed-modules:    FlatlandRenderer,
+                        DrawWalls,
                         Shared,
                         MainGame
 
@@ -26,6 +27,12 @@ library
 executable main
     import:         options
     main-is:        Main.hs
+    build-depends:  haskell-ant-sim
+    hs-source-dirs: app
+
+executable draw-walls
+    import:         options
+    main-is:        DrawWallsDriver.hs
     build-depends:  haskell-ant-sim
     hs-source-dirs: app
 
