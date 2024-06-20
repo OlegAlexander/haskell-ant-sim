@@ -9,7 +9,7 @@ build-type:         Simple
 common options
     ghc-options:        -Wall -O2 -Wno-unrecognised-pragmas -fwrite-ide-info
     default-language:   GHC2021
-    default-extensions: Strict
+    default-extensions: Strict, LambdaCase
     build-depends:      base ^>=4.17.2.0,
                         random ^>=1.2.1.2,
                         h-raylib ^>= 5.1.1.0,
@@ -21,6 +21,8 @@ library
     exposed-modules:    FlatlandRenderer,
                         DrawWalls,
                         Shared,
+                        Types,
+                        Constants,
                         MainGame
 
 

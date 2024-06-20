@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use guards" #-}
@@ -13,10 +11,30 @@ import Shared (gameLoop)
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
-import Data.List (foldl', intercalate, sort)
+import Data.List (foldl', sort)
 import Data.Maybe (fromMaybe, mapMaybe)
 
 -- import Debug.Trace (trace, traceShow)
+
+import Constants (
+    antAcceleration,
+    antDeceleration,
+    antJitterAngle,
+    antMaxSpeed,
+    antPng,
+    antScale,
+    antStepSize,
+    antTurnAngle,
+    antVisionAngle,
+    antVisionMaxDistance,
+    antVisionResolution,
+    borderWallThickness,
+    fps,
+    screenHeight,
+    screenWidth,
+    title,
+    wallColor,
+ )
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -32,84 +50,43 @@ import Raylib.Core (
 import Raylib.Core.Shapes (drawCircleV, drawLineV, drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (drawTexturePro, drawTextureV, loadTexture, loadTextureFromImage)
-import Raylib.Types (Color, KeyboardKey (..), MouseCursor (MouseCursorCrosshair), Rectangle (Rectangle), Texture (texture'height, texture'width), TraceLogLevel (LogWarning))
+import Raylib.Types (
+    Color,
+    KeyboardKey (..),
+    MouseCursor (MouseCursorCrosshair),
+    Rectangle (Rectangle),
+    Texture (texture'height, texture'width),
+    TraceLogLevel (LogWarning),
+ )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale))
-import Raylib.Util (WindowResources, drawing)
+import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, green, lightGray, red, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
-import System.Random (StdGen, mkStdGen, randomIO, randomR)
+import System.Random (mkStdGen, randomIO, randomR)
+import Types (
+    Circle (Circle),
+    Entity (..),
+    Mode (SeekFood),
+    PlayerAnt (
+        PlayerAnt,
+        antAngle,
+        antGo,
+        antPos,
+        antRng,
+        antSpeed,
+        antSprite,
+        antVisionRays,
+        antWheelPos
+    ),
+    Sprite (LeftSprite, RightSprite),
+    VisionRay (VisionRay, rayLength),
+    WheelPos (Center, TurnLeft, TurnRight),
+    World (World),
+ )
 
 
 -- ----------------------------- PART Constants ----------------------------- --
-
-screenWidth :: Int
-screenWidth = 1920
-
-
-screenHeight :: Int
-screenHeight = 1080
-
-
-title :: String
-title = "Raylib POC"
-
-
-fps :: Int
-fps = 60
-
-
-antScale :: Float
-antScale = 0.3
-
-
-antMaxSpeed :: Float
-antMaxSpeed = 6
-
-
-antStepSize :: Float
-antStepSize = 2
-
-
-antAcceleration :: Float
-antAcceleration = 0.5
-
-
-antDeceleration :: Float
-antDeceleration = 0.5
-
-
-antTurnAngle :: Float
-antTurnAngle = 5
-
-
-antJitterAngle :: Float
-antJitterAngle = 1
-
-
-antVisionAngle :: Float
-antVisionAngle = 90
-
-
-antVisionMaxDistance :: Float
-antVisionMaxDistance = 500
-
-
-antVisionResolution :: Int
-antVisionResolution = 1500
-
-
-antPng :: String
-antPng = "assets/ant.png"
-
-
-wallColor :: Color
-wallColor = white
-
-
-borderWallThickness :: Float
-borderWallThickness = 30
-
 
 -- TODO Consider using 4 different colors for the walls to orient oneself.
 borderWalls :: [Entity]
@@ -122,80 +99,6 @@ borderWalls =
           WallE (Rectangle (-t) h (w + t * 2) t),
           WallE (Rectangle (-t) (-t) t (h + t * 2))
         ]
-
-
--- ------------------------------- PART Types ------------------------------- --
-
-data Circle = Circle
-    { circlePos :: Vector2,
-      circleRadius :: Float
-    }
-    deriving (Eq, Show)
-
-
-data VisionRay = VisionRay
-    { rayPos :: Vector2,
-      rayAngle :: Float, -- in degrees
-      rayLength :: Float
-    }
-    deriving (Eq, Show)
-
-
-data PlayerAnt = PlayerAnt
-    { antPos :: Vector2,
-      antAngle :: Float, -- in degrees
-      antSpeed :: Float,
-      antMode :: Mode,
-      antRng :: StdGen,
-      antGo :: Bool,
-      antWheelPos :: WheelPos,
-      antSprite :: Sprite,
-      antVisionRays :: [VisionRay]
-    }
-    deriving (Eq, Show)
-
-
-data Entity
-    = PlayerAntE PlayerAnt
-    | AntE
-    | DeadAntE
-    | PheromoneE Circle
-    | FoodE Circle
-    | NestE Circle
-    | WallE Rectangle
-    deriving (Eq, Show)
-
-
-instance Ord Entity where
-    compare :: Entity -> Entity -> Ordering
-    compare e1 e2 = compare (drawOrder e1) (drawOrder e2)
-        where
-            drawOrder :: Entity -> Int
-            drawOrder = \case
-                PlayerAntE _ -> 7
-                AntE -> 6
-                DeadAntE -> 5
-                PheromoneE _ -> 4
-                FoodE _ -> 3
-                NestE _ -> 2
-                WallE _ -> 1
-
-
-data Mode = SeekFood | SeekNest deriving (Eq, Show)
-
-
-data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
-
-
-data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
-
-
-data World = World
-    { wWindowResources :: WindowResources,
-      wAntTexture :: Texture,
-      wEntities :: [Entity],
-      wRenderVisionRays :: Bool
-    }
 
 
 -- ------------------------- PART Flatland Renderer ------------------------- --
@@ -545,7 +448,7 @@ mkWorldState n = foldl' newEntity (WorldState 1 []) (replicate n ())
 
 -- ------------------------------- PART Utils ------------------------------- --
 
--- TODO Recommend this function to Raylib author
+-- TODO Recommend this function to Raylib author!
 drawTextureCentered :: Texture -> Rectangle -> Float -> Float -> Vector2 -> Color -> IO ()
 drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y) color = do
     let w' = w * scale
@@ -569,70 +472,6 @@ visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength) =
         x = posX + rayLength * cos rad
         y = posY + rayLength * sin rad
     in  (pos, Vector2 x y)
-
-
--- -------------------------------- Vectorize ------------------------------- --
-
-u0 :: (a -> b) -> a -> b
-u0 f = f
-
-
-u1 :: (a -> b) -> [a] -> [b]
-u1 = map
-
-
-u2 :: (a -> b) -> [[a]] -> [[b]]
-u2 f = map (map f)
-
-
-b01 :: (a -> b -> c) -> a -> [b] -> [c]
-b01 f x = map (f x)
-
-
-b02 :: (a -> b -> c) -> a -> [[b]] -> [[c]]
-b02 f x = map (map (f x))
-
-
-b11 :: (a -> b -> c) -> [a] -> [b] -> [c]
-b11 = zipWith
-
-
-b12 :: (a -> b -> c) -> [a] -> [[b]] -> [[c]]
-b12 f xs = map (zipWith f xs)
-
-
-b22 :: (a -> b -> c) -> [[a]] -> [[b]] -> [[c]]
-b22 f = zipWith (zipWith f)
-
-
-outer :: (a -> b -> c) -> [a] -> [b] -> [[c]]
-outer f xs ys = map (\x -> map (f x) ys) xs
-
-
-testVectorize :: Bool
-testVectorize =
-    let data0D = 2 :: Int
-        data1D = [1, 2, 3] :: [Int]
-        data2D = [[4, 5, 6], [7, 8, 9]] :: [[Int]]
-    in  and
-            [ u0 negate data0D == -2,
-              u1 negate data1D == [-1, -2, -3],
-              u2 negate data2D == [[-4, -5, -6], [-7, -8, -9]],
-              b01 (*) data0D data1D == [2, 4, 6],
-              b02 (*) data0D data2D == [[8, 10, 12], [14, 16, 18]],
-              b11 (*) data1D data1D == [1, 4, 9],
-              b12 (*) data1D data2D == [[4, 10, 18], [7, 16, 27]],
-              b22 (*) data2D data2D == [[16, 25, 36], [49, 64, 81]],
-              outer (*) data1D data1D == [[1, 2, 3], [2, 4, 6], [3, 6, 9]]
-            ]
-
-
-newtype List2D a = List2D [[a]] deriving (Eq)
-
-
-instance (Show a) => Show (List2D a) where
-    show :: (Show a) => List2D a -> String
-    show (List2D xs) = "[" ++ intercalate ",\n " (map show xs) ++ "]"
 
 
 -- ----------------------------- PART Game Loop ----------------------------- --
