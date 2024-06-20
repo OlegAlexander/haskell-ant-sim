@@ -1,8 +1,9 @@
 module DrawWalls where
 
-import Constants (minWallSize, wallColor)
+import Constants (antPng, minWallSize, wallColor)
 import Control.Monad (forM_, when)
 import Data.Maybe (fromJust, isJust, isNothing)
+import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
     getMousePosition,
@@ -14,12 +15,14 @@ import Raylib.Core (
  )
 import Raylib.Core.Shapes (drawRectangleLinesEx, drawRectangleRec)
 import Raylib.Core.Text (drawText)
+import Raylib.Core.Textures (loadTexture)
 import Raylib.Types (KeyboardKey (KeyW), Rectangle (Rectangle), Vector2 (Vector2))
 import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, lightGray)
 import Shared (gameLoop)
-import Types (WallDrawingState (..), Walls (..))
+import System.Random (randomIO)
+import Types (WallDrawingState (..), Walls (..), World (..))
 
 
 getWallDrawingState :: Bool -> Maybe (Vector2, Vector2) -> WallDrawingState
@@ -39,48 +42,53 @@ bigEnough :: Rectangle -> Bool
 bigEnough (Rectangle _ _ w h) = w > minWallSize && h > minWallSize
 
 
-initWallsWorld :: IO Walls
+initWallsWorld :: IO World
 initWallsWorld = do
-    _ <- initWindow 800 600 "Draw Walls Driver"
+    window <- initWindow 1000 800 "Draw Walls"
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
-    return (Walls [] Nothing)
+    antTexture <- loadTexture antPng window
+    let walls = Walls [] Nothing
+    return $ World window antTexture [] True walls
 
 
-handleWallInput :: Walls -> IO Walls
+handleWallInput :: World -> IO World
 handleWallInput w = do
     wPressed <- isKeyPressed KeyW
-    let wbd = wallBeingDrawn w
+    let walls = wWalls w
+        wbd = wallBeingDrawn walls
         status = getWallDrawingState wPressed wbd
     case status of
         Idle -> return w
         Started -> do
             mousePos <- getMousePosition
-            return w{wallBeingDrawn = Just (mousePos, mousePos)}
+            return w{wWalls = walls{wallBeingDrawn = Just (mousePos, mousePos)}}
         InProgress -> do
             mousePos <- getMousePosition
-            return w{wallBeingDrawn = Just (fst $ fromJust wbd, mousePos)}
+            return w{wWalls = walls{wallBeingDrawn = Just (fst $ fromJust wbd, mousePos)}}
         Finished -> do
             let (start, end) = fromJust wbd
                 newWall = calcBoundingBox start end
             if bigEnough newWall
-                then return w{walls = newWall : walls w, wallBeingDrawn = Nothing}
+                then
+                    return w{wWalls = walls{unWalls = newWall : unWalls walls, wallBeingDrawn = Nothing}}
                 else
-                    return w{walls = walls w, wallBeingDrawn = Nothing}
+                    return w{wWalls = walls{unWalls = unWalls walls, wallBeingDrawn = Nothing}}
 
 
-updateWallsWorld :: Walls -> Walls
+updateWallsWorld :: World -> World
 updateWallsWorld = id
 
 
-renderWallsWorld :: Walls -> IO ()
+renderWallsWorld :: World -> IO ()
 renderWallsWorld w = do
+    let walls = wWalls w
     drawing $ do
         clearBackground lightGray
         drawText "Press 'w' to draw walls" 10 10 30 blue
-        forM_ (walls w) $ \wall -> drawRectangleRec wall wallColor
-        when (isJust $ wallBeingDrawn w) $ do
-            let (start, end) = fromJust $ wallBeingDrawn w
+        forM_ (unWalls walls) $ \wall -> drawRectangleRec wall wallColor
+        when (isJust $ wallBeingDrawn walls) $ do
+            let (start, end) = fromJust $ wallBeingDrawn walls
                 wall = calcBoundingBox start end
             drawRectangleRec wall wallColor
             drawRectangleLinesEx wall 2 blue

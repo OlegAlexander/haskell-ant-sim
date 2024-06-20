@@ -8,8 +8,7 @@ import System.Random (StdGen)
 data Circle = Circle
     { circlePos :: Vector2,
       circleRadius :: Float
-    }
-    deriving (Eq, Show)
+    }    deriving (Eq, Show)
 
 
 data VisionRay = VisionRay
@@ -70,7 +69,7 @@ data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
 
 
 data Walls = Walls
-    { walls :: [Rectangle],
+    { unWalls :: [Rectangle],
       wallBeingDrawn :: Maybe (Vector2, Vector2)
     }
     deriving (Eq, Show)
@@ -84,5 +83,6 @@ data World = World
     { wWindowResources :: WindowResources,
       wAntTexture :: Texture,
       wEntities :: [Entity],
-      wRenderVisionRays :: Bool
+      wRenderVisionRays :: Bool,
+      wWalls :: Walls
     }

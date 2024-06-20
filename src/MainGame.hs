@@ -81,6 +81,7 @@ import Types (
     ),
     Sprite (LeftSprite, RightSprite),
     VisionRay (VisionRay, rayLength),
+    Walls (..),
     WheelPos (Center, TurnLeft, TurnRight),
     World (World),
  )
@@ -501,11 +502,11 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture entities True
+    return $ World window antTexture entities True (Walls [] Nothing)
 
 
 handleInput :: World -> IO World
-handleInput (World wr tex entities renderVisionRays) = do
+handleInput (World wr tex entities renderVisionRays walls) = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
@@ -531,19 +532,19 @@ handleInput (World wr tex entities renderVisionRays) = do
                     WallE _ -> e
                 )
                 entities
-    return (World wr tex entities' toggleVisionRays)
+    return (World wr tex entities' toggleVisionRays walls)
 
 
 updateWorld :: World -> World
-updateWorld (World wr antTexture entities renderVisionRays) =
-    let walls = filterWalls entities
+updateWorld (World wr antTexture entities renderVisionRays walls) =
+    let walls' = filterWalls entities
         entities' =
             map
                 ( \e -> case e of
                     PlayerAntE ant ->
                         ant
-                            & driveAnt walls
-                            & updateVisionRays walls
+                            & driveAnt walls'
+                            & updateVisionRays walls'
                             & cycleAntSprite
                             & wrapAroundAntRaylib
                             & PlayerAntE
@@ -555,11 +556,11 @@ updateWorld (World wr antTexture entities renderVisionRays) =
                     WallE _ -> e
                 )
                 entities
-    in  World wr antTexture entities' renderVisionRays
+    in  World wr antTexture entities' renderVisionRays walls
 
 
 renderWorld :: World -> IO ()
-renderWorld (World wr antTexture entities renderVisionRays) = do
+renderWorld (World wr antTexture entities renderVisionRays walls) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 

@@ -35,8 +35,11 @@ executable main
 executable draw-walls
     import:         options
     main-is:        DrawWallsDriver.hs
-    build-depends:  haskell-ant-sim
-    hs-source-dirs: app
+    other-modules:  DrawWalls,
+                    Shared,
+                    Types,
+                    Constants
+    hs-source-dirs: app, src
 
 
 executable flatland-renderer
