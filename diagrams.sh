@@ -1,0 +1,1 @@
+find app src -name '*.hs' | xargs graphmod --quiet --no-cabal --colors=2 | dot -Tpng -Gdpi=300 -o diagrams/graphmod.png
