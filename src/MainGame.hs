@@ -35,6 +35,7 @@ import Constants (
     title,
     wallColor,
  )
+import DrawWalls (handleWallInput, renderWallsWorld, updateWallsWorld)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -506,7 +507,8 @@ handleInput (World wr tex entities renderVisionRays walls wbd) = do
                     NestE _ -> e
                 )
                 entities
-    return (World wr tex entities' toggleVisionRays walls wbd)
+        world' = World wr tex entities' toggleVisionRays walls wbd
+    handleWallInput world'
 
 
 updateWorld :: World -> World
@@ -528,11 +530,12 @@ updateWorld (World wr antTexture entities renderVisionRays walls wbd) =
                     NestE _ -> e
                 )
                 entities
-    in  World wr antTexture entities' renderVisionRays walls wbd
+        world' = World wr antTexture entities' renderVisionRays walls wbd
+    in  updateWallsWorld world'
 
 
 renderWorld :: World -> IO ()
-renderWorld (World wr antTexture entities renderVisionRays walls wbd) = do
+renderWorld w@(World wr antTexture entities renderVisionRays walls wbd) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
@@ -546,7 +549,7 @@ renderWorld (World wr antTexture entities renderVisionRays walls wbd) = do
             FoodE (Circle pos r) -> drawCircleV pos r green
             NestE (Circle pos r) -> drawCircleV pos r red
 
-        forM_ walls $ \wall -> drawRectangleRec wall wallColor
+        renderWallsWorld w
 
         drawFPS 10 10
     where

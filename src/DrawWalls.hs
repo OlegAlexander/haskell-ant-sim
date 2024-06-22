@@ -3,7 +3,6 @@ module DrawWalls where
 import Constants (antPng, minWallSize, wallColor)
 import Control.Monad (forM_, when)
 import Data.Maybe (fromJust, isJust, isNothing)
-import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
     getMousePosition,
@@ -21,7 +20,6 @@ import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, lightGray)
 import Shared (gameLoop)
-import System.Random (randomIO)
 import Types (WallDrawingState (..), World (..))
 
 
@@ -79,21 +77,26 @@ updateWallsWorld :: World -> World
 updateWallsWorld = id
 
 
+renderWallsWorldDriver :: World -> IO ()
+renderWallsWorldDriver w = do
+    drawing $ do
+        clearBackground lightGray
+        drawText "Press 'w' to draw walls" 10 10 30 blue
+        renderWallsWorld w
+
+
 renderWallsWorld :: World -> IO ()
 renderWallsWorld w = do
     let walls = wWalls w
         wbd = wWallBeingDrawn w
-    drawing $ do
-        clearBackground lightGray
-        drawText "Press 'w' to draw walls" 10 10 30 blue
-        forM_ walls $ \wall -> drawRectangleRec wall wallColor
-        when (isJust $ wbd) $ do
-            let (start, end) = fromJust $ wbd
-                wall = calcBoundingBox start end
-            drawRectangleRec wall wallColor
-            drawRectangleLinesEx wall 2 blue
+    forM_ walls $ \wall -> drawRectangleRec wall wallColor
+    when (isJust wbd) $ do
+        let (start, end) = fromJust wbd
+            wall = calcBoundingBox start end
+        drawRectangleRec wall wallColor
+        drawRectangleLinesEx wall 2 blue
 
 
 driveDrawWalls :: IO ()
 driveDrawWalls =
-    initWallsWorld >>= gameLoop handleWallInput updateWallsWorld renderWallsWorld windowShouldClose
+    initWallsWorld >>= gameLoop handleWallInput updateWallsWorld renderWallsWorldDriver windowShouldClose
