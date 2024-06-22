@@ -8,7 +8,8 @@ import System.Random (StdGen)
 data Circle = Circle
     { circlePos :: Vector2,
       circleRadius :: Float
-    }    deriving (Eq, Show)
+    }
+    deriving (Eq, Show)
 
 
 data VisionRay = VisionRay
@@ -40,7 +41,6 @@ data Entity
     | PheromoneE Circle
     | FoodE Circle
     | NestE Circle
-    | WallE Rectangle
     deriving (Eq, Show)
 
 
@@ -56,7 +56,6 @@ instance Ord Entity where
                 PheromoneE _ -> 4
                 FoodE _ -> 3
                 NestE _ -> 2
-                WallE _ -> 1
 
 
 data Mode = SeekFood | SeekNest deriving (Eq, Show)
@@ -68,13 +67,6 @@ data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
 data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
 
 
-data Walls = Walls
-    { unWalls :: [Rectangle],
-      wallBeingDrawn :: Maybe (Vector2, Vector2)
-    }
-    deriving (Eq, Show)
-
-
 data WallDrawingState = Idle | Started | InProgress | Finished
     deriving (Eq, Show)
 
@@ -84,5 +76,6 @@ data World = World
       wAntTexture :: Texture,
       wEntities :: [Entity],
       wRenderVisionRays :: Bool,
-      wWalls :: Walls
+      wWalls :: [Rectangle],
+      wWallBeingDrawn :: Maybe (Vector2, Vector2)
     }

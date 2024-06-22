@@ -81,7 +81,6 @@ import Types (
     ),
     Sprite (LeftSprite, RightSprite),
     VisionRay (VisionRay, rayLength),
-    Walls (..),
     WheelPos (Center, TurnLeft, TurnRight),
     World (World),
  )
@@ -90,15 +89,15 @@ import Types (
 -- ----------------------------- PART Constants ----------------------------- --
 
 -- TODO Consider using 4 different colors for the walls to orient oneself.
-borderWalls :: [Entity]
+borderWalls :: [Rectangle]
 borderWalls =
     let t = borderWallThickness
         w = int2Float screenWidth
         h = int2Float screenHeight
-    in  [ WallE (Rectangle (-t) (-t) (w + t * 2) t),
-          WallE (Rectangle w (-t) t (h + t * 2)),
-          WallE (Rectangle (-t) h (w + t * 2) t),
-          WallE (Rectangle (-t) (-t) t (h + t * 2))
+    in  [ Rectangle (-t) (-t) (w + t * 2) t,
+          Rectangle w (-t) t (h + t * 2),
+          Rectangle (-t) h (w + t * 2) t,
+          Rectangle (-t) (-t) t (h + t * 2)
         ]
 
 
@@ -220,7 +219,7 @@ cycleAntSprite ant =
     in  ant{antSprite = sprite', antRng = rng'}
 
 
-driveAnt :: [Entity] -> PlayerAnt -> PlayerAnt
+driveAnt :: [Rectangle] -> PlayerAnt -> PlayerAnt
 driveAnt walls ant =
     let rotatedAnt = case antWheelPos ant of
             TurnLeft -> leftAnt ant
@@ -262,37 +261,21 @@ rightAnt ant = rotateAnt antTurnAngle ant
 
 -- --------------------------------- Vision --------------------------------- --
 
-updateVisionRays :: [Entity] -> PlayerAnt -> PlayerAnt
+updateVisionRays :: [Rectangle] -> PlayerAnt -> PlayerAnt
 updateVisionRays walls ant =
-    let wallRects = walls & mapMaybe (\case WallE rect -> Just rect; _ -> Nothing)
-        visionRays = calcVisionRays (antPos ant) (antAngle ant) antVisionAngle antVisionResolution antVisionMaxDistance wallRects
+    let visionRays = calcVisionRays (antPos ant) (antAngle ant) antVisionAngle antVisionResolution antVisionMaxDistance walls
     in  ant{antVisionRays = visionRays}
 
 
 -- -------------------------------- Collision ------------------------------- --
-
-filterWalls :: [Entity] -> [Entity]
-filterWalls es = filter isWall es
-    where
-        isWall :: Entity -> Bool
-        isWall = \case
-            WallE _ -> True
-            _ -> False
-
 
 canGoThere :: Vector2 -> Rectangle -> Bool
 canGoThere (Vector2 x y) (Rectangle rx ry rw rh) =
     x < rx || x > rx + rw || y < ry || y > ry + rh
 
 
-checkWallCollision :: [Entity] -> Vector2 -> Bool
-checkWallCollision walls nextPos =
-    all
-        ( \case
-            WallE rect -> canGoThere nextPos rect
-            _ -> False
-        )
-        walls
+checkWallCollision :: [Rectangle] -> Vector2 -> Bool
+checkWallCollision walls nextPos = all (canGoThere nextPos) walls
 
 
 -- -------------------------------------------------------------------------- --
@@ -483,30 +466,22 @@ initWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
         playerAntEntity = PlayerAntE (mkPlayerAnt screenCenterW screenCenterH seed)
-        testWall1 = WallE (Rectangle 200 200 500 300)
-        testWall2 = WallE (Rectangle 100 300 1000 50)
-        testWall3 = WallE (Rectangle 500 600 50 50)
+        testWall1 = Rectangle 200 200 500 300
+        testWall2 = Rectangle 100 300 1000 50
+        testWall3 = Rectangle 500 600 50 50
+        walls = [testWall1, testWall2, testWall3] ++ borderWalls
         testPheromone = PheromoneE (Circle (Vector2 500 600) 10)
-        entities =
-            sortByDrawOrder
-                ( [ playerAntEntity,
-                    testWall1,
-                    testWall2,
-                    testWall3,
-                    testPheromone
-                  ]
-                    ++ borderWalls
-                )
+        entities = sortByDrawOrder [playerAntEntity, testPheromone]
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture entities True (Walls [] Nothing)
+    return $ World window antTexture entities True walls Nothing
 
 
 handleInput :: World -> IO World
-handleInput (World wr tex entities renderVisionRays walls) = do
+handleInput (World wr tex entities renderVisionRays walls wbd) = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
@@ -529,22 +504,20 @@ handleInput (World wr tex entities renderVisionRays walls) = do
                     PheromoneE _ -> e
                     FoodE _ -> e
                     NestE _ -> e
-                    WallE _ -> e
                 )
                 entities
-    return (World wr tex entities' toggleVisionRays walls)
+    return (World wr tex entities' toggleVisionRays walls wbd)
 
 
 updateWorld :: World -> World
-updateWorld (World wr antTexture entities renderVisionRays walls) =
-    let walls' = filterWalls entities
-        entities' =
+updateWorld (World wr antTexture entities renderVisionRays walls wbd) =
+    let entities' =
             map
                 ( \e -> case e of
                     PlayerAntE ant ->
                         ant
-                            & driveAnt walls'
-                            & updateVisionRays walls'
+                            & driveAnt walls
+                            & updateVisionRays walls
                             & cycleAntSprite
                             & wrapAroundAntRaylib
                             & PlayerAntE
@@ -553,14 +526,13 @@ updateWorld (World wr antTexture entities renderVisionRays walls) =
                     PheromoneE _ -> e
                     FoodE _ -> e
                     NestE _ -> e
-                    WallE _ -> e
                 )
                 entities
-    in  World wr antTexture entities' renderVisionRays walls
+    in  World wr antTexture entities' renderVisionRays walls wbd
 
 
 renderWorld :: World -> IO ()
-renderWorld (World wr antTexture entities renderVisionRays walls) = do
+renderWorld (World wr antTexture entities renderVisionRays walls wbd) = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
 
@@ -573,7 +545,8 @@ renderWorld (World wr antTexture entities renderVisionRays walls) = do
             PheromoneE (Circle pos r) -> drawCircleV pos r blue
             FoodE (Circle pos r) -> drawCircleV pos r green
             NestE (Circle pos r) -> drawCircleV pos r red
-            WallE rect -> drawRectangleRec rect wallColor
+
+        forM_ walls $ \wall -> drawRectangleRec wall wallColor
 
         drawFPS 10 10
     where

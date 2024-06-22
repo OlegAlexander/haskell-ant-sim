@@ -5,9 +5,9 @@ import Control.Monad (unless)
 
 gameLoop :: (w -> IO w) -> (w -> w) -> (w -> IO ()) -> IO Bool -> w -> IO ()
 gameLoop handleInputFunc updateFunc renderFunc shouldExitFunc world = do
-    world' <- handleInputFunc world
     shouldExit <- shouldExitFunc
     unless shouldExit $ do
+        world' <- handleInputFunc world
         let world'' = updateFunc world'
         renderFunc world''
         gameLoop handleInputFunc updateFunc renderFunc shouldExitFunc world''

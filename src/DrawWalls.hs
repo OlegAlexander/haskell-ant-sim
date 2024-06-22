@@ -22,7 +22,7 @@ import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, lightGray)
 import Shared (gameLoop)
 import System.Random (randomIO)
-import Types (WallDrawingState (..), Walls (..), World (..))
+import Types (WallDrawingState (..), World (..))
 
 
 getWallDrawingState :: Bool -> Maybe (Vector2, Vector2) -> WallDrawingState
@@ -48,32 +48,31 @@ initWallsWorld = do
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    let walls = Walls [] Nothing
-    return $ World window antTexture [] True walls
+    return $ World window antTexture [] True [] Nothing
 
 
 handleWallInput :: World -> IO World
 handleWallInput w = do
     wPressed <- isKeyPressed KeyW
     let walls = wWalls w
-        wbd = wallBeingDrawn walls
+        wbd = wWallBeingDrawn w
         status = getWallDrawingState wPressed wbd
     case status of
         Idle -> return w
         Started -> do
             mousePos <- getMousePosition
-            return w{wWalls = walls{wallBeingDrawn = Just (mousePos, mousePos)}}
+            return w{wWalls = walls, wWallBeingDrawn = Just (mousePos, mousePos)}
         InProgress -> do
             mousePos <- getMousePosition
-            return w{wWalls = walls{wallBeingDrawn = Just (fst $ fromJust wbd, mousePos)}}
+            return w{wWalls = walls, wWallBeingDrawn = Just (fst $ fromJust wbd, mousePos)}
         Finished -> do
             let (start, end) = fromJust wbd
                 newWall = calcBoundingBox start end
             if bigEnough newWall
                 then
-                    return w{wWalls = walls{unWalls = newWall : unWalls walls, wallBeingDrawn = Nothing}}
+                    return w{wWalls = newWall : walls, wWallBeingDrawn = Nothing}
                 else
-                    return w{wWalls = walls{unWalls = unWalls walls, wallBeingDrawn = Nothing}}
+                    return w{wWalls = walls, wWallBeingDrawn = Nothing}
 
 
 updateWallsWorld :: World -> World
@@ -83,12 +82,13 @@ updateWallsWorld = id
 renderWallsWorld :: World -> IO ()
 renderWallsWorld w = do
     let walls = wWalls w
+        wbd = wWallBeingDrawn w
     drawing $ do
         clearBackground lightGray
         drawText "Press 'w' to draw walls" 10 10 30 blue
-        forM_ (unWalls walls) $ \wall -> drawRectangleRec wall wallColor
-        when (isJust $ wallBeingDrawn walls) $ do
-            let (start, end) = fromJust $ wallBeingDrawn walls
+        forM_ walls $ \wall -> drawRectangleRec wall wallColor
+        when (isJust $ wbd) $ do
+            let (start, end) = fromJust $ wbd
                 wall = calcBoundingBox start end
             drawRectangleRec wall wallColor
             drawRectangleLinesEx wall 2 blue
