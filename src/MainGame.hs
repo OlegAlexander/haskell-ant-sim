@@ -507,8 +507,7 @@ handleInput (World wr tex entities renderVisionRays walls wbd) = do
                     NestE _ -> e
                 )
                 entities
-        world' = World wr tex entities' toggleVisionRays walls wbd
-    handleWallInput world'
+    handleWallInput $ World wr tex entities' toggleVisionRays walls wbd
 
 
 updateWorld :: World -> World
