@@ -18,32 +18,51 @@ common options
 library
     import:             options
     hs-source-dirs:     src
-    exposed-modules:    FlatlandRenderer,
-                        DrawWalls,
-                        Shared,
-                        Types,
-                        Constants,
-                        MainGame
 
+
+library shared-lib
+    import:             options
+    hs-source-dirs:     src/shared-lib
+    exposed-modules:    Shared,
+                        Types,
+                        Constants
+
+library draw-walls-lib
+    import:             options
+    hs-source-dirs:     src/draw-walls-lib
+    exposed-modules:    DrawWalls
+    build-depends:      shared-lib
+
+
+library flatland-renderer-lib
+    import:             options
+    hs-source-dirs:     src/flatland-renderer-lib
+    exposed-modules:    FlatlandRenderer
+    build-depends:      shared-lib
+
+library main-game-lib
+    import:             options
+    hs-source-dirs:     src/main-game-lib
+    exposed-modules:    MainGame
+    build-depends:      shared-lib,
+                        draw-walls-lib,
+                        flatland-renderer-lib
 
 executable main
     import:         options
     main-is:        Main.hs
-    build-depends:  haskell-ant-sim
+    build-depends:  main-game-lib
     hs-source-dirs: app
 
 executable draw-walls
     import:         options
     main-is:        DrawWallsDriver.hs
-    other-modules:  DrawWalls,
-                    Shared,
-                    Types,
-                    Constants
-    hs-source-dirs: app, src
+    build-depends:  draw-walls-lib
+    hs-source-dirs: app
 
 
 executable flatland-renderer
     import:         options
     main-is:        FlatlandRendererDriver.hs
-    build-depends:  haskell-ant-sim
+    build-depends:  flatland-renderer-lib
     hs-source-dirs: app
