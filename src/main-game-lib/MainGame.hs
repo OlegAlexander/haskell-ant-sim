@@ -83,7 +83,7 @@ import Types (
     Sprite (LeftSprite, RightSprite),
     VisionRay (VisionRay, rayLength),
     WheelPos (Center, TurnLeft, TurnRight),
-    World (World),
+    World (..),
  )
 
 
@@ -478,16 +478,16 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture entities True walls Nothing
+    return $ World window antTexture entities True walls Nothing []
 
 
 handleInput :: World -> IO World
-handleInput (World wr tex entities renderVisionRays walls wbd) = do
+handleInput w = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
     visionRays <- isKeyPressed KeyV
-    let toggleVisionRays = visionRays /= renderVisionRays
+    let toggleVisionRays = visionRays /= wRenderVisionRays w
         entities' =
             map
                 ( \e -> case e of
@@ -506,13 +506,15 @@ handleInput (World wr tex entities renderVisionRays walls wbd) = do
                     FoodE _ -> e
                     NestE _ -> e
                 )
-                entities
-    handleWallInput $ World wr tex entities' toggleVisionRays walls wbd
+                (wEntities w)
+    handleWallInput $ w{wEntities = entities', wRenderVisionRays = toggleVisionRays}
 
 
 updateWorld :: World -> World
-updateWorld (World wr antTexture entities renderVisionRays walls wbd) =
-    let entities' =
+updateWorld w =
+    let entities = wEntities w
+        walls = wWalls w
+        entities' =
             map
                 ( \e -> case e of
                     PlayerAntE ant ->
@@ -529,19 +531,42 @@ updateWorld (World wr antTexture entities renderVisionRays walls wbd) =
                     NestE _ -> e
                 )
                 entities
-        world' = World wr antTexture entities' renderVisionRays walls wbd
-    in  updateWallsWorld world'
+    in  updateWallsWorld $ w{wEntities = entities'}
 
 
 renderWorld :: World -> IO ()
-renderWorld w@(World wr antTexture entities renderVisionRays walls wbd) = do
+renderWorld w = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
+
+    let wr = wWindowResources w
+        antTexture = wAntTexture w
+        entities = wEntities w
+        renderVisionRays = wRenderVisionRays w
 
     drawing $ do
         clearBackground lightGray
         forM_ entities $ \case
-            PlayerAntE ant -> renderPlayerAnt ant
+            PlayerAntE ant -> do
+                let texW = texture'width antTexture
+                    texH = texture'height antTexture
+                    spriteRect = case antSprite ant of
+                        LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
+                        RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
+                    antVision = renderPlayerAntVision 200 ant
+                    visionRayLines = antVisionRays ant & map visionRayToLine
+                when renderVisionRays $ do
+                    forM_ visionRayLines $ \(start, end) -> do
+                        drawLineV start end green
+                drawTextureCentered
+                    antTexture
+                    spriteRect
+                    antScale
+                    (antAngle ant)
+                    (antPos ant)
+                    white
+                antVisionTexture <- loadTextureFromImage antVision wr
+                drawTextureV antVisionTexture (Vector2 200 0) white
             AntE -> return ()
             DeadAntE -> return ()
             PheromoneE (Circle pos r) -> drawCircleV pos r blue
@@ -551,28 +576,6 @@ renderWorld w@(World wr antTexture entities renderVisionRays walls wbd) = do
         renderWallsWorld w
 
         drawFPS 10 10
-    where
-        renderPlayerAnt :: PlayerAnt -> IO ()
-        renderPlayerAnt ant = do
-            let texW = texture'width antTexture
-                texH = texture'height antTexture
-                spriteRect = case antSprite ant of
-                    LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
-                    RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
-                antVision = renderPlayerAntVision 200 ant
-                visionRayLines = antVisionRays ant & map visionRayToLine
-            when renderVisionRays $ do
-                forM_ visionRayLines $ \(start, end) -> do
-                    drawLineV start end green
-            drawTextureCentered
-                antTexture
-                spriteRect
-                antScale
-                (antAngle ant)
-                (antPos ant)
-                white
-            antVisionTexture <- loadTextureFromImage antVision wr
-            drawTextureV antVisionTexture (Vector2 200 0) white
 
 
 main :: IO ()

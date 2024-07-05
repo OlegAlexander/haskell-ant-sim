@@ -77,5 +77,6 @@ data World = World
       wEntities :: [Entity],
       wRenderVisionRays :: Bool,
       wWalls :: [Rectangle],
-      wWallBeingDrawn :: Maybe (Vector2, Vector2)
+      wWallBeingDrawn :: Maybe (Vector2, Vector2),
+      wVisionRays :: [VisionRay]
     }
