@@ -1,5 +1,6 @@
 module Types where
 
+import Data.IntMap.Strict (IntMap)
 import Raylib.Types (Rectangle, Texture, Vector2)
 import Raylib.Util (WindowResources)
 import System.Random (StdGen)
@@ -78,5 +79,5 @@ data World = World
       wRenderVisionRays :: Bool,
       wWalls :: [Rectangle],
       wWallBeingDrawn :: Maybe (Vector2, Vector2),
-      wVisionRays :: [VisionRay]
+      wVisionRays :: IntMap VisionRay
     }

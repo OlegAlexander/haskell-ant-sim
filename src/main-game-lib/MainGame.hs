@@ -35,6 +35,7 @@ import Constants (
     title,
     wallColor,
  )
+import Data.IntMap.Strict qualified as IntMap
 import DrawWalls (handleWallInput, renderWallsWorld, updateWallsWorld)
 import GHC.Float (int2Float)
 import Raylib.Core (
@@ -478,7 +479,7 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture entities True walls Nothing []
+    return $ World window antTexture entities True walls Nothing IntMap.empty
 
 
 handleInput :: World -> IO World

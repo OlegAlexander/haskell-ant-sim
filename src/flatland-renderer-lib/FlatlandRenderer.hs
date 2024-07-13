@@ -17,6 +17,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 -- import Debug.Trace (trace, traceShow)
 
 import Constants (antPng, antVisionAngle, antVisionMaxDistance, antVisionResolution, borderWallThickness, fps, screenHeight, screenWidth, wallColor)
+import Data.IntMap.Strict qualified as IntMap
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -141,7 +142,7 @@ mkPlayerAnt x y seed =
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
 visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength) =
-    let rad = angle * deg2Rad
+    let rad = (-angle) * deg2Rad
         x = posX + rayLength * cos rad
         y = posY + rayLength * sin rad
     in  (pos, Vector2 x y)
@@ -153,7 +154,7 @@ initFRWorld :: IO World
 initFRWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
-        visionRay = VisionRay (Vector2 screenCenterW screenCenterH) 0 antVisionMaxDistance
+        visionRay = VisionRay (Vector2 screenCenterW screenCenterH) 90 antVisionMaxDistance
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 500 600 50 50
@@ -163,7 +164,7 @@ initFRWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture [] True walls Nothing [visionRay]
+    return $ World window antTexture [] True walls Nothing (IntMap.fromList [(1, visionRay)])
 
 
 handleFRInput :: World -> IO World
@@ -174,13 +175,12 @@ handleFRInput w = do
     right <- isKeyDown KeyRight
     vKey <- isKeyPressed KeyV
     let toggleVisionRays = vKey /= wRenderVisionRays w
-        walls = wWalls w
         visionRays' = wVisionRays w
     return w{wVisionRays = visionRays', wRenderVisionRays = toggleVisionRays}
 
 
 updateFRWorld :: World -> World
-updateFRWorld w = w
+updateFRWorld = id
 
 
 renderFRWorld :: World -> IO ()
@@ -192,9 +192,9 @@ renderFRWorld w = do
         renderVisionRays = wRenderVisionRays w
     drawing $ do
         clearBackground lightGray
-
+        forM_ walls $ \wall -> drawRectangleRec wall wallColor
         when renderVisionRays $ do
-            let visionLines = map visionRayToLine rays
+            let visionLines = IntMap.map visionRayToLine rays
             forM_ visionLines $ \(start, end) -> drawLineV start end red
         drawFPS 10 10
 

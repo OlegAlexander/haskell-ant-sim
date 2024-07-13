@@ -2,6 +2,7 @@ module DrawWalls where
 
 import Constants (antPng, minWallSize, wallColor)
 import Control.Monad (forM_, when)
+import Data.IntMap.Strict qualified as IntMap
 import Data.Maybe (fromJust, isJust, isNothing)
 import Raylib.Core (
     clearBackground,
@@ -18,8 +19,8 @@ import Raylib.Core.Textures (loadTexture)
 import Raylib.Types (KeyboardKey (KeyW), Rectangle (Rectangle), Vector2 (Vector2))
 import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (blue, lightGray)
-import Shared (gameLoop)
+import Raylib.Util.Colors (black, blue, lightGray)
+import Shared (System (..), gameLoopSys)
 import Types (WallDrawingState (..), World (..))
 
 
@@ -46,7 +47,7 @@ initWallsWorld = do
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture [] True [] Nothing []
+    return $ World window antTexture [] True [] Nothing IntMap.empty
 
 
 handleWallInput :: World -> IO World
@@ -77,14 +78,6 @@ updateWallsWorld :: World -> World
 updateWallsWorld = id
 
 
-renderWallsWorldDriver :: World -> IO ()
-renderWallsWorldDriver w = do
-    drawing $ do
-        clearBackground lightGray
-        drawText "Press 'w' to draw walls" 10 10 30 blue
-        renderWallsWorld w
-
-
 renderWallsWorld :: World -> IO ()
 renderWallsWorld w = do
     let walls = wWalls w
@@ -97,6 +90,38 @@ renderWallsWorld w = do
         drawRectangleLinesEx wall 2 blue
 
 
+renderWallsBorderWorld :: World -> IO ()
+renderWallsBorderWorld w = do
+    let walls = wWalls w
+    forM_ walls $ \wall -> drawRectangleLinesEx wall 4 black
+
+
+drawWallsSys1 :: System World
+drawWallsSys1 =
+    System
+        { handleInput = handleWallInput,
+          update = updateWallsWorld,
+          render = renderWallsWorld
+        }
+
+
+drawWallsSys2 :: System World
+drawWallsSys2 = mempty{render = renderWallsBorderWorld}
+
+
+drawWallsSysWrapped :: System World
+drawWallsSysWrapped =
+    let allSystems = drawWallsSys1 <> drawWallsSys2
+    in  System
+            { handleInput = handleInput allSystems,
+              update = update allSystems,
+              render = \w -> drawing $ do
+                clearBackground lightGray
+                drawText "Press w to draw walls" 10 10 30 blue
+                render allSystems w
+            }
+
+
 driveDrawWalls :: IO ()
 driveDrawWalls =
-    initWallsWorld >>= gameLoop handleWallInput updateWallsWorld renderWallsWorldDriver windowShouldClose
+    initWallsWorld >>= gameLoopSys drawWallsSysWrapped windowShouldClose
