@@ -22,24 +22,14 @@ instance Semigroup (System w) where
 
 instance Monoid (System w) where
     mempty :: System w
-    mempty = System{handleInput = return, update = id, render = \_ -> return ()}
+    mempty = System return id (\_ -> return ())
 
 
-gameLoopSys :: System w -> IO Bool -> w -> IO ()
-gameLoopSys sys@System{handleInput, update, render} shouldExitFunc world = do
+gameLoop :: System w -> IO Bool -> w -> IO ()
+gameLoop sys@System{handleInput, update, render} shouldExitFunc world = do
     shouldExit <- shouldExitFunc
     unless shouldExit $ do
         world' <- handleInput world
         let world'' = update world'
         render world''
-        gameLoopSys sys shouldExitFunc world''
-
-
-gameLoop :: (w -> IO w) -> (w -> w) -> (w -> IO ()) -> IO Bool -> w -> IO ()
-gameLoop handleInputFunc updateFunc renderFunc shouldExitFunc world = do
-    shouldExit <- shouldExitFunc
-    unless shouldExit $ do
-        world' <- handleInputFunc world
-        let world'' = updateFunc world'
-        renderFunc world''
-        gameLoop handleInputFunc updateFunc renderFunc shouldExitFunc world''
+        gameLoop sys shouldExitFunc world''

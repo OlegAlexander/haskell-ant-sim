@@ -6,8 +6,6 @@ module MainGame where
 
 -- ------------------------------ PART Imports ------------------------------ --
 
-import Shared (gameLoop)
-
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
@@ -65,6 +63,7 @@ import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompres
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, green, lightGray, red, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
+import Shared (System (..), gameLoop)
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (
     Circle (Circle),
@@ -482,8 +481,8 @@ initWorld = do
     return $ World window antTexture entities True walls Nothing IntMap.empty
 
 
-handleInput :: World -> IO World
-handleInput w = do
+handleWorldInput :: World -> IO World
+handleWorldInput w = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
@@ -579,5 +578,9 @@ renderWorld w = do
         drawFPS 10 10
 
 
+mainGameSys :: System World
+mainGameSys = System handleWorldInput updateWorld renderWorld
+
+
 main :: IO ()
-main = initWorld >>= gameLoop handleInput updateWorld renderWorld windowShouldClose
+main = initWorld >>= gameLoop mainGameSys windowShouldClose

@@ -6,7 +6,7 @@ module FlatlandRenderer where
 
 -- ------------------------------ PART Imports ------------------------------ --
 
-import Shared (gameLoop)
+import Shared (System (..), gameLoop)
 
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
@@ -199,6 +199,10 @@ renderFRWorld w = do
         drawFPS 10 10
 
 
+flatlandRendererSys :: System World
+flatlandRendererSys = System handleFRInput updateFRWorld renderFRWorld
+
+
 driveFlatlandRenderer :: IO ()
 driveFlatlandRenderer =
-    initFRWorld >>= gameLoop handleFRInput updateFRWorld renderFRWorld windowShouldClose
+    initFRWorld >>= gameLoop flatlandRendererSys windowShouldClose

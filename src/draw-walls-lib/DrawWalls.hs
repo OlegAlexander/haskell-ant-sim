@@ -20,7 +20,7 @@ import Raylib.Types (KeyboardKey (KeyW), Rectangle (Rectangle), Vector2 (Vector2
 import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, lightGray)
-import Shared (System (..), gameLoopSys)
+import Shared (System (..), gameLoop)
 import Types (WallDrawingState (..), World (..))
 
 
@@ -112,10 +112,8 @@ drawWallsSys2 = mempty{render = renderWallsBorderWorld}
 drawWallsSysWrapped :: System World
 drawWallsSysWrapped =
     let allSystems = drawWallsSys1 <> drawWallsSys2
-    in  System
-            { handleInput = handleInput allSystems,
-              update = update allSystems,
-              render = \w -> drawing $ do
+    in  allSystems
+            { render = \w -> drawing $ do
                 clearBackground lightGray
                 drawText "Press w to draw walls" 10 10 30 blue
                 render allSystems w
@@ -124,4 +122,4 @@ drawWallsSysWrapped =
 
 driveDrawWalls :: IO ()
 driveDrawWalls =
-    initWallsWorld >>= gameLoopSys drawWallsSysWrapped windowShouldClose
+    initWallsWorld >>= gameLoop drawWallsSysWrapped windowShouldClose
