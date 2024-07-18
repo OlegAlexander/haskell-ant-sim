@@ -47,7 +47,7 @@ import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, green, lightGray, red, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
 import System.Random (mkStdGen, randomIO, randomR)
-import Types (Circle (..), Entity (..), Mode (..), PlayerAnt (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
+import Types (Ant (..), Circle (..), Entity (..), Mode (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
 
 -- ------------------------- PART Flatland Renderer ------------------------- --
@@ -116,7 +116,7 @@ depthMap2Image height depthMap =
     in  Image pixels width height 1 PixelFormatUncompressedGrayscale
 
 
-renderPlayerAntVision :: Int -> PlayerAnt -> Image
+renderPlayerAntVision :: Int -> Ant -> Image
 renderPlayerAntVision height ant =
     let depthMap = antVisionRays ant & map (normalizeDistance . rayLength)
     in  depthMap2Image height depthMap
@@ -124,7 +124,7 @@ renderPlayerAntVision height ant =
 
 -- --------------------------------- Vision --------------------------------- --
 
-updateVisionRays :: [Rectangle] -> PlayerAnt -> PlayerAnt
+updateVisionRays :: [Rectangle] -> Ant -> Ant
 updateVisionRays walls ant =
     let visionRays = calcVisionRays (antPos ant) (antAngle ant) antVisionAngle antVisionResolution antVisionMaxDistance walls
     in  ant{antVisionRays = visionRays}
@@ -132,10 +132,10 @@ updateVisionRays walls ant =
 
 -- ---------------------------- PART Constructors --------------------------- --
 
-mkPlayerAnt :: Float -> Float -> Int -> PlayerAnt
+mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  PlayerAnt (Vector2 x y) 0 0 SeekFood rng False Center LeftSprite []
+    in  Ant (Vector2 x y) 0 0 SeekFood rng False Center LeftSprite []
 
 
 -- ------------------------------- PART Utils ------------------------------- --
@@ -164,7 +164,7 @@ initFRWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture [] True walls Nothing (IntMap.fromList [(1, visionRay)])
+    return $ World window antTexture [] True walls Nothing
 
 
 handleFRInput :: World -> IO World
@@ -175,8 +175,7 @@ handleFRInput w = do
     right <- isKeyDown KeyRight
     vKey <- isKeyPressed KeyV
     let toggleVisionRays = vKey /= wRenderVisionRays w
-        visionRays' = wVisionRays w
-    return w{wVisionRays = visionRays', wRenderVisionRays = toggleVisionRays}
+    return w{wRenderVisionRays = toggleVisionRays}
 
 
 updateFRWorld :: World -> World
@@ -187,15 +186,14 @@ renderFRWorld :: World -> IO ()
 renderFRWorld w = do
     f11Pressed <- isKeyPressed KeyF11
     when f11Pressed toggleFullscreen
-    let rays = wVisionRays w
-        walls = wWalls w
+    let walls = wWalls w
         renderVisionRays = wRenderVisionRays w
     drawing $ do
         clearBackground lightGray
         forM_ walls $ \wall -> drawRectangleRec wall wallColor
-        when renderVisionRays $ do
-            let visionLines = IntMap.map visionRayToLine rays
-            forM_ visionLines $ \(start, end) -> drawLineV start end red
+        -- when renderVisionRays $ do
+        --     let visionLines = IntMap.map visionRayToLine rays
+        --     forM_ visionLines $ \(start, end) -> drawLineV start end red
         drawFPS 10 10
 
 

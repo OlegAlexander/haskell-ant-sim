@@ -21,7 +21,7 @@ data VisionRay = VisionRay
     deriving (Eq, Show)
 
 
-data PlayerAnt = PlayerAnt
+data Ant = Ant
     { antPos :: Vector2,
       antAngle :: Float, -- in degrees
       antSpeed :: Float,
@@ -36,7 +36,7 @@ data PlayerAnt = PlayerAnt
 
 
 data Entity
-    = PlayerAntE PlayerAnt
+    = PlayerAntE Ant
     | AntE
     | DeadAntE
     | PheromoneE Circle
@@ -78,6 +78,5 @@ data World = World
       wEntities :: [Entity],
       wRenderVisionRays :: Bool,
       wWalls :: [Rectangle],
-      wWallBeingDrawn :: Maybe (Vector2, Vector2),
-      wVisionRays :: IntMap VisionRay
+      wWallBeingDrawn :: Maybe (Vector2, Vector2)
     }

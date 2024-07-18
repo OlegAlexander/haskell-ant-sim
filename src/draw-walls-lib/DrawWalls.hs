@@ -47,7 +47,7 @@ initWallsWorld = do
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture [] True [] Nothing IntMap.empty
+    return $ World window antTexture [] True [] Nothing
 
 
 handleWallInput :: World -> IO World
