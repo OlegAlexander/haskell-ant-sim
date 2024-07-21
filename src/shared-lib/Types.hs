@@ -45,20 +45,6 @@ data Entity
     deriving (Eq, Show)
 
 
-instance Ord Entity where
-    compare :: Entity -> Entity -> Ordering
-    compare e1 e2 = compare (drawOrder e1) (drawOrder e2)
-        where
-            drawOrder :: Entity -> Int
-            drawOrder = \case
-                PlayerAntE _ -> 7
-                AntE -> 6
-                DeadAntE -> 5
-                PheromoneE _ -> 4
-                FoodE _ -> 3
-                NestE _ -> 2
-
-
 data Mode = SeekFood | SeekNest deriving (Eq, Show)
 
 
@@ -75,7 +61,7 @@ data WallDrawingState = Idle | Started | InProgress | Finished
 data World = World
     { wWindowResources :: WindowResources,
       wAntTexture :: Texture,
-      wEntities :: [Entity],
+      wPlayerAnt :: Ant,
       wRenderVisionRays :: Bool,
       wWalls :: [Rectangle],
       wWallBeingDrawn :: Maybe (Vector2, Vector2)

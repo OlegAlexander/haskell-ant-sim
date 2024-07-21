@@ -21,7 +21,8 @@ import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, lightGray)
 import Shared (System (..), gameLoop)
-import Types (WallDrawingState (..), World (..))
+import System.Random (mkStdGen)
+import Types (Ant (..), Mode (..), Sprite (..), WallDrawingState (..), WheelPos (..), World (..))
 
 
 getWallDrawingState :: Bool -> Maybe (Vector2, Vector2) -> WallDrawingState
@@ -47,7 +48,9 @@ initWallsWorld = do
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture [] True [] Nothing
+    let rng = mkStdGen 0
+        playerAnt = Ant (Vector2 0 0) 0 0 SeekFood rng False Center LeftSprite []
+    return $ World window antTexture playerAnt True [] Nothing
 
 
 handleWallInput :: World -> IO World
@@ -74,10 +77,6 @@ handleWallInput w = do
                     return w{wWalls = walls, wWallBeingDrawn = Nothing}
 
 
-updateWallsWorld :: World -> World
-updateWallsWorld = id
-
-
 renderWallsWorld :: World -> IO ()
 renderWallsWorld w = do
     let walls = wWalls w
@@ -98,9 +97,8 @@ renderWallsBorderWorld w = do
 
 drawWallsSys1 :: System World
 drawWallsSys1 =
-    System
+    mempty
         { handleInput = handleWallInput,
-          update = updateWallsWorld,
           render = renderWallsWorld
         }
 

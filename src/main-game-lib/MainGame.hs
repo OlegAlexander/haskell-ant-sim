@@ -33,8 +33,8 @@ import Constants (
     title,
     wallColor,
  )
-import Data.IntMap.Strict qualified as IntMap
-import DrawWalls (drawWallsSys1, handleWallInput, renderWallsWorld, updateWallsWorld)
+import DrawWalls (drawWallsSys1)
+
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -47,7 +47,7 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (drawCircleV, drawLineV, drawRectangleRec)
+import Raylib.Core.Shapes (drawLineV)
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (drawTexturePro, drawTextureV, loadTexture, loadTextureFromImage)
 import Raylib.Types (
@@ -61,13 +61,12 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (blue, green, lightGray, red, white)
+import Raylib.Util.Colors (green, lightGray, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
 import Shared (System (..), gameLoop)
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (
     Ant (..),
-    Circle (Circle),
     Entity (..),
     Mode (SeekFood),
     Sprite (LeftSprite, RightSprite),
@@ -437,10 +436,6 @@ drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y)
         color
 
 
-sortByDrawOrder :: [Entity] -> [Entity]
-sortByDrawOrder = sort
-
-
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
 visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength) =
     let rad = angle * deg2Rad
@@ -456,19 +451,17 @@ initWorld = do
     seed <- randomIO
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
-        antEntity = PlayerAntE (mkPlayerAnt screenCenterW screenCenterH seed)
+        playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 500 600 50 50
         walls = [testWall1, testWall2, testWall3] ++ borderWalls
-        testPheromone = PheromoneE (Circle (Vector2 500 600) 10)
-        entities = sortByDrawOrder [antEntity, testPheromone]
     window <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture entities True walls Nothing
+    return $ World window antTexture playerAnt True walls Nothing
 
 
 handleWorldInput :: World -> IO World
@@ -478,50 +471,27 @@ handleWorldInput w = do
     right <- isKeyDown KeyRight
     visionRays <- isKeyPressed KeyV
     let toggleVisionRays = visionRays /= wRenderVisionRays w
-        entities' =
-            map
-                ( \e -> case e of
-                    PlayerAntE ant ->
-                        PlayerAntE
-                            ant
-                                { antGo = go,
-                                  antWheelPos = case (left, right) of
-                                    (True, False) -> TurnLeft
-                                    (False, True) -> TurnRight
-                                    _ -> Center
-                                }
-                    AntE -> e
-                    DeadAntE -> e
-                    PheromoneE _ -> e
-                    FoodE _ -> e
-                    NestE _ -> e
-                )
-                (wEntities w)
-    return w{wEntities = entities', wRenderVisionRays = toggleVisionRays}
+        playerAnt' =
+            (wPlayerAnt w)
+                { antGo = go,
+                  antWheelPos = case (left, right) of
+                    (True, False) -> TurnLeft
+                    (False, True) -> TurnRight
+                    _ -> Center
+                }
+    return w{wPlayerAnt = playerAnt', wRenderVisionRays = toggleVisionRays}
 
 
 updateWorld :: World -> World
 updateWorld w =
-    let entities = wEntities w
-        walls = wWalls w
-        entities' =
-            map
-                ( \e -> case e of
-                    PlayerAntE ant ->
-                        ant
-                            & driveAnt walls
-                            & updateVisionRays walls
-                            & cycleAntSprite
-                            & wrapAroundAntRaylib
-                            & PlayerAntE
-                    AntE -> e
-                    DeadAntE -> e
-                    PheromoneE _ -> e
-                    FoodE _ -> e
-                    NestE _ -> e
-                )
-                entities
-    in  w{wEntities = entities'}
+    let walls = wWalls w
+        playerAnt' =
+            wPlayerAnt w
+                & driveAnt walls
+                & updateVisionRays walls
+                & cycleAntSprite
+                & wrapAroundAntRaylib
+    in  w{wPlayerAnt = playerAnt'}
 
 
 renderWorld :: World -> IO ()
@@ -531,35 +501,27 @@ renderWorld w = do
 
     let wr = wWindowResources w
         antTexture = wAntTexture w
-        entities = wEntities w
         renderVisionRays = wRenderVisionRays w
-
-    forM_ entities $ \case
-        PlayerAntE ant -> do
-            let texW = texture'width antTexture
-                texH = texture'height antTexture
-                spriteRect = case antSprite ant of
-                    LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
-                    RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
-                antVision = renderAntVision 200 ant
-                visionRayLines = antVisionRays ant & map visionRayToLine
-            when renderVisionRays $ do
-                forM_ visionRayLines $ \(start, end) -> do
-                    drawLineV start end green
-            drawTextureCentered
-                antTexture
-                spriteRect
-                antScale
-                (antAngle ant)
-                (antPos ant)
-                white
-            antVisionTexture <- loadTextureFromImage antVision wr
-            drawTextureV antVisionTexture (Vector2 200 0) white
-        AntE -> return ()
-        DeadAntE -> return ()
-        PheromoneE (Circle pos r) -> drawCircleV pos r blue
-        FoodE (Circle pos r) -> drawCircleV pos r green
-        NestE (Circle pos r) -> drawCircleV pos r red
+        playerAnt = wPlayerAnt w
+        texW = texture'width antTexture
+        texH = texture'height antTexture
+        spriteRect = case antSprite playerAnt of
+            LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
+            RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
+        antVision = renderAntVision 200 playerAnt
+        visionRayLines = antVisionRays playerAnt & map visionRayToLine
+    when renderVisionRays $ do
+        forM_ visionRayLines $ \(start, end) -> do
+            drawLineV start end green
+    drawTextureCentered
+        antTexture
+        spriteRect
+        antScale
+        (antAngle playerAnt)
+        (antPos playerAnt)
+        white
+    antVisionTexture <- loadTextureFromImage antVision wr
+    drawTextureV antVisionTexture (Vector2 200 0) white
 
 
 mainGameSys :: System World

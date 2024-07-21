@@ -164,7 +164,9 @@ initFRWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture [] True walls Nothing
+    let rng = mkStdGen 0
+        playerAnt = Ant (Vector2 0 0) 0 0 SeekFood rng False Center LeftSprite [visionRay]
+    return $ World window antTexture playerAnt True walls Nothing
 
 
 handleFRInput :: World -> IO World
@@ -188,12 +190,13 @@ renderFRWorld w = do
     when f11Pressed toggleFullscreen
     let walls = wWalls w
         renderVisionRays = wRenderVisionRays w
+        rays = wPlayerAnt w & antVisionRays
     drawing $ do
         clearBackground lightGray
         forM_ walls $ \wall -> drawRectangleRec wall wallColor
-        -- when renderVisionRays $ do
-        --     let visionLines = IntMap.map visionRayToLine rays
-        --     forM_ visionLines $ \(start, end) -> drawLineV start end red
+        when renderVisionRays $ do
+            let visionLines = map visionRayToLine rays
+            forM_ visionLines $ \(start, end) -> drawLineV start end red
         drawFPS 10 10
 
 
