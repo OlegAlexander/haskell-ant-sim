@@ -16,8 +16,9 @@ import Data.Maybe (fromMaybe, mapMaybe)
 
 -- import Debug.Trace (trace, traceShow)
 
-import Constants (antPng, antVisionAngle, antVisionMaxDistance, antVisionResolution, borderWallThickness, fps, screenHeight, screenWidth, wallColor)
+import Constants (antPng, antStepSize, antVisionAngle, antVisionMaxDistance, antVisionResolution, borderWallThickness, fps, screenHeight, screenWidth, wallColor)
 import Data.IntMap.Strict qualified as IntMap
+import Debug.Trace (trace, traceShow)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -30,7 +31,7 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (drawCircleV, drawLineV, drawRectangleRec)
+import Raylib.Core.Shapes (drawCircleV, drawLineEx, drawLineV, drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (drawTexturePro, drawTextureV, loadTexture, loadTextureFromImage)
 import Raylib.Types (
@@ -44,8 +45,8 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (blue, green, lightGray, red, white)
-import Raylib.Util.Math (deg2Rad, rad2Deg)
+import Raylib.Util.Colors (black, blue, green, lightGray, red, white)
+import Raylib.Util.Math (deg2Rad, rad2Deg, (|+|))
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (Ant (..), Circle (..), Entity (..), Mode (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
@@ -140,12 +141,17 @@ mkPlayerAnt x y seed =
 
 -- ------------------------------- PART Utils ------------------------------- --
 
+getNextPos :: Float -> Float -> Float -> Vector2 -> Vector2
+getNextPos angle speed stepSize (Vector2 x y) =
+    let rad = (-angle) * deg2Rad -- negate angle because of screen space coords
+        x' = x + stepSize * speed * cos rad
+        y' = y + stepSize * speed * sin rad
+    in  Vector2 x' y'
+
+
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
-visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength) =
-    let rad = (-angle) * deg2Rad
-        x = posX + rayLength * cos rad
-        y = posY + rayLength * sin rad
-    in  (pos, Vector2 x y)
+visionRayToLine (VisionRay p1 angle rayLength) =
+    let p2 = getNextPos angle 1 rayLength p1 in (p1, p2)
 
 
 -- ----------------------------- PART Game Loop ----------------------------- --
@@ -165,23 +171,52 @@ initFRWorld = do
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
-        playerAnt = Ant (Vector2 0 0) 0 0 SeekFood rng False Center LeftSprite [visionRay]
+        playerAnt = Ant (Vector2 screenCenterW screenCenterH) 0 0 SeekFood rng False Center LeftSprite [visionRay]
     return $ World window antTexture playerAnt True walls Nothing
 
 
 handleFRInput :: World -> IO World
 handleFRInput w = do
     up <- isKeyDown KeyUp
-    down <- isKeyDown KeyDown
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
     vKey <- isKeyPressed KeyV
     let toggleVisionRays = vKey /= wRenderVisionRays w
-    return w{wRenderVisionRays = toggleVisionRays}
+        playerAnt = wPlayerAnt w
+        playerWheelPos =
+            antWheelPos playerAnt
+                & \_ ->
+                    if right then TurnRight else if left then TurnLeft else Center
+        playerAntGo = up
+    return
+        w
+            { wRenderVisionRays = toggleVisionRays,
+              wPlayerAnt =
+                (wPlayerAnt w)
+                    { antWheelPos = playerWheelPos,
+                      antGo = playerAntGo
+                    }
+            }
 
 
 updateFRWorld :: World -> World
-updateFRWorld = id
+updateFRWorld w =
+    let playerAnt = wPlayerAnt w
+        playerWheelPos = antWheelPos playerAnt
+        playerAntGo = antGo playerAnt
+        playerAntAngle =
+            antAngle playerAnt
+                & \angle ->
+                    case playerWheelPos of
+                        TurnRight -> angle - 5
+                        TurnLeft -> angle + 5
+                        Center -> angle
+                        & \angle' -> angle' `mod'` 360
+        nextPos =
+            if playerAntGo
+                then getNextPos playerAntAngle 1 5 (antPos playerAnt)
+                else antPos playerAnt
+    in  w{wPlayerAnt = playerAnt{antPos = nextPos, antAngle = playerAntAngle}}
 
 
 renderFRWorld :: World -> IO ()
@@ -191,12 +226,17 @@ renderFRWorld w = do
     let walls = wWalls w
         renderVisionRays = wRenderVisionRays w
         rays = wPlayerAnt w & antVisionRays
+        playerAnt = wPlayerAnt w
     drawing $ do
         clearBackground lightGray
         forM_ walls $ \wall -> drawRectangleRec wall wallColor
         when renderVisionRays $ do
             let visionLines = map visionRayToLine rays
             forM_ visionLines $ \(start, end) -> drawLineV start end red
+        drawCircleV (antPos playerAnt) 5 black
+        -- draw ant direction as a line
+        let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
+        drawLineEx (antPos playerAnt) antDir 5 black
         drawFPS 10 10
 
 

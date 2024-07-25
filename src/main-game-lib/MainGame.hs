@@ -270,7 +270,7 @@ checkWallCollision walls nextPos = all (canGoThere nextPos) walls
 
 -- -------------------------------------------------------------------------- --
 
--- Rotate the ant by the given angle in radians wrapping around if needed
+-- Rotate the ant by the given angle in degrees wrapping around if needed
 rotateAnt :: Float -> Ant -> Ant
 rotateAnt angle ant =
     let angle' = (antAngle ant + angle) `mod'` 360
@@ -307,30 +307,6 @@ reflectAnt nx ny ant =
 -- TODO Consider having the ant go into a rotating state instead of rotating instantly
 turnAroundAnt :: Ant -> Ant
 turnAroundAnt ant = rotateAnt 180 ant
-
-
--- TODO Consider having this be an option. The other option is to reflect of the border.
-wrapAroundAnt :: Float -> Float -> Ant -> Ant
-wrapAroundAnt w h ant =
-    let Vector2 x y = antPos ant
-        x' = if x > right then x - w else if x < left then x + w else x
-        y' = if y > top then y - h else if y < bottom then y + h else y
-    in  ant{antPos = Vector2 x' y'}
-    where
-        top = h / 2
-        bottom = -(h / 2)
-        right = w / 2
-        left = -(w / 2)
-
-
-wrapAroundAntRaylib :: Ant -> Ant
-wrapAroundAntRaylib ant =
-    let w = int2Float screenWidth
-        h = int2Float screenHeight
-        Vector2 x y = antPos ant
-        x' = if x > w then 0 else if x < 0 then w else x
-        y' = if y > h then 0 else if y < 0 then h else y
-    in  ant{antPos = Vector2 x' y'}
 
 
 -- TODO Control an ant (different color)
@@ -490,7 +466,6 @@ updateWorld w =
                 & driveAnt walls
                 & updateVisionRays walls
                 & cycleAntSprite
-                & wrapAroundAntRaylib
     in  w{wPlayerAnt = playerAnt'}
 
 
