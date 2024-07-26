@@ -57,7 +57,7 @@ antVisionMaxDistance = 500
 
 
 antVisionResolution :: Int
-antVisionResolution = 1500
+antVisionResolution = 64
 
 
 antPng :: String

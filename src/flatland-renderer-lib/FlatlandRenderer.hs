@@ -91,7 +91,7 @@ calcVisionRays camPos camAngle camFov res maxDist rects =
     where
         castRay :: Float -> VisionRay
         castRay angle =
-            let rad = angle * deg2Rad
+            let rad = (-angle) * deg2Rad
                 rayDir = Vector2 (cos rad) (sin rad)
                 dist = fromMaybe maxDist $ minimumDistance camPos rayDir rects
             in  VisionRay camPos angle (min dist maxDist)
@@ -151,7 +151,7 @@ getNextPos angle speed stepSize (Vector2 x y) =
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
 visionRayToLine (VisionRay p1 angle rayLength) =
-    let p2 = getNextPos angle 1 rayLength p1 in (p1, p2)
+    (p1, getNextPos angle 1 rayLength p1)
 
 
 -- ----------------------------- PART Game Loop ----------------------------- --
@@ -160,7 +160,6 @@ initFRWorld :: IO World
 initFRWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
-        visionRay = VisionRay (Vector2 screenCenterW screenCenterH) 90 antVisionMaxDistance
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 500 600 50 50
@@ -171,7 +170,7 @@ initFRWorld = do
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
-        playerAnt = Ant (Vector2 screenCenterW screenCenterH) 0 0 SeekFood rng False Center LeftSprite [visionRay]
+        playerAnt = Ant (Vector2 screenCenterW screenCenterH) 0 0 SeekFood rng False Center LeftSprite []
     return $ World window antTexture playerAnt True walls Nothing
 
 
@@ -216,7 +215,9 @@ updateFRWorld w =
             if playerAntGo
                 then getNextPos playerAntAngle 1 5 (antPos playerAnt)
                 else antPos playerAnt
-    in  w{wPlayerAnt = playerAnt{antPos = nextPos, antAngle = playerAntAngle}}
+        playerAnt' = playerAnt{antPos = nextPos, antAngle = playerAntAngle}
+        playerAnt'' = updateVisionRays (wWalls w) playerAnt'
+    in  w{wPlayerAnt = playerAnt''}
 
 
 renderFRWorld :: World -> IO ()
@@ -232,7 +233,7 @@ renderFRWorld w = do
         forM_ walls $ \wall -> drawRectangleRec wall wallColor
         when renderVisionRays $ do
             let visionLines = map visionRayToLine rays
-            forM_ visionLines $ \(start, end) -> drawLineV start end red
+            forM_ visionLines $ \(start, end) -> drawLineV start end green
         drawCircleV (antPos playerAnt) 5 black
         -- draw ant direction as a line
         let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
