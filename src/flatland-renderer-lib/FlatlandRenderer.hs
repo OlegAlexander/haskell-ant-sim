@@ -1,6 +1,7 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use guards" #-}
+{-# HLINT ignore "Use uncurry" #-}
 
 module FlatlandRenderer where
 
@@ -18,7 +19,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 
 import Constants (antPng, antStepSize, antVisionAngle, antVisionMaxDistance, antVisionResolution, borderWallThickness, fps, screenHeight, screenWidth, wallColor)
 import Data.IntMap.Strict qualified as IntMap
-import Debug.Trace (trace, traceShow)
+import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -35,7 +36,7 @@ import Raylib.Core.Shapes (drawCircleV, drawLineEx, drawLineV, drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (drawTexturePro, drawTextureV, loadTexture, loadTextureFromImage)
 import Raylib.Types (
-    Color,
+    Color (..),
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
     Rectangle (Rectangle),
@@ -82,9 +83,9 @@ calcVisionRays :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [V
 calcVisionRays camPos camAngle camFov res maxDist rects =
     let halfFov = camFov / 2
         angleStep = camFov / int2Float (res - 1)
-        anglesStart = camAngle - halfFov
-        anglesNext = anglesStart + angleStep
-        anglesEnd = camAngle + halfFov
+        anglesStart = camAngle + halfFov
+        anglesNext = anglesStart - angleStep
+        anglesEnd = camAngle - halfFov
         angles = [anglesStart, anglesNext .. anglesEnd]
         rays = map castRay angles
     in  rays
@@ -109,25 +110,41 @@ minimumDistance camPos rayDir rects =
     in  if null intersections then Nothing else Just (minimum intersections)
 
 
-depthMap2Image :: Int -> [Float] -> Image
-depthMap2Image height depthMap =
-    let width = length depthMap
-        gamma = 0.4545
-        pixels = concat $ replicate height $ map (round . (* 255) . (** gamma) . (1 -)) depthMap
-    in  Image pixels width height 1 PixelFormatUncompressedGrayscale
-
-
-renderPlayerAntVision :: Int -> Ant -> Image
-renderPlayerAntVision height ant =
-    let depthMap = antVisionRays ant & map (normalizeDistance . rayLength)
-    in  depthMap2Image height depthMap
+visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
+visionRaysToRects rays =
+    -- Convert the depth map to a row of tall rectangles filling the entire screen.
+    let depthMap = map (normalizeDistance . rayLength) rays
+        rectWidth = screenWidth `div` length depthMap
+        rectHeight = screenHeight `div` 4
+        colors = map (round . (* 255) . (1 -)) depthMap
+        rectsAndColors =
+            zipWith
+                ( \x color ->
+                    ( Rectangle
+                        (int2Float x)
+                        0
+                        (int2Float rectWidth)
+                        (int2Float rectHeight),
+                      Color color color color 255
+                    )
+                )
+                [0, rectWidth ..]
+                colors
+    in  rectsAndColors
 
 
 -- --------------------------------- Vision --------------------------------- --
 
 updateVisionRays :: [Rectangle] -> Ant -> Ant
 updateVisionRays walls ant =
-    let visionRays = calcVisionRays (antPos ant) (antAngle ant) antVisionAngle antVisionResolution antVisionMaxDistance walls
+    let visionRays =
+            calcVisionRays
+                (antPos ant)
+                (antAngle ant)
+                antVisionAngle
+                antVisionResolution
+                antVisionMaxDistance
+                walls
     in  ant{antVisionRays = visionRays}
 
 
@@ -191,7 +208,7 @@ handleFRInput w = do
         w
             { wRenderVisionRays = toggleVisionRays,
               wPlayerAnt =
-                (wPlayerAnt w)
+                playerAnt
                     { antWheelPos = playerWheelPos,
                       antGo = playerAntGo
                     }
@@ -238,8 +255,12 @@ renderFRWorld w = do
         -- draw ant direction as a line
         let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
         drawLineEx (antPos playerAnt) antDir 5 black
-        drawFPS 10 10
+        -- draw ant vision rects
+        let visionRects = visionRaysToRects rays
+        forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
 
+
+-- drawFPS 10 10
 
 flatlandRendererSys :: System World
 flatlandRendererSys = System handleFRInput updateFRWorld renderFRWorld
