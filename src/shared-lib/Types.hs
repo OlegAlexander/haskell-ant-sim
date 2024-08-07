@@ -13,10 +13,23 @@ data Circle = Circle
     deriving (Eq, Show)
 
 
+data EntityType
+    = PlayerAntET
+    | AntET
+    | DeadAntET
+    | PheromoneET
+    | FoodET
+    | NestET
+    | WallET
+    | UnknownET
+    deriving (Eq, Show)
+
+
 data VisionRay = VisionRay
     { rayPos :: Vector2,
       rayAngle :: Float, -- in degrees
-      rayLength :: Float
+      rayLength :: Float,
+      rayHitEntityType :: EntityType
     }
     deriving (Eq, Show)
 

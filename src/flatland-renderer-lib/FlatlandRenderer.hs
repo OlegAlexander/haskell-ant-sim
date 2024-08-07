@@ -2,6 +2,7 @@
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use guards" #-}
 {-# HLINT ignore "Use uncurry" #-}
+{-# HLINT ignore "Use tuple-section" #-}
 
 module FlatlandRenderer where
 
@@ -12,7 +13,7 @@ import Shared (System (..), gameLoop)
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
-import Data.List (foldl', sort)
+import Data.List (foldl', sort, sortBy)
 import Data.Maybe (fromMaybe, mapMaybe)
 
 -- import Debug.Trace (trace, traceShow)
@@ -49,17 +50,27 @@ import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, green, lightGray, red, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg, (|+|))
 import System.Random (mkStdGen, randomIO, randomR)
-import Types (Ant (..), Circle (..), Entity (..), Mode (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
+import Types (
+    Ant (..),
+    Circle (..),
+    Entity (..),
+    EntityType (..),
+    Mode (..),
+    Sprite (..),
+    VisionRay (..),
+    WheelPos (..),
+    World (..),
+ )
 
 
 -- ------------------------- PART Flatland Renderer ------------------------- --
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
-intersectRayRect :: Vector2 -> Vector2 -> Rectangle -> Maybe Float
+intersectRayRect :: Vector2 -> Vector2 -> (Rectangle, EntityType) -> Maybe (Float, EntityType)
 intersectRayRect
     (Vector2 rayOriginX rayOriginY)
     (Vector2 rayDirX rayDirY)
-    (Rectangle rectX rectY rectW rectH) =
+    (Rectangle rectX rectY rectW rectH, entityType) =
         let
             -- Intersection distances for the vertical edges of the rectangle
             distNearX = (rectX - rayOriginX) / rayDirX
@@ -76,10 +87,29 @@ intersectRayRect
             -- Determine if there is an intersection
             if distExit < 0 || distEntry > distExit
                 then Nothing
-                else Just (if distEntry < 0 then distExit else distEntry)
+                else Just (if distEntry < 0 then (distExit, entityType) else (distEntry, entityType))
 
 
-calcVisionRays :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [VisionRay]
+-- Compute the minimum distance to any rectangle
+minimumDistance :: Vector2 -> Vector2 -> [(Rectangle, EntityType)] -> Maybe (Float, EntityType)
+minimumDistance camPos rayDir rects =
+    let intersections = mapMaybe (intersectRayRect camPos rayDir) rects
+        sortedIntersections = sortBy (\(d1, _) (d2, _) -> compare d1 d2) intersections
+        (distances, entityTypes) = unzip sortedIntersections
+    in  if null distances then Nothing else Just (head distances, head entityTypes)
+
+
+-- Cast a ray and return the corresponding VisionRay
+castRay :: Vector2 -> Float -> [(Rectangle, EntityType)] -> Float -> VisionRay
+castRay camPos maxDist rects angle =
+    let rad = (-angle) * deg2Rad
+        rayDir = Vector2 (cos rad) (sin rad)
+        (dist, entityType) = fromMaybe (maxDist, UnknownET) $ minimumDistance camPos rayDir rects
+    in  VisionRay camPos angle (min dist maxDist) (if dist >= maxDist then UnknownET else entityType)
+
+
+-- Calculate the vision rays for a given camera position and view parameters
+calcVisionRays :: Vector2 -> Float -> Float -> Int -> Float -> [(Rectangle, EntityType)] -> [VisionRay]
 calcVisionRays camPos camAngle camFov res maxDist rects =
     let halfFov = camFov / 2
         angleStep = camFov / int2Float (res - 1)
@@ -87,15 +117,8 @@ calcVisionRays camPos camAngle camFov res maxDist rects =
         anglesNext = anglesStart - angleStep
         anglesEnd = camAngle - halfFov
         angles = [anglesStart, anglesNext .. anglesEnd]
-        rays = map castRay angles
+        rays = map (castRay camPos maxDist rects) angles
     in  rays
-    where
-        castRay :: Float -> VisionRay
-        castRay angle =
-            let rad = (-angle) * deg2Rad
-                rayDir = Vector2 (cos rad) (sin rad)
-                dist = fromMaybe maxDist $ minimumDistance camPos rayDir rects
-            in  VisionRay camPos angle (min dist maxDist)
 
 
 -- Normalize the distance based on max distance
@@ -103,11 +126,16 @@ normalizeDistance :: Float -> Float
 normalizeDistance dist = min 1.0 (dist / antVisionMaxDistance)
 
 
--- Compute the minimum distance to any rectangle
-minimumDistance :: Vector2 -> Vector2 -> [Rectangle] -> Maybe Float
-minimumDistance camPos rayDir rects =
-    let intersections = mapMaybe (intersectRayRect camPos rayDir) rects
-    in  if null intersections then Nothing else Just (minimum intersections)
+entityTypeToColor :: EntityType -> Color
+entityTypeToColor = \case
+    PlayerAntET -> blue
+    AntET -> blue
+    DeadAntET -> white
+    PheromoneET -> green
+    FoodET -> Color 255 165 0 255
+    NestET -> Color 255 255 0 255
+    WallET -> red
+    UnknownET -> black
 
 
 visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
@@ -116,7 +144,7 @@ visionRaysToRects rays =
     let depthMap = map (normalizeDistance . rayLength) rays
         rectWidth = screenWidth `div` length depthMap
         rectHeight = screenHeight `div` 4
-        colors = map (round . (* 255) . (1 -)) depthMap
+        colors = map (entityTypeToColor . rayHitEntityType) rays
         rectsAndColors =
             zipWith
                 ( \x color ->
@@ -125,18 +153,32 @@ visionRaysToRects rays =
                         0
                         (int2Float rectWidth)
                         (int2Float rectHeight),
-                      Color color color color 255
+                      color
                     )
                 )
                 [0, rectWidth ..]
                 colors
-    in  rectsAndColors
+    in  -- colors = map (round . (* 255) . (1 -)) depthMap
+        -- rectsAndColors =
+        --     zipWith
+        --         ( \x color ->
+        --             ( Rectangle
+        --                 (int2Float x)
+        --                 0
+        --                 (int2Float rectWidth)
+        --                 (int2Float rectHeight),
+        --               Color color color color 255
+        --             )
+        --         )
+        --         [0, rectWidth ..]
+        --         colors
+        rectsAndColors
 
 
 -- --------------------------------- Vision --------------------------------- --
 
-updateVisionRays :: [Rectangle] -> Ant -> Ant
-updateVisionRays walls ant =
+updateVisionRays :: [(Rectangle, EntityType)] -> Ant -> Ant
+updateVisionRays rects ant =
     let visionRays =
             calcVisionRays
                 (antPos ant)
@@ -144,7 +186,7 @@ updateVisionRays walls ant =
                 antVisionAngle
                 antVisionResolution
                 antVisionMaxDistance
-                walls
+                rects
     in  ant{antVisionRays = visionRays}
 
 
@@ -167,7 +209,7 @@ getNextPos angle speed stepSize (Vector2 x y) =
 
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
-visionRayToLine (VisionRay p1 angle rayLength) =
+visionRayToLine (VisionRay p1 angle rayLength rayHitEntityType) =
     (p1, getNextPos angle 1 rayLength p1)
 
 
@@ -220,6 +262,7 @@ updateFRWorld w =
     let playerAnt = wPlayerAnt w
         playerWheelPos = antWheelPos playerAnt
         playerAntGo = antGo playerAnt
+        wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
         playerAntAngle =
             antAngle playerAnt
                 & \angle ->
@@ -233,7 +276,7 @@ updateFRWorld w =
                 then getNextPos playerAntAngle 1 5 (antPos playerAnt)
                 else antPos playerAnt
         playerAnt' = playerAnt{antPos = nextPos, antAngle = playerAntAngle}
-        playerAnt'' = updateVisionRays (wWalls w) playerAnt'
+        playerAnt'' = updateVisionRays wallRects playerAnt'
     in  w{wPlayerAnt = playerAnt''}
 
 
@@ -258,9 +301,8 @@ renderFRWorld w = do
         -- draw ant vision rects
         let visionRects = visionRaysToRects rays
         forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
+        drawFPS 10 10
 
-
--- drawFPS 10 10
 
 flatlandRendererSys :: System World
 flatlandRendererSys = System handleFRInput updateFRWorld renderFRWorld

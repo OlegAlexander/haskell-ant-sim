@@ -68,6 +68,7 @@ import System.Random (mkStdGen, randomIO, randomR)
 import Types (
     Ant (..),
     Entity (..),
+    EntityType (UnknownET),
     Mode (SeekFood),
     Sprite (LeftSprite, RightSprite),
     VisionRay (VisionRay, rayLength),
@@ -134,7 +135,7 @@ calcVisionRays camPos camAngle camFov res maxDist rects =
             let rad = angle * deg2Rad
                 rayDir = Vector2 (cos rad) (sin rad)
                 dist = fromMaybe maxDist $ minimumDistance camPos rayDir rects
-            in  VisionRay camPos angle (min dist maxDist)
+            in  VisionRay camPos angle (min dist maxDist) UnknownET
 
 
 -- Normalize the distance based on max distance
@@ -413,7 +414,7 @@ drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y)
 
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
-visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength) =
+visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength rayHitEntityType) =
     let rad = angle * deg2Rad
         x = posX + rayLength * cos rad
         y = posY + rayLength * sin rad
