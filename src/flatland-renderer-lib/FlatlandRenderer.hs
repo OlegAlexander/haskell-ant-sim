@@ -6,21 +6,25 @@
 
 module FlatlandRenderer where
 
--- ------------------------------ PART Imports ------------------------------ --
-
-import Shared (System (..), gameLoop)
-
+import Constants (
+    antPng,
+    antVisionAngle,
+    antVisionMaxDistance,
+    antVisionResolution,
+    fps,
+    screenHeight,
+    screenWidth,
+    wallColor,
+ )
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
-import Data.List (foldl', sort, sortBy)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Shared (System (..), gameLoop)
 
--- import Debug.Trace (trace, traceShow)
+-- import Debug.Trace (traceShowId)
 
-import Constants (antPng, antStepSize, antVisionAngle, antVisionMaxDistance, antVisionResolution, borderWallThickness, fps, screenHeight, screenWidth, wallColor)
-import Data.IntMap.Strict qualified as IntMap
-import Debug.Trace (traceShowId)
+import Data.List (sortBy)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -35,25 +39,21 @@ import Raylib.Core (
  )
 import Raylib.Core.Shapes (drawCircleV, drawLineEx, drawLineV, drawRectangleRec)
 import Raylib.Core.Text (drawFPS)
-import Raylib.Core.Textures (drawTexturePro, drawTextureV, loadTexture, loadTextureFromImage)
+import Raylib.Core.Textures (loadTexture)
 import Raylib.Types (
     Color (..),
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
     Rectangle (Rectangle),
-    Texture (texture'height, texture'width),
     TraceLogLevel (LogWarning),
  )
 import Raylib.Types.Core (Vector2 (..))
-import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, green, lightGray, red, white)
-import Raylib.Util.Math (deg2Rad, rad2Deg, (|+|))
-import System.Random (mkStdGen, randomIO, randomR)
+import Raylib.Util.Math (deg2Rad)
+import System.Random (mkStdGen)
 import Types (
     Ant (..),
-    Circle (..),
-    Entity (..),
     EntityType (..),
     Mode (..),
     Sprite (..),
@@ -62,8 +62,6 @@ import Types (
     World (..),
  )
 
-
--- ------------------------- PART Flatland Renderer ------------------------- --
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
 intersectRayRect :: Vector2 -> Vector2 -> (Rectangle, EntityType) -> Maybe (Float, EntityType)
@@ -95,8 +93,7 @@ minimumDistance :: Vector2 -> Vector2 -> [(Rectangle, EntityType)] -> Maybe (Flo
 minimumDistance camPos rayDir rects =
     let intersections = mapMaybe (intersectRayRect camPos rayDir) rects
         sortedIntersections = sortBy (\(d1, _) (d2, _) -> compare d1 d2) intersections
-        (distances, entityTypes) = unzip sortedIntersections
-    in  if null distances then Nothing else Just (head distances, head entityTypes)
+    in  listToMaybe sortedIntersections
 
 
 -- Cast a ray and return the corresponding VisionRay
@@ -138,13 +135,38 @@ entityTypeToColor = \case
     UnknownET -> black
 
 
+rgbToLinear :: Color -> (Float, Float, Float, Float)
+rgbToLinear (Color r g b a) =
+    let r' = fromIntegral r / 255
+        g' = fromIntegral g / 255
+        b' = fromIntegral b / 255
+        a' = fromIntegral a / 255
+    in  (r', g', b', a')
+
+
+linearToRgb :: (Float, Float, Float, Float) -> Color
+linearToRgb (r, g, b, a) =
+    let r' = round $ r * 255
+        g' = round $ g * 255
+        b' = round $ b * 255
+        a' = round $ a * 255
+    in  Color r' g' b' a'
+
+
+scalarTimesColor :: Float -> Color -> Color
+scalarTimesColor scalar color =
+    let (r', g', b', a') = rgbToLinear color
+    in  linearToRgb (r' * scalar, g' * scalar, b' * scalar, a')
+
+
+-- Convert the vision rays to a row of tall rectangles for rendering.
 visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
 visionRaysToRects rays =
-    -- Convert the depth map to a row of tall rectangles filling the entire screen.
-    let depthMap = map (normalizeDistance . rayLength) rays
+    let depthMap = map ((1 -) . normalizeDistance . rayLength) rays
         rectWidth = screenWidth `div` length depthMap
         rectHeight = screenHeight `div` 4
         colors = map (entityTypeToColor . rayHitEntityType) rays
+        colorsTimesDepthMap = zipWith scalarTimesColor depthMap colors
         rectsAndColors =
             zipWith
                 ( \x color ->
@@ -157,25 +179,9 @@ visionRaysToRects rays =
                     )
                 )
                 [0, rectWidth ..]
-                colors
-    in  -- colors = map (round . (* 255) . (1 -)) depthMap
-        -- rectsAndColors =
-        --     zipWith
-        --         ( \x color ->
-        --             ( Rectangle
-        --                 (int2Float x)
-        --                 0
-        --                 (int2Float rectWidth)
-        --                 (int2Float rectHeight),
-        --               Color color color color 255
-        --             )
-        --         )
-        --         [0, rectWidth ..]
-        --         colors
-        rectsAndColors
+                colorsTimesDepthMap
+    in  rectsAndColors
 
-
--- --------------------------------- Vision --------------------------------- --
 
 updateVisionRays :: [(Rectangle, EntityType)] -> Ant -> Ant
 updateVisionRays rects ant =
@@ -190,15 +196,11 @@ updateVisionRays rects ant =
     in  ant{antVisionRays = visionRays}
 
 
--- ---------------------------- PART Constructors --------------------------- --
-
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
     in  Ant (Vector2 x y) 0 0 SeekFood rng False Center LeftSprite []
 
-
--- ------------------------------- PART Utils ------------------------------- --
 
 getNextPos :: Float -> Float -> Float -> Vector2 -> Vector2
 getNextPos angle speed stepSize (Vector2 x y) =
@@ -209,11 +211,9 @@ getNextPos angle speed stepSize (Vector2 x y) =
 
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
-visionRayToLine (VisionRay p1 angle rayLength rayHitEntityType) =
+visionRayToLine (VisionRay p1 angle rayLength _) =
     (p1, getNextPos angle 1 rayLength p1)
 
-
--- ----------------------------- PART Game Loop ----------------------------- --
 
 initFRWorld :: IO World
 initFRWorld = do
@@ -230,7 +230,7 @@ initFRWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         playerAnt = Ant (Vector2 screenCenterW screenCenterH) 0 0 SeekFood rng False Center LeftSprite []
-    return $ World window antTexture playerAnt True walls Nothing
+    return $ World window antTexture playerAnt True True walls Nothing
 
 
 handleFRInput :: World -> IO World
@@ -238,8 +238,10 @@ handleFRInput w = do
     up <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
+    rKey <- isKeyPressed KeyR
     vKey <- isKeyPressed KeyV
-    let toggleVisionRays = vKey /= wRenderVisionRays w
+    let toggleVisionRays = rKey /= wRenderVisionRays w
+        toggleVisionRects = vKey /= wRenderVisionRects w
         playerAnt = wPlayerAnt w
         playerWheelPos =
             antWheelPos playerAnt
@@ -249,6 +251,7 @@ handleFRInput w = do
     return
         w
             { wRenderVisionRays = toggleVisionRays,
+              wRenderVisionRects = toggleVisionRects,
               wPlayerAnt =
                 playerAnt
                     { antWheelPos = playerWheelPos,
@@ -286,6 +289,7 @@ renderFRWorld w = do
     when f11Pressed toggleFullscreen
     let walls = wWalls w
         renderVisionRays = wRenderVisionRays w
+        renderVisionRects = wRenderVisionRects w
         rays = wPlayerAnt w & antVisionRays
         playerAnt = wPlayerAnt w
     drawing $ do
@@ -299,8 +303,9 @@ renderFRWorld w = do
         let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
         drawLineEx (antPos playerAnt) antDir 5 black
         -- draw ant vision rects
-        let visionRects = visionRaysToRects rays
-        forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
+        when renderVisionRects $ do
+            let visionRects = visionRaysToRects rays
+            forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
         drawFPS 10 10
 
 

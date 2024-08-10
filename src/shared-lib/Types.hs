@@ -76,6 +76,7 @@ data World = World
       wAntTexture :: Texture,
       wPlayerAnt :: Ant,
       wRenderVisionRays :: Bool,
+      wRenderVisionRects :: Bool,
       wWalls :: [Rectangle],
       wWallBeingDrawn :: Maybe (Vector2, Vector2)
     }

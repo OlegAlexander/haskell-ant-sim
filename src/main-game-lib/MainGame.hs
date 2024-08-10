@@ -438,7 +438,7 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture playerAnt True walls Nothing
+    return $ World window antTexture playerAnt True True walls Nothing
 
 
 handleWorldInput :: World -> IO World

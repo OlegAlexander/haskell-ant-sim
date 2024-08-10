@@ -50,7 +50,7 @@ initWallsWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         playerAnt = Ant (Vector2 0 0) 0 0 SeekFood rng False Center LeftSprite []
-    return $ World window antTexture playerAnt True [] Nothing
+    return $ World window antTexture playerAnt True True [] Nothing
 
 
 handleWallInput :: World -> IO World
