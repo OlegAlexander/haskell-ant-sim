@@ -37,7 +37,12 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (drawCircleV, drawLineEx, drawLineV, drawRectangleRec)
+import Raylib.Core.Shapes (
+    drawCircleV,
+    drawLineEx,
+    drawLineV,
+    drawRectangleRec,
+ )
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (loadTexture)
 import Raylib.Types (
@@ -64,7 +69,11 @@ import Types (
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
-intersectRayRect :: Vector2 -> Vector2 -> (Rectangle, EntityType) -> Maybe (Float, EntityType)
+intersectRayRect
+    :: Vector2
+    -> Vector2
+    -> (Rectangle, EntityType)
+    -> Maybe (Float, EntityType)
 intersectRayRect
     (Vector2 rayOriginX rayOriginY)
     (Vector2 rayDirX rayDirY)
@@ -85,14 +94,24 @@ intersectRayRect
             -- Determine if there is an intersection
             if distExit < 0 || distEntry > distExit
                 then Nothing
-                else Just (if distEntry < 0 then (distExit, entityType) else (distEntry, entityType))
+                else
+                    Just
+                        ( if distEntry < 0
+                            then (distExit, entityType)
+                            else (distEntry, entityType)
+                        )
 
 
 -- Compute the minimum distance to any rectangle
-minimumDistance :: Vector2 -> Vector2 -> [(Rectangle, EntityType)] -> Maybe (Float, EntityType)
+minimumDistance
+    :: Vector2
+    -> Vector2
+    -> [(Rectangle, EntityType)]
+    -> Maybe (Float, EntityType)
 minimumDistance camPos rayDir rects =
     let intersections = mapMaybe (intersectRayRect camPos rayDir) rects
-        sortedIntersections = sortBy (\(d1, _) (d2, _) -> compare d1 d2) intersections
+        sortedIntersections =
+            sortBy (\(d1, _) (d2, _) -> compare d1 d2) intersections
     in  listToMaybe sortedIntersections
 
 
@@ -101,12 +120,21 @@ castRay :: Vector2 -> Float -> [(Rectangle, EntityType)] -> Float -> VisionRay
 castRay camPos maxDist rects angle =
     let rad = (-angle) * deg2Rad
         rayDir = Vector2 (cos rad) (sin rad)
-        (dist, entityType) = fromMaybe (maxDist, UnknownET) $ minimumDistance camPos rayDir rects
-    in  VisionRay camPos angle (min dist maxDist) (if dist >= maxDist then UnknownET else entityType)
+        minDist = minimumDistance camPos rayDir rects
+        (dist, entityType) = fromMaybe (maxDist, UnknownET) minDist
+        entityType' = if dist >= maxDist then UnknownET else entityType
+    in  VisionRay camPos angle (min dist maxDist) entityType'
 
 
 -- Calculate the vision rays for a given camera position and view parameters
-calcVisionRays :: Vector2 -> Float -> Float -> Int -> Float -> [(Rectangle, EntityType)] -> [VisionRay]
+calcVisionRays
+    :: Vector2
+    -> Float
+    -> Float
+    -> Int
+    -> Float
+    -> [(Rectangle, EntityType)]
+    -> [VisionRay]
 calcVisionRays camPos camAngle camFov res maxDist rects =
     let halfFov = camFov / 2
         angleStep = camFov / int2Float (res - 1)
@@ -229,7 +257,8 @@ initFRWorld = do
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
-        playerAnt = Ant (Vector2 screenCenterW screenCenterH) 0 0 SeekFood rng False Center LeftSprite []
+        antPos = Vector2 screenCenterW screenCenterH
+        playerAnt = Ant antPos 0 0 SeekFood rng False Center LeftSprite []
     return $ World window antTexture playerAnt True True walls Nothing
 
 
@@ -285,34 +314,41 @@ updateFRWorld w =
 
 renderFRWorld :: World -> IO ()
 renderFRWorld w = do
-    f11Pressed <- isKeyPressed KeyF11
-    when f11Pressed toggleFullscreen
     let walls = wWalls w
         renderVisionRays = wRenderVisionRays w
         renderVisionRects = wRenderVisionRects w
         rays = wPlayerAnt w & antVisionRays
         playerAnt = wPlayerAnt w
-    drawing $ do
-        clearBackground lightGray
-        forM_ walls $ \wall -> drawRectangleRec wall wallColor
-        when renderVisionRays $ do
-            let visionLines = map visionRayToLine rays
-            forM_ visionLines $ \(start, end) -> drawLineV start end green
-        drawCircleV (antPos playerAnt) 5 black
-        -- draw ant direction as a line
-        let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
-        drawLineEx (antPos playerAnt) antDir 5 black
-        -- draw ant vision rects
-        when renderVisionRects $ do
-            let visionRects = visionRaysToRects rays
-            forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
-        drawFPS 10 10
+    forM_ walls $ \wall -> drawRectangleRec wall wallColor
+    when renderVisionRays $ do
+        let visionLines = map visionRayToLine rays
+        forM_ visionLines $ \(start, end) -> drawLineV start end green
+    drawCircleV (antPos playerAnt) 5 black
+    -- draw ant direction as a line
+    let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
+    drawLineEx (antPos playerAnt) antDir 5 black
+    -- draw ant vision rects
+    when renderVisionRects $ do
+        let visionRects = visionRaysToRects rays
+        forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
 
 
 flatlandRendererSys :: System World
 flatlandRendererSys = System handleFRInput updateFRWorld renderFRWorld
 
 
+flatlandRendererSysWrapped :: System World
+flatlandRendererSysWrapped =
+    flatlandRendererSys
+        { render = \w -> drawing $ do
+            f11Pressed <- isKeyPressed KeyF11
+            when f11Pressed toggleFullscreen
+            clearBackground lightGray
+            renderFRWorld w
+            drawFPS 10 10
+        }
+
+
 driveFlatlandRenderer :: IO ()
 driveFlatlandRenderer =
-    initFRWorld >>= gameLoop flatlandRendererSys windowShouldClose
+    initFRWorld >>= gameLoop flatlandRendererSysWrapped windowShouldClose

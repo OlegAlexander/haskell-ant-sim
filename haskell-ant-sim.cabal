@@ -45,7 +45,8 @@ library main-game-lib
     hs-source-dirs:     src/main-game-lib
     exposed-modules:    MainGame
     build-depends:      shared-lib,
-                        draw-walls-lib
+                        draw-walls-lib,
+                        flatland-renderer-lib
 
 executable main
     import:         options

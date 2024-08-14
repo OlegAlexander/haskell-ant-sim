@@ -2,7 +2,6 @@ module DrawWalls where
 
 import Constants (antPng, minWallSize, wallColor)
 import Control.Monad (forM_, when)
-import Data.IntMap.Strict qualified as IntMap
 import Data.Maybe (fromJust, isJust, isNothing)
 import Raylib.Core (
     clearBackground,
@@ -16,13 +15,24 @@ import Raylib.Core (
 import Raylib.Core.Shapes (drawRectangleLinesEx, drawRectangleRec)
 import Raylib.Core.Text (drawText)
 import Raylib.Core.Textures (loadTexture)
-import Raylib.Types (KeyboardKey (KeyW), Rectangle (Rectangle), Vector2 (Vector2))
+import Raylib.Types (
+    KeyboardKey (KeyW),
+    Rectangle (Rectangle),
+    Vector2 (Vector2),
+ )
 import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, lightGray)
 import Shared (System (..), gameLoop)
 import System.Random (mkStdGen)
-import Types (Ant (..), Mode (..), Sprite (..), WallDrawingState (..), WheelPos (..), World (..))
+import Types (
+    Ant (..),
+    Mode (..),
+    Sprite (..),
+    WallDrawingState (..),
+    WheelPos (..),
+    World (..),
+ )
 
 
 getWallDrawingState :: Bool -> Maybe (Vector2, Vector2) -> WallDrawingState
@@ -49,7 +59,8 @@ initWallsWorld = do
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
-        playerAnt = Ant (Vector2 0 0) 0 0 SeekFood rng False Center LeftSprite []
+        antPos = Vector2 0 0
+        playerAnt = Ant antPos 0 0 SeekFood rng False Center LeftSprite []
     return $ World window antTexture playerAnt True True [] Nothing
 
 
@@ -63,10 +74,20 @@ handleWallInput w = do
         Idle -> return w
         Started -> do
             mousePos <- getMousePosition
-            return w{wWalls = walls, wWallBeingDrawn = Just (mousePos, mousePos)}
+            return
+                w
+                    { wWalls = walls,
+                      wWallBeingDrawn =
+                        Just (mousePos, mousePos)
+                    }
         InProgress -> do
             mousePos <- getMousePosition
-            return w{wWalls = walls, wWallBeingDrawn = Just (fst $ fromJust wbd, mousePos)}
+            return
+                w
+                    { wWalls = walls,
+                      wWallBeingDrawn =
+                        Just (fst $ fromJust wbd, mousePos)
+                    }
         Finished -> do
             let (start, end) = fromJust wbd
                 newWall = calcBoundingBox start end

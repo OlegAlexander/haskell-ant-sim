@@ -1,6 +1,5 @@
 module Types where
 
-import Data.IntMap.Strict (IntMap)
 import Raylib.Types (Rectangle, Texture, Vector2)
 import Raylib.Util (WindowResources)
 import System.Random (StdGen)

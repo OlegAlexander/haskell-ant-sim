@@ -6,11 +6,10 @@ module MainGame where
 
 -- ------------------------------ PART Imports ------------------------------ --
 
-import Control.Monad (forM_, when)
+import Control.Monad (when)
 import Data.Fixed (mod')
 import Data.Function ((&))
-import Data.List (foldl', sort)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.List (foldl')
 
 -- import Debug.Trace (trace, traceShow)
 
@@ -23,18 +22,14 @@ import Constants (
     antScale,
     antStepSize,
     antTurnAngle,
-    antVisionAngle,
-    antVisionMaxDistance,
-    antVisionResolution,
     borderWallThickness,
     fps,
     screenHeight,
     screenWidth,
     title,
-    wallColor,
  )
 import DrawWalls (drawWallsSys1)
-
+import FlatlandRenderer (flatlandRendererSys)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -47,9 +42,8 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (drawLineV)
 import Raylib.Core.Text (drawFPS)
-import Raylib.Core.Textures (drawTexturePro, drawTextureV, loadTexture, loadTextureFromImage)
+import Raylib.Core.Textures (drawTexturePro, loadTexture)
 import Raylib.Types (
     Color,
     KeyboardKey (..),
@@ -59,19 +53,16 @@ import Raylib.Types (
     TraceLogLevel (LogWarning),
  )
 import Raylib.Types.Core (Vector2 (..))
-import Raylib.Types.Core.Textures (Image (..), PixelFormat (PixelFormatUncompressedGrayscale))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (green, lightGray, white)
+import Raylib.Util.Colors (lightGray, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
 import Shared (System (..), gameLoop)
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (
     Ant (..),
     Entity (..),
-    EntityType (UnknownET),
     Mode (SeekFood),
     Sprite (LeftSprite, RightSprite),
-    VisionRay (VisionRay, rayLength),
     WheelPos (Center, TurnLeft, TurnRight),
     World (..),
  )
@@ -79,7 +70,6 @@ import Types (
 
 -- ----------------------------- PART Constants ----------------------------- --
 
--- TODO Consider using 4 different colors for the walls to orient oneself.
 borderWalls :: [Rectangle]
 borderWalls =
     let t = borderWallThickness
@@ -90,78 +80,6 @@ borderWalls =
           Rectangle (-t) h (w + t * 2) t,
           Rectangle (-t) (-t) t (h + t * 2)
         ]
-
-
--- ------------------------- PART Flatland Renderer ------------------------- --
-
--- Intersect a ray with a rectangle and return the distance to the intersection
-intersectRayRect :: Vector2 -> Vector2 -> Rectangle -> Maybe Float
-intersectRayRect
-    (Vector2 rayOriginX rayOriginY)
-    (Vector2 rayDirX rayDirY)
-    (Rectangle rectX rectY rectW rectH) =
-        let
-            -- Intersection distances for the vertical edges of the rectangle
-            distNearX = (rectX - rayOriginX) / rayDirX
-            distFarX = (rectX + rectW - rayOriginX) / rayDirX
-
-            -- Intersection distances for the horizontal edges of the rectangle
-            distNearY = (rectY - rayOriginY) / rayDirY
-            distFarY = (rectY + rectH - rayOriginY) / rayDirY
-
-            -- Calculate the entry and exit distances along the ray
-            distEntry = max (min distNearX distFarX) (min distNearY distFarY)
-            distExit = min (max distNearX distFarX) (max distNearY distFarY)
-        in
-            -- Determine if there is an intersection
-            if distExit < 0 || distEntry > distExit
-                then Nothing
-                else Just (if distEntry < 0 then distExit else distEntry)
-
-
-calcVisionRays :: Vector2 -> Float -> Float -> Int -> Float -> [Rectangle] -> [VisionRay]
-calcVisionRays camPos camAngle camFov res maxDist rects =
-    let halfFov = camFov / 2
-        angleStep = camFov / int2Float (res - 1)
-        anglesStart = camAngle - halfFov
-        anglesNext = anglesStart + angleStep
-        anglesEnd = camAngle + halfFov
-        angles = [anglesStart, anglesNext .. anglesEnd]
-        rays = map castRay angles
-    in  rays
-    where
-        castRay :: Float -> VisionRay
-        castRay angle =
-            let rad = angle * deg2Rad
-                rayDir = Vector2 (cos rad) (sin rad)
-                dist = fromMaybe maxDist $ minimumDistance camPos rayDir rects
-            in  VisionRay camPos angle (min dist maxDist) UnknownET
-
-
--- Normalize the distance based on max distance
-normalizeDistance :: Float -> Float
-normalizeDistance dist = min 1.0 (dist / antVisionMaxDistance)
-
-
--- Compute the minimum distance to any rectangle
-minimumDistance :: Vector2 -> Vector2 -> [Rectangle] -> Maybe Float
-minimumDistance camPos rayDir rects =
-    let intersections = mapMaybe (intersectRayRect camPos rayDir) rects
-    in  if null intersections then Nothing else Just (minimum intersections)
-
-
-depthMap2Image :: Int -> [Float] -> Image
-depthMap2Image height depthMap =
-    let width = length depthMap
-        gamma = 0.4545
-        pixels = concat $ replicate height $ map (round . (* 255) . (** gamma) . (1 -)) depthMap
-    in  Image pixels width height 1 PixelFormatUncompressedGrayscale
-
-
-renderAntVision :: Int -> Ant -> Image
-renderAntVision height ant =
-    let depthMap = antVisionRays ant & map (normalizeDistance . rayLength)
-    in  depthMap2Image height depthMap
 
 
 -- ----------------------------- PART Player Ant ---------------------------- --
@@ -248,14 +166,6 @@ leftAnt ant = rotateAnt (-antTurnAngle) ant
 
 rightAnt :: Ant -> Ant
 rightAnt ant = rotateAnt antTurnAngle ant
-
-
--- --------------------------------- Vision --------------------------------- --
-
-updateVisionRays :: [Rectangle] -> Ant -> Ant
-updateVisionRays walls ant =
-    let visionRays = calcVisionRays (antPos ant) (antAngle ant) antVisionAngle antVisionResolution antVisionMaxDistance walls
-    in  ant{antVisionRays = visionRays}
 
 
 -- -------------------------------- Collision ------------------------------- --
@@ -413,14 +323,6 @@ drawTextureCentered texture source@(Rectangle _ _ w h) scale angle (Vector2 x y)
         color
 
 
-visionRayToLine :: VisionRay -> (Vector2, Vector2)
-visionRayToLine (VisionRay pos@(Vector2 posX posY) angle rayLength rayHitEntityType) =
-    let rad = angle * deg2Rad
-        x = posX + rayLength * cos rad
-        y = posY + rayLength * sin rad
-    in  (pos, Vector2 x y)
-
-
 -- ----------------------------- PART Game Loop ----------------------------- --
 
 initWorld :: IO World
@@ -446,9 +348,7 @@ handleWorldInput w = do
     go <- isKeyDown KeyUp
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
-    visionRays <- isKeyPressed KeyV
-    let toggleVisionRays = visionRays /= wRenderVisionRays w
-        playerAnt' =
+    let playerAnt' =
             (wPlayerAnt w)
                 { antGo = go,
                   antWheelPos = case (left, right) of
@@ -456,7 +356,7 @@ handleWorldInput w = do
                     (False, True) -> TurnRight
                     _ -> Center
                 }
-    return w{wPlayerAnt = playerAnt', wRenderVisionRays = toggleVisionRays}
+    return w{wPlayerAnt = playerAnt'}
 
 
 updateWorld :: World -> World
@@ -465,30 +365,19 @@ updateWorld w =
         playerAnt' =
             wPlayerAnt w
                 & driveAnt walls
-                & updateVisionRays walls
                 & cycleAntSprite
     in  w{wPlayerAnt = playerAnt'}
 
 
 renderWorld :: World -> IO ()
 renderWorld w = do
-    f11Pressed <- isKeyPressed KeyF11
-    when f11Pressed toggleFullscreen
-
-    let wr = wWindowResources w
-        antTexture = wAntTexture w
-        renderVisionRays = wRenderVisionRays w
+    let antTexture = wAntTexture w
         playerAnt = wPlayerAnt w
         texW = texture'width antTexture
         texH = texture'height antTexture
         spriteRect = case antSprite playerAnt of
             LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
             RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
-        antVision = renderAntVision 200 playerAnt
-        visionRayLines = antVisionRays playerAnt & map visionRayToLine
-    when renderVisionRays $ do
-        forM_ visionRayLines $ \(start, end) -> do
-            drawLineV start end green
     drawTextureCentered
         antTexture
         spriteRect
@@ -496,8 +385,6 @@ renderWorld w = do
         (antAngle playerAnt)
         (antPos playerAnt)
         white
-    antVisionTexture <- loadTextureFromImage antVision wr
-    drawTextureV antVisionTexture (Vector2 200 0) white
 
 
 mainGameSys :: System World
@@ -505,11 +392,14 @@ mainGameSys =
     let allSystems =
             System handleWorldInput updateWorld renderWorld
                 <> drawWallsSys1
+                <> flatlandRendererSys
     in  allSystems
             { render = \w -> drawing $ do
+                f11Pressed <- isKeyPressed KeyF11
+                when f11Pressed toggleFullscreen
                 clearBackground lightGray
-                drawFPS 10 10
                 render allSystems w
+                drawFPS 10 10
             }
 
 
