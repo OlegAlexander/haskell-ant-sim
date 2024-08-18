@@ -24,9 +24,12 @@ data EntityType
     deriving (Eq, Show)
 
 
+type Degrees = Float
+
+
 data VisionRay = VisionRay
     { rayPos :: Vector2,
-      rayAngle :: Float, -- in degrees
+      rayAngle :: Degrees,
       rayLength :: Float,
       rayHitEntityType :: EntityType
     }
@@ -35,7 +38,7 @@ data VisionRay = VisionRay
 
 data Ant = Ant
     { antPos :: Vector2,
-      antAngle :: Float, -- in degrees
+      antAngle :: Degrees,
       antSpeed :: Float,
       antMode :: Mode,
       antRng :: StdGen,
@@ -44,16 +47,6 @@ data Ant = Ant
       antSprite :: Sprite,
       antVisionRays :: [VisionRay]
     }
-    deriving (Eq, Show)
-
-
-data Entity
-    = PlayerAntE Ant
-    | AntE
-    | DeadAntE
-    | PheromoneE Circle
-    | FoodE Circle
-    | NestE Circle
     deriving (Eq, Show)
 
 

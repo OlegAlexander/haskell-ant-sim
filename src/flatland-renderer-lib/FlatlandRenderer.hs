@@ -54,7 +54,7 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, green, lightGray, red, white)
+import Raylib.Util.Colors (black, blue, gray, green, lightGray, red, white)
 import Raylib.Util.Math (deg2Rad)
 import System.Random (mkStdGen)
 import Types (
@@ -314,15 +314,15 @@ updateFRWorld w =
 
 renderFRWorld :: World -> IO ()
 renderFRWorld w = do
-    let walls = wWalls w
+    let walls = zip (wWalls w) [red, green, blue] -- TODO Temporary
         renderVisionRays = wRenderVisionRays w
         renderVisionRects = wRenderVisionRects w
         rays = wPlayerAnt w & antVisionRays
         playerAnt = wPlayerAnt w
-    forM_ walls $ \wall -> drawRectangleRec wall wallColor
+    forM_ walls $ \(wall, color) -> drawRectangleRec wall color
     when renderVisionRays $ do
         let visionLines = map visionRayToLine rays
-        forM_ visionLines $ \(start, end) -> drawLineV start end green
+        forM_ visionLines $ \(start, end) -> drawLineV start end white
     drawCircleV (antPos playerAnt) 5 black
     -- draw ant direction as a line
     let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
@@ -345,7 +345,7 @@ flatlandRendererSysWrapped =
             when f11Pressed toggleFullscreen
             clearBackground lightGray
             renderFRWorld w
-            drawFPS 10 10
+            -- drawFPS 10 10
         }
 
 

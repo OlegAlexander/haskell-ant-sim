@@ -60,7 +60,6 @@ import Shared (System (..), gameLoop)
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (
     Ant (..),
-    Entity (..),
     Mode (SeekFood),
     Sprite (LeftSprite, RightSprite),
     WheelPos (Center, TurnLeft, TurnRight),
@@ -92,10 +91,6 @@ mkAnt x y seed =
 
 mkAnts :: Float -> Float -> [Int] -> [Ant]
 mkAnts x y seeds = map (mkAnt x y) seeds
-
-
-printAnts :: [Entity] -> IO ()
-printAnts = putStrLn . unlines . map show
 
 
 stepAnt :: Vector2 -> Ant -> Ant
