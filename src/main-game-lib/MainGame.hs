@@ -58,13 +58,7 @@ import Raylib.Util.Colors (lightGray, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
 import Shared (System (..), gameLoop)
 import System.Random (mkStdGen, randomIO, randomR)
-import Types (
-    Ant (..),
-    Mode (SeekFood),
-    Sprite (LeftSprite, RightSprite),
-    WheelPos (Center, TurnLeft, TurnRight),
-    World (..),
- )
+import Types (Ant (..), GoDir (..), Mode (SeekFood), Sprite (LeftSprite, RightSprite), WheelPos (Center, TurnLeft, TurnRight), World (..))
 
 
 -- ----------------------------- PART Constants ----------------------------- --
@@ -86,7 +80,7 @@ borderWalls =
 mkAnt :: Float -> Float -> Int -> Ant
 mkAnt x y seed =
     let (angle, rng) = randomR (0, 360) (mkStdGen seed)
-    in  Ant (Vector2 x y) angle 0 SeekFood rng False Center LeftSprite []
+    in  Ant (Vector2 x y) angle 0 SeekFood rng Stop Center LeftSprite [] 0 0
 
 
 mkAnts :: Float -> Float -> [Int] -> [Ant]
@@ -130,9 +124,10 @@ driveAnt walls ant =
             TurnRight -> rightAnt ant
             Center -> ant
         setSpeedAnt =
-            if antGo rotatedAnt
-                then goAnt rotatedAnt
-                else stopAnt rotatedAnt
+            case antGoDir rotatedAnt of
+                Forward -> goAnt rotatedAnt
+                Stop -> stopAnt rotatedAnt
+                Backward -> backAnt rotatedAnt
         nextAntPos = getNextAntPos setSpeedAnt
         translatedAnt =
             if checkWallCollision walls nextAntPos
@@ -152,6 +147,12 @@ goAnt ant =
 stopAnt :: Ant -> Ant
 stopAnt ant =
     let speed' = max 0 (antSpeed ant - antDeceleration)
+    in  ant{antSpeed = speed'}
+
+
+backAnt :: Ant -> Ant
+backAnt ant =
+    let speed' = max (-antMaxSpeed) (antSpeed ant - antAcceleration)
     in  ant{antSpeed = speed'}
 
 
@@ -282,7 +283,7 @@ squishAnts x y width ants = filter (not . isSquished) ants
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng False Center LeftSprite []
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
 
 
 -- ----------------------------- Fold World Test ---------------------------- --
@@ -326,6 +327,7 @@ initWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
         playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
+        nestPos = Vector2 screenCenterW screenCenterH
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 500 600 50 50
@@ -335,7 +337,7 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture playerAnt True True walls Nothing
+    return $ World window antTexture playerAnt nestPos True True False True walls Nothing
 
 
 handleWorldInput :: World -> IO World
@@ -345,7 +347,7 @@ handleWorldInput w = do
     right <- isKeyDown KeyRight
     let playerAnt' =
             (wPlayerAnt w)
-                { antGo = go,
+                { antGoDir = Stop,
                   antWheelPos = case (left, right) of
                     (True, False) -> TurnLeft
                     (False, True) -> TurnRight

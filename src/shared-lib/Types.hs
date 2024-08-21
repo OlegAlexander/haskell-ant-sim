@@ -42,10 +42,12 @@ data Ant = Ant
       antSpeed :: Float,
       antMode :: Mode,
       antRng :: StdGen,
-      antGo :: Bool,
+      antGoDir :: GoDir,
       antWheelPos :: WheelPos,
       antSprite :: Sprite,
-      antVisionRays :: [VisionRay]
+      antVisionRays :: [VisionRay],
+      antNestAngle :: Degrees,
+      antNestDistance :: Float
     }
     deriving (Eq, Show)
 
@@ -54,6 +56,9 @@ data Mode = SeekFood | SeekNest deriving (Eq, Show)
 
 
 data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
+
+
+data GoDir = Forward | Stop | Backward deriving (Eq, Show)
 
 
 data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
@@ -67,8 +72,11 @@ data World = World
     { wWindowResources :: WindowResources,
       wAntTexture :: Texture,
       wPlayerAnt :: Ant,
+      wNest :: Vector2,
       wRenderVisionRays :: Bool,
       wRenderVisionRects :: Bool,
+      wRenderHomeVector :: Bool,
+      wRenderHomeCompass :: Bool,
       wWalls :: [Rectangle],
       wWallBeingDrawn :: Maybe (Vector2, Vector2)
     }

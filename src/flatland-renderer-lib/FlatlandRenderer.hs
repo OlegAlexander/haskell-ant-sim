@@ -25,6 +25,7 @@ import Shared (System (..), gameLoop)
 -- import Debug.Trace (traceShowId)
 
 import Data.List (sortBy)
+import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -54,18 +55,10 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, gray, green, lightGray, red, white)
-import Raylib.Util.Math (deg2Rad)
+import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
+import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
 import System.Random (mkStdGen)
-import Types (
-    Ant (..),
-    EntityType (..),
-    Mode (..),
-    Sprite (..),
-    VisionRay (..),
-    WheelPos (..),
-    World (..),
- )
+import Types (Ant (..), Degrees, EntityType (..), GoDir (..), Mode (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
@@ -192,7 +185,7 @@ visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
 visionRaysToRects rays =
     let depthMap = map ((1 -) . normalizeDistance . rayLength) rays
         rectWidth = screenWidth `div` length depthMap
-        rectHeight = screenHeight `div` 4
+        rectHeight = screenHeight `div` 1
         colors = map (entityTypeToColor . rayHitEntityType) rays
         colorsTimesDepthMap = zipWith scalarTimesColor depthMap colors
         rectsAndColors =
@@ -227,7 +220,7 @@ updateVisionRays rects ant =
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng False Center LeftSprite []
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
 
 
 getNextPos :: Float -> Float -> Float -> Vector2 -> Vector2
@@ -243,13 +236,22 @@ visionRayToLine (VisionRay p1 angle rayLength _) =
     (p1, getNextPos angle 1 rayLength p1)
 
 
+calcNestDirectionAndDistance :: Vector2 -> Vector2 -> (Degrees, Float)
+calcNestDirectionAndDistance (Vector2 nestX nestY) (Vector2 antX antY) =
+    let dx = nestX - antX
+        dy = nestY - antY
+        angle = (-(atan2 dy dx * rad2Deg)) `mod'` 360
+        distance = sqrt (dx * dx + dy * dy)
+    in  (angle, distance)
+
+
 initFRWorld :: IO World
 initFRWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
-        testWall3 = Rectangle 500 600 50 50
+        testWall3 = Rectangle (screenCenterW - 10) (screenCenterH - 10) 20 20
         walls = [testWall1, testWall2, testWall3]
     window <- initWindow screenWidth screenHeight "Flatland Renderer"
     setTargetFPS fps
@@ -258,33 +260,41 @@ initFRWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
-        playerAnt = Ant antPos 0 0 SeekFood rng False Center LeftSprite []
-    return $ World window antTexture playerAnt True True walls Nothing
+        nestPos = antPos
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
+    return $ World window antTexture playerAnt nestPos True True False True walls Nothing
 
 
 handleFRInput :: World -> IO World
 handleFRInput w = do
     up <- isKeyDown KeyUp
+    down <- isKeyDown KeyDown
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
     rKey <- isKeyPressed KeyR
     vKey <- isKeyPressed KeyV
+    hKey <- isKeyPressed KeyH
+    cKey <- isKeyPressed KeyC
     let toggleVisionRays = rKey /= wRenderVisionRays w
         toggleVisionRects = vKey /= wRenderVisionRects w
+        toggleHomeVector = hKey /= wRenderHomeVector w
+        toggleHomeCompass = cKey /= wRenderHomeCompass w
         playerAnt = wPlayerAnt w
         playerWheelPos =
             antWheelPos playerAnt
                 & \_ ->
                     if right then TurnRight else if left then TurnLeft else Center
-        playerAntGo = up
+        playerAntGoDir = if up then Forward else if down then Backward else Stop
     return
         w
             { wRenderVisionRays = toggleVisionRays,
               wRenderVisionRects = toggleVisionRects,
+              wRenderHomeVector = toggleHomeVector,
+              wRenderHomeCompass = toggleHomeCompass,
               wPlayerAnt =
                 playerAnt
                     { antWheelPos = playerWheelPos,
-                      antGo = playerAntGo
+                      antGoDir = playerAntGoDir
                     }
             }
 
@@ -293,21 +303,29 @@ updateFRWorld :: World -> World
 updateFRWorld w =
     let playerAnt = wPlayerAnt w
         playerWheelPos = antWheelPos playerAnt
-        playerAntGo = antGo playerAnt
+        playerAntGoDir = antGoDir playerAnt
         wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
         playerAntAngle =
             antAngle playerAnt
                 & \angle ->
                     case playerWheelPos of
-                        TurnRight -> angle - 5
-                        TurnLeft -> angle + 5
+                        TurnRight -> angle - 3
+                        TurnLeft -> angle + 3
                         Center -> angle
                         & \angle' -> angle' `mod'` 360
         nextPos =
-            if playerAntGo
-                then getNextPos playerAntAngle 1 5 (antPos playerAnt)
-                else antPos playerAnt
-        playerAnt' = playerAnt{antPos = nextPos, antAngle = playerAntAngle}
+            case playerAntGoDir of
+                Forward -> getNextPos playerAntAngle 1 3 (antPos playerAnt)
+                Backward -> getNextPos playerAntAngle (-1) 3 (antPos playerAnt)
+                Stop -> antPos playerAnt
+        (nestAngle, nestDistance) = calcNestDirectionAndDistance (wNest w) nextPos
+        playerAnt' =
+            playerAnt
+                { antPos = nextPos,
+                  antAngle = playerAntAngle,
+                  antNestAngle = nestAngle,
+                  antNestDistance = nestDistance
+                }
         playerAnt'' = updateVisionRays wallRects playerAnt'
     in  w{wPlayerAnt = playerAnt''}
 
@@ -319,10 +337,25 @@ renderFRWorld w = do
         renderVisionRects = wRenderVisionRects w
         rays = wPlayerAnt w & antVisionRays
         playerAnt = wPlayerAnt w
+    -- draw the nest
+    drawCircleV (wNest w) 10 brown
+    -- draw walls
     forM_ walls $ \(wall, color) -> drawRectangleRec wall color
+    -- draw vision rays
     when renderVisionRays $ do
         let visionLines = map visionRayToLine rays
         forM_ visionLines $ \(start, end) -> drawLineV start end white
+    -- draw home vector for the player ant
+    when (wRenderHomeVector w) $ do
+        let homeVectorEnd =
+                getNextPos
+                    (antNestAngle playerAnt)
+                    1
+                    (antNestDistance playerAnt * 0.2)
+                    (antPos playerAnt)
+        drawLineEx (antPos playerAnt) homeVectorEnd 5 gray
+
+    -- draw player ant as a circle
     drawCircleV (antPos playerAnt) 5 black
     -- draw ant direction as a line
     let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
@@ -331,6 +364,25 @@ renderFRWorld w = do
     when renderVisionRects $ do
         let visionRects = visionRaysToRects rays
         forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
+    -- draw home compass in the center of the screen
+    when (wRenderHomeCompass w) $ do
+        let compassCenter =
+                Vector2 (int2Float screenWidth - 150) (int2Float screenHeight - 150)
+            compassEnd =
+                getNextPos
+                    (antNestAngle playerAnt)
+                    1
+                    (antNestDistance playerAnt * 0.4)
+                    compassCenter
+            antDirEnd =
+                getNextPos
+                    (antAngle playerAnt)
+                    1
+                    80
+                    compassCenter
+        drawCircleV compassCenter 20 gray
+        drawLineEx compassCenter antDirEnd 20 gray
+        drawLineEx compassCenter compassEnd 10 white
 
 
 flatlandRendererSys :: System World

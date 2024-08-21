@@ -27,6 +27,7 @@ import Shared (System (..), gameLoop)
 import System.Random (mkStdGen)
 import Types (
     Ant (..),
+    GoDir (Stop),
     Mode (..),
     Sprite (..),
     WallDrawingState (..),
@@ -60,8 +61,9 @@ initWallsWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 0 0
-        playerAnt = Ant antPos 0 0 SeekFood rng False Center LeftSprite []
-    return $ World window antTexture playerAnt True True [] Nothing
+        nestPos = antPos
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
+    return $ World window antTexture playerAnt nestPos True True False True [] Nothing
 
 
 handleWallInput :: World -> IO World

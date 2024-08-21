@@ -49,7 +49,7 @@ antJitterAngle = 1
 
 
 antVisionAngle :: Float
-antVisionAngle = 90
+antVisionAngle = 180
 
 
 antVisionMaxDistance :: Float
