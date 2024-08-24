@@ -20,10 +20,11 @@ import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
-import Shared (System (..), gameLoop)
+import Shared (System (..), gameLoop, getNextPos)
 
 -- import Debug.Trace (traceShowId)
 
+import AntMovement (antMovementSys)
 import Data.List (sortBy)
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
@@ -58,6 +59,7 @@ import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
 import System.Random (mkStdGen)
+import Text.Read.Lex qualified as AntMovement
 import Types (Ant (..), Degrees, EntityType (..), GoDir (..), Mode (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
 
@@ -223,14 +225,6 @@ mkPlayerAnt x y seed =
     in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
 
 
-getNextPos :: Float -> Float -> Float -> Vector2 -> Vector2
-getNextPos angle speed stepSize (Vector2 x y) =
-    let rad = (-angle) * deg2Rad -- negate angle because of screen space coords
-        x' = x + stepSize * speed * cos rad
-        y' = y + stepSize * speed * sin rad
-    in  Vector2 x' y'
-
-
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
 visionRayToLine (VisionRay p1 angle rayLength _) =
     (p1, getNextPos angle 1 rayLength p1)
@@ -267,10 +261,6 @@ initFRWorld = do
 
 handleFRInput :: World -> IO World
 handleFRInput w = do
-    up <- isKeyDown KeyUp
-    down <- isKeyDown KeyDown
-    left <- isKeyDown KeyLeft
-    right <- isKeyDown KeyRight
     rKey <- isKeyPressed KeyR
     vKey <- isKeyPressed KeyV
     hKey <- isKeyPressed KeyH
@@ -279,23 +269,12 @@ handleFRInput w = do
         toggleVisionRects = vKey /= wRenderVisionRects w
         toggleHomeVector = hKey /= wRenderHomeVector w
         toggleHomeCompass = cKey /= wRenderHomeCompass w
-        playerAnt = wPlayerAnt w
-        playerWheelPos =
-            antWheelPos playerAnt
-                & \_ ->
-                    if right then TurnRight else if left then TurnLeft else Center
-        playerAntGoDir = if up then Forward else if down then Backward else Stop
     return
         w
             { wRenderVisionRays = toggleVisionRays,
               wRenderVisionRects = toggleVisionRects,
               wRenderHomeVector = toggleHomeVector,
-              wRenderHomeCompass = toggleHomeCompass,
-              wPlayerAnt =
-                playerAnt
-                    { antWheelPos = playerWheelPos,
-                      antGoDir = playerAntGoDir
-                    }
+              wRenderHomeCompass = toggleHomeCompass
             }
 
 
@@ -305,25 +284,10 @@ updateFRWorld w =
         playerWheelPos = antWheelPos playerAnt
         playerAntGoDir = antGoDir playerAnt
         wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
-        playerAntAngle =
-            antAngle playerAnt
-                & \angle ->
-                    case playerWheelPos of
-                        TurnRight -> angle - 3
-                        TurnLeft -> angle + 3
-                        Center -> angle
-                        & \angle' -> angle' `mod'` 360
-        nextPos =
-            case playerAntGoDir of
-                Forward -> getNextPos playerAntAngle 1 3 (antPos playerAnt)
-                Backward -> getNextPos playerAntAngle (-1) 3 (antPos playerAnt)
-                Stop -> antPos playerAnt
-        (nestAngle, nestDistance) = calcNestDirectionAndDistance (wNest w) nextPos
+        (nestAngle, nestDistance) = calcNestDirectionAndDistance (wNest w) (antPos playerAnt)
         playerAnt' =
             playerAnt
-                { antPos = nextPos,
-                  antAngle = playerAntAngle,
-                  antNestAngle = nestAngle,
+                { antNestAngle = nestAngle,
                   antNestDistance = nestDistance
                 }
         playerAnt'' = updateVisionRays wallRects playerAnt'
@@ -337,14 +301,20 @@ renderFRWorld w = do
         renderVisionRects = wRenderVisionRects w
         rays = wPlayerAnt w & antVisionRays
         playerAnt = wPlayerAnt w
+        antPos' = antPos playerAnt
+
+    -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
     drawCircleV (wNest w) 10 brown
+
     -- draw walls
     forM_ walls $ \(wall, color) -> drawRectangleRec wall color
+
     -- draw vision rays
     when renderVisionRays $ do
         let visionLines = map visionRayToLine rays
         forM_ visionLines $ \(start, end) -> drawLineV start end white
+
     -- draw home vector for the player ant
     when (wRenderHomeVector w) $ do
         let homeVectorEnd =
@@ -352,19 +322,25 @@ renderFRWorld w = do
                     (antNestAngle playerAnt)
                     1
                     (antNestDistance playerAnt * 0.2)
-                    (antPos playerAnt)
-        drawLineEx (antPos playerAnt) homeVectorEnd 5 gray
+                    antPos'
+        drawLineEx antPos' homeVectorEnd 5 gray
 
+    -- TODO Drawing the ant is repeated in AntMovement.hs
+    -- but I'm not sure how to avoid this duplication because I want the ant
+    -- to be drawn on top of the vision rays.
     -- draw player ant as a circle
-    drawCircleV (antPos playerAnt) 5 black
+    drawCircleV antPos' 5 black
+
     -- draw ant direction as a line
-    let antDir = getNextPos (antAngle playerAnt) 1 20 (antPos playerAnt)
-    drawLineEx (antPos playerAnt) antDir 5 black
+    let antDir = getNextPos (antAngle playerAnt) 1 20 antPos'
+    drawLineEx antPos' antDir 5 black
+
     -- draw ant vision rects
     when renderVisionRects $ do
         let visionRects = visionRaysToRects rays
         forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
-    -- draw home compass in the center of the screen
+
+    -- draw home compass in the lower right corner of the screen
     when (wRenderHomeCompass w) $ do
         let compassCenter =
                 Vector2 (int2Float screenWidth - 150) (int2Float screenHeight - 150)
@@ -391,14 +367,15 @@ flatlandRendererSys = System handleFRInput updateFRWorld renderFRWorld
 
 flatlandRendererSysWrapped :: System World
 flatlandRendererSysWrapped =
-    flatlandRendererSys
-        { render = \w -> drawing $ do
-            f11Pressed <- isKeyPressed KeyF11
-            when f11Pressed toggleFullscreen
-            clearBackground lightGray
-            renderFRWorld w
-            -- drawFPS 10 10
-        }
+    let allSystems = antMovementSys <> flatlandRendererSys
+    in  allSystems
+            { render = \w -> drawing $ do
+                f11Pressed <- isKeyPressed KeyF11
+                when f11Pressed toggleFullscreen
+                clearBackground lightGray
+                render allSystems w
+                -- drawFPS 10 10
+            }
 
 
 driveFlatlandRenderer :: IO ()

@@ -38,7 +38,15 @@ library flatland-renderer-lib
     import:             options
     hs-source-dirs:     src/flatland-renderer-lib
     exposed-modules:    FlatlandRenderer
+    build-depends:      shared-lib,
+                        ant-movement-lib
+
+library ant-movement-lib
+    import:             options
+    hs-source-dirs:     src/ant-movement-lib
+    exposed-modules:    AntMovement
     build-depends:      shared-lib
+
 
 library main-game-lib
     import:             options
@@ -46,7 +54,8 @@ library main-game-lib
     exposed-modules:    MainGame
     build-depends:      shared-lib,
                         draw-walls-lib,
-                        flatland-renderer-lib
+                        flatland-renderer-lib,
+                        ant-movement-lib
 
 executable main
     import:         options
@@ -65,4 +74,10 @@ executable flatland-renderer
     import:         options
     main-is:        FlatlandRendererDriver.hs
     build-depends:  flatland-renderer-lib
+    hs-source-dirs: app
+
+executable ant-movement
+    import:         options
+    main-is:        AntMovementDriver.hs
+    build-depends:  ant-movement-lib
     hs-source-dirs: app

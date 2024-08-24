@@ -1,0 +1,166 @@
+{-# HLINT ignore "Eta reduce" #-}
+{-# HLINT ignore "Use <$>" #-}
+{-# HLINT ignore "Use guards" #-}
+{-# HLINT ignore "Use uncurry" #-}
+{-# HLINT ignore "Use tuple-section" #-}
+
+module AntMovement where
+
+import Constants (
+    antPng,
+    fps,
+    screenHeight,
+    screenWidth,
+ )
+import Control.Monad (forM_, when)
+import Data.Fixed (mod')
+import Data.Function ((&))
+import Debug.Trace (traceShowId)
+import GHC.Float (int2Float)
+import Raylib.Core (
+    clearBackground,
+    initWindow,
+    isKeyDown,
+    isKeyPressed,
+    setMouseCursor,
+    setTargetFPS,
+    setTraceLogLevel,
+    toggleFullscreen,
+    windowShouldClose,
+ )
+import Raylib.Core.Shapes (
+    drawCircleV,
+    drawLineEx,
+    drawRectangleRec,
+ )
+import Raylib.Core.Text (drawFPS)
+import Raylib.Core.Textures (loadTexture)
+import Raylib.Types (
+    KeyboardKey (..),
+    MouseCursor (MouseCursorCrosshair),
+    Rectangle (Rectangle),
+    TraceLogLevel (LogWarning),
+ )
+import Raylib.Types.Core (Vector2 (..))
+import Raylib.Util (drawing)
+import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
+import Raylib.Util.Math (deg2Rad)
+import Shared (System (..), gameLoop, getNextPos)
+import System.Random (mkStdGen)
+import Types (Ant (..), Degrees, EntityType (..), GoDir (..), Mode (..), Sprite (..), WheelPos (..), World (..))
+
+
+mkPlayerAnt :: Float -> Float -> Int -> Ant
+mkPlayerAnt x y seed =
+    let rng = mkStdGen seed
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
+
+
+initAMWorld :: IO World
+initAMWorld = do
+    let screenCenterW = int2Float screenWidth / 2
+        screenCenterH = int2Float screenHeight / 2
+        testWall1 = Rectangle 200 200 500 300
+        testWall2 = Rectangle 100 300 1000 50
+        testWall3 = Rectangle (screenCenterW - 10) (screenCenterH - 10) 20 20
+        walls = [testWall1, testWall2, testWall3]
+    window <- initWindow screenWidth screenHeight "Ant Movement"
+    setTargetFPS fps
+    setTraceLogLevel LogWarning
+    setMouseCursor MouseCursorCrosshair
+    antTexture <- loadTexture antPng window
+    let rng = mkStdGen 0
+        antPos = Vector2 screenCenterW screenCenterH
+        nestPos = antPos
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
+    return $ World window antTexture playerAnt nestPos True True False True walls Nothing
+
+
+handleAMInput :: World -> IO World
+handleAMInput w = do
+    up <- isKeyDown KeyUp
+    down <- isKeyDown KeyDown
+    left <- isKeyDown KeyLeft
+    right <- isKeyDown KeyRight
+    let playerAnt = wPlayerAnt w
+        playerWheelPos =
+            antWheelPos playerAnt
+                & \_ ->
+                    if right then TurnRight else if left then TurnLeft else Center
+        playerAntGoDir = if up then Forward else if down then Backward else Stop
+    return
+        w
+            { wPlayerAnt =
+                playerAnt
+                    { antWheelPos = playerWheelPos,
+                      antGoDir = playerAntGoDir
+                    }
+            }
+
+
+updateAMWorld :: World -> World
+updateAMWorld w =
+    let playerAnt = wPlayerAnt w
+        playerWheelPos = antWheelPos playerAnt
+        playerAntGoDir = antGoDir playerAnt
+        wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
+        playerAntAngle =
+            antAngle playerAnt
+                & \angle ->
+                    case playerWheelPos of
+                        TurnRight -> (angle - 3) `mod'` 360
+                        TurnLeft -> (angle + 3) `mod'` 360
+                        Center -> angle `mod'` 360
+        nextPos =
+            case playerAntGoDir of
+                Forward -> getNextPos playerAntAngle 1 3 (antPos playerAnt)
+                Backward -> getNextPos playerAntAngle (-1) 1.5 (antPos playerAnt)
+                Stop -> antPos playerAnt
+
+        playerAnt' =
+            playerAnt
+                { antPos = nextPos,
+                  antAngle = playerAntAngle
+                }
+    in  w{wPlayerAnt = playerAnt'}
+
+
+renderAMWorld :: World -> IO ()
+renderAMWorld w = do
+    let walls = zip (wWalls w) [red, green, blue] -- TODO Temporary
+        playerAnt = wPlayerAnt w
+        antPos' = antPos playerAnt
+
+    -- draw the nest
+    drawCircleV (wNest w) 10 brown
+
+    -- draw walls
+    forM_ walls $ \(wall, color) -> drawRectangleRec wall color
+
+    -- draw player ant as a circle
+    drawCircleV antPos' 5 black
+
+    -- draw ant direction as a line
+    let antDir = getNextPos (antAngle playerAnt) 1 20 antPos'
+    drawLineEx antPos' antDir 5 black
+
+
+antMovementSys :: System World
+antMovementSys = System handleAMInput updateAMWorld renderAMWorld
+
+
+antMovementSysWrapped :: System World
+antMovementSysWrapped =
+    antMovementSys
+        { render = \w -> drawing $ do
+            f11Pressed <- isKeyPressed KeyF11
+            when f11Pressed toggleFullscreen
+            clearBackground lightGray
+            renderAMWorld w
+            -- drawFPS 10 10
+        }
+
+
+driveAntMovement :: IO ()
+driveAntMovement =
+    initAMWorld >>= gameLoop antMovementSysWrapped windowShouldClose
