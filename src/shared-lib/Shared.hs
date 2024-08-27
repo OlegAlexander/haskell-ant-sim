@@ -5,11 +5,11 @@ import Raylib.Types (Vector2 (..))
 import Raylib.Util.Math (deg2Rad)
 
 
-getNextPos :: Float -> Float -> Float -> Vector2 -> Vector2
-getNextPos angle speed stepSize (Vector2 x y) =
+getNextPos :: Float -> Float -> Vector2 -> Vector2
+getNextPos angle speed (Vector2 x y) =
     let rad = (-angle) * deg2Rad -- negate angle because of screen space coords
-        x' = x + stepSize * speed * cos rad
-        y' = y + stepSize * speed * sin rad
+        x' = x + speed * cos rad
+        y' = y + speed * sin rad
     in  Vector2 x' y'
 
 

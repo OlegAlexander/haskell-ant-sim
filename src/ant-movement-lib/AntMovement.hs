@@ -7,7 +7,10 @@
 module AntMovement where
 
 import Constants (
+    antAcceleration,
+    antMaxSpeed,
     antPng,
+    antTurnAngle,
     fps,
     screenHeight,
     screenWidth,
@@ -104,23 +107,29 @@ updateAMWorld w =
         playerWheelPos = antWheelPos playerAnt
         playerAntGoDir = antGoDir playerAnt
         wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
-        playerAntAngle =
+        -- TODO Do wall collision
+        nextAngle =
             antAngle playerAnt
                 & \angle ->
                     case playerWheelPos of
-                        TurnRight -> (angle - 3) `mod'` 360
-                        TurnLeft -> (angle + 3) `mod'` 360
+                        TurnRight -> (angle - antTurnAngle) `mod'` 360
+                        TurnLeft -> (angle + antTurnAngle) `mod'` 360
                         Center -> angle `mod'` 360
-        nextPos =
+        nextSpeed =
             case playerAntGoDir of
-                Forward -> getNextPos playerAntAngle 1 3 (antPos playerAnt)
-                Backward -> getNextPos playerAntAngle (-1) 1.5 (antPos playerAnt)
-                Stop -> antPos playerAnt
+                Forward -> min antMaxSpeed (antSpeed playerAnt + antAcceleration)
+                Backward -> max ((-antMaxSpeed) / 4) (antSpeed playerAnt - antAcceleration)
+                Stop -> case compare (antSpeed playerAnt) 0 of
+                    LT -> min 0 (antSpeed playerAnt + antAcceleration)
+                    GT -> max 0 (antSpeed playerAnt - antAcceleration)
+                    EQ -> 0
+        nextPos = getNextPos nextAngle nextSpeed (antPos playerAnt)
 
         playerAnt' =
             playerAnt
                 { antPos = nextPos,
-                  antAngle = playerAntAngle
+                  antAngle = nextAngle,
+                  antSpeed = nextSpeed
                 }
     in  w{wPlayerAnt = playerAnt'}
 
@@ -141,7 +150,7 @@ renderAMWorld w = do
     drawCircleV antPos' 5 black
 
     -- draw ant direction as a line
-    let antDir = getNextPos (antAngle playerAnt) 1 20 antPos'
+    let antDir = getNextPos (antAngle playerAnt) 20 antPos'
     drawLineEx antPos' antDir 5 black
 
 

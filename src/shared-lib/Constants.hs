@@ -25,23 +25,15 @@ antScale = 0.3
 
 
 antMaxSpeed :: Float
-antMaxSpeed = 6
-
-
-antStepSize :: Float
-antStepSize = 2
+antMaxSpeed = 5
 
 
 antAcceleration :: Float
 antAcceleration = 0.5
 
 
-antDeceleration :: Float
-antDeceleration = 0.5
-
-
 antTurnAngle :: Float
-antTurnAngle = 5
+antTurnAngle = 3
 
 
 antJitterAngle :: Float

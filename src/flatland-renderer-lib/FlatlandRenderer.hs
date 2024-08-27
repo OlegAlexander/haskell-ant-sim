@@ -227,7 +227,7 @@ mkPlayerAnt x y seed =
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
 visionRayToLine (VisionRay p1 angle rayLength _) =
-    (p1, getNextPos angle 1 rayLength p1)
+    (p1, getNextPos angle rayLength p1)
 
 
 calcNestDirectionAndDistance :: Vector2 -> Vector2 -> (Degrees, Float)
@@ -320,7 +320,6 @@ renderFRWorld w = do
         let homeVectorEnd =
                 getNextPos
                     (antNestAngle playerAnt)
-                    1
                     (antNestDistance playerAnt * 0.2)
                     antPos'
         drawLineEx antPos' homeVectorEnd 5 gray
@@ -332,7 +331,7 @@ renderFRWorld w = do
     drawCircleV antPos' 5 black
 
     -- draw ant direction as a line
-    let antDir = getNextPos (antAngle playerAnt) 1 20 antPos'
+    let antDir = getNextPos (antAngle playerAnt) 20 antPos'
     drawLineEx antPos' antDir 5 black
 
     -- draw ant vision rects
@@ -347,13 +346,11 @@ renderFRWorld w = do
             compassEnd =
                 getNextPos
                     (antNestAngle playerAnt)
-                    1
                     (antNestDistance playerAnt * 0.4)
                     compassCenter
             antDirEnd =
                 getNextPos
                     (antAngle playerAnt)
-                    1
                     80
                     compassCenter
         drawCircleV compassCenter 20 gray
