@@ -18,6 +18,7 @@ import Constants (
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
+import Data.Maybe (mapMaybe)
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
@@ -47,10 +48,9 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
-import Raylib.Util.Math (deg2Rad)
 import Shared (System (..), gameLoop, getNextPos)
 import System.Random (mkStdGen)
-import Types (Ant (..), Degrees, EntityType (..), GoDir (..), Mode (..), Sprite (..), WheelPos (..), World (..))
+import Types (Ant (..), EntityType (..), GoDir (..), Mode (..), Sprite (..), WheelPos (..), World (..))
 
 
 mkPlayerAnt :: Float -> Float -> Int -> Ant
@@ -59,13 +59,24 @@ mkPlayerAnt x y seed =
     in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
 
 
+canGoThere :: Vector2 -> (Rectangle, EntityType) -> Maybe (Rectangle, EntityType)
+canGoThere (Vector2 x y) (rect@(Rectangle rx ry rw rh), entityType) =
+    if x < rx || x > rx + rw || y < ry || y > ry + rh
+        then Nothing
+        else Just (rect, entityType)
+
+
+checkCollisions :: Vector2 -> [(Rectangle, EntityType)] -> [(Rectangle, EntityType)]
+checkCollisions pos rects = mapMaybe (canGoThere pos) rects
+
+
 initAMWorld :: IO World
 initAMWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
-        testWall3 = Rectangle (screenCenterW - 10) (screenCenterH - 10) 20 20
+        testWall3 = Rectangle 900 500 20 20
         walls = [testWall1, testWall2, testWall3]
     window <- initWindow screenWidth screenHeight "Ant Movement"
     setTargetFPS fps
@@ -107,7 +118,7 @@ updateAMWorld w =
         playerWheelPos = antWheelPos playerAnt
         playerAntGoDir = antGoDir playerAnt
         wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
-        -- TODO Do wall collision
+
         nextAngle =
             antAngle playerAnt
                 & \angle ->
@@ -125,9 +136,14 @@ updateAMWorld w =
                     EQ -> 0
         nextPos = getNextPos nextAngle nextSpeed (antPos playerAnt)
 
+        nextPos' =
+            if checkCollisions nextPos wallRects /= []
+                then antPos playerAnt
+                else nextPos
+
         playerAnt' =
             playerAnt
-                { antPos = nextPos,
+                { antPos = nextPos',
                   antAngle = nextAngle,
                   antSpeed = nextSpeed
                 }

@@ -245,7 +245,7 @@ initFRWorld = do
         screenCenterH = int2Float screenHeight / 2
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
-        testWall3 = Rectangle (screenCenterW - 10) (screenCenterH - 10) 20 20
+        testWall3 = Rectangle 900 500 20 20
         walls = [testWall1, testWall2, testWall3]
     window <- initWindow screenWidth screenHeight "Flatland Renderer"
     setTargetFPS fps
