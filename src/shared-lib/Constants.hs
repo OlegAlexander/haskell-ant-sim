@@ -29,11 +29,11 @@ antMaxSpeed = 8
 
 
 antAcceleration :: Float
-antAcceleration = 0.333
+antAcceleration = 0.5
 
 
 antTurnAngle :: Float
-antTurnAngle = 3
+antTurnAngle = 5
 
 
 antJitterAngle :: Float

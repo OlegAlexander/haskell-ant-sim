@@ -281,8 +281,6 @@ handleFRInput w = do
 updateFRWorld :: World -> World
 updateFRWorld w =
     let playerAnt = wPlayerAnt w
-        playerWheelPos = antWheelPos playerAnt
-        playerAntGoDir = antGoDir playerAnt
         wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
         (nestAngle, nestDistance) = calcNestDirectionAndDistance (wNest w) (antPos playerAnt)
         playerAnt' =

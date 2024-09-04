@@ -41,6 +41,14 @@ library flatland-renderer-lib
     build-depends:      shared-lib,
                         ant-movement-lib
 
+library food-lib
+    import:             options
+    hs-source-dirs:     src/food-lib
+    exposed-modules:    Food
+    build-depends:      shared-lib,
+                        ant-movement-lib
+
+
 library ant-movement-lib
     import:             options
     hs-source-dirs:     src/ant-movement-lib
@@ -80,4 +88,10 @@ executable ant-movement
     import:         options
     main-is:        AntMovementDriver.hs
     build-depends:  ant-movement-lib
+    hs-source-dirs: app
+
+executable food
+    import:         options
+    main-is:        FoodDriver.hs
+    build-depends:  food-lib
     hs-source-dirs: app
