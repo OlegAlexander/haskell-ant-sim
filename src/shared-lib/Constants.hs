@@ -1,7 +1,7 @@
 module Constants where
 
 import Raylib.Types (Color)
-import Raylib.Util.Colors (white)
+import Raylib.Util.Colors (white, yellow)
 
 
 screenWidth :: Int
@@ -66,3 +66,15 @@ minWallSize = 10.0
 
 borderWallThickness :: Float
 borderWallThickness = 30
+
+
+foodScale :: Float
+foodScale = 0.1
+
+
+foodColor :: Color
+foodColor = yellow
+
+
+foodGrowthAmount :: Int
+foodGrowthAmount = 10

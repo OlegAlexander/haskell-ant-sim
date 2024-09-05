@@ -222,7 +222,7 @@ updateVisionRays rects ant =
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
 
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
@@ -255,8 +255,8 @@ initFRWorld = do
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
         nestPos = antPos
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
-    return $ World window antTexture playerAnt nestPos True True False True walls Nothing
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
+    return $ World window antTexture playerAnt nestPos True True False True walls Nothing [] Nothing
 
 
 handleFRInput :: World -> IO World

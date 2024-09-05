@@ -15,12 +15,10 @@ import Data.List (foldl')
 
 import Constants (
     antAcceleration,
-    antDeceleration,
     antJitterAngle,
     antMaxSpeed,
     antPng,
     antScale,
-    antStepSize,
     antTurnAngle,
     borderWallThickness,
     fps,
@@ -80,7 +78,7 @@ borderWalls =
 mkAnt :: Float -> Float -> Int -> Ant
 mkAnt x y seed =
     let (angle, rng) = randomR (0, 360) (mkStdGen seed)
-    in  Ant (Vector2 x y) angle 0 SeekFood rng Stop Center LeftSprite [] 0 0
+    in  Ant (Vector2 x y) angle 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
 
 
 mkAnts :: Float -> Float -> [Int] -> [Ant]
@@ -96,8 +94,8 @@ getNextAntPos ant =
     let angle = antAngle ant * deg2Rad
         speed = antSpeed ant
         Vector2 x y = antPos ant
-        x' = x + antStepSize * speed * cos angle
-        y' = y + antStepSize * speed * sin angle
+        x' = x + speed * cos angle
+        y' = y + speed * sin angle
     in  Vector2 x' y'
 
 
@@ -146,7 +144,7 @@ goAnt ant =
 
 stopAnt :: Ant -> Ant
 stopAnt ant =
-    let speed' = max 0 (antSpeed ant - antDeceleration)
+    let speed' = max 0 (antSpeed ant - antAcceleration)
     in  ant{antSpeed = speed'}
 
 
@@ -283,7 +281,7 @@ squishAnts x y width ants = filter (not . isSquished) ants
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
 
 
 -- ----------------------------- Fold World Test ---------------------------- --
@@ -337,7 +335,7 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture playerAnt nestPos True True False True walls Nothing
+    return $ World window antTexture playerAnt nestPos True True False True walls Nothing [] Nothing
 
 
 handleWorldInput :: World -> IO World

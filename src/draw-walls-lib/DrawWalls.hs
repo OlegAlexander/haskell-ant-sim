@@ -62,8 +62,8 @@ initWallsWorld = do
     let rng = mkStdGen 0
         antPos = Vector2 0 0
         nestPos = antPos
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0
-    return $ World window antTexture playerAnt nestPos True True False True [] Nothing
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
+    return $ World window antTexture playerAnt nestPos True True False True [] Nothing [] Nothing
 
 
 handleWallInput :: World -> IO World

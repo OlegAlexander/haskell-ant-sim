@@ -5,9 +5,9 @@ import Raylib.Util (WindowResources)
 import System.Random (StdGen)
 
 
-data Circle = Circle
-    { circlePos :: Vector2,
-      circleRadius :: Float
+data Food = Food
+    { foodPos :: Vector2,
+      foodAmount :: Int
     }
     deriving (Eq, Show)
 
@@ -47,7 +47,8 @@ data Ant = Ant
       antSprite :: Sprite,
       antVisionRays :: [VisionRay],
       antNestAngle :: Degrees,
-      antNestDistance :: Float
+      antNestDistance :: Float,
+      antHasFood :: Bool
     }
     deriving (Eq, Show)
 
@@ -78,5 +79,7 @@ data World = World
       wRenderHomeVector :: Bool,
       wRenderHomeCompass :: Bool,
       wWalls :: [Rectangle],
-      wWallBeingDrawn :: Maybe (Vector2, Vector2)
+      wWallBeingDrawn :: Maybe (Vector2, Vector2),
+      wFood :: [Food],
+      wFoodBeingDrawn :: Maybe Food
     }
