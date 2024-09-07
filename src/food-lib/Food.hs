@@ -1,4 +1,5 @@
 {-# HLINT ignore "Eta reduce" #-}
+{-# HLINT ignore "Use forM_" #-}
 
 module Food where
 
@@ -8,6 +9,7 @@ import Constants (
     antMaxSpeed,
     antPng,
     antTurnAngle,
+    collisionRectSize,
     foodColor,
     foodGrowthAmount,
     foodScale,
@@ -37,15 +39,22 @@ import Raylib.Core (
 import Raylib.Core.Shapes (
     drawCircleV,
     drawLineEx,
+    drawRectangleLinesEx,
     drawRectangleRec,
  )
 import Raylib.Core.Text (drawFPS)
 import Raylib.Core.Textures (loadTexture)
-import Raylib.Types (KeyboardKey (..), MouseButton (MouseButtonLeft), MouseCursor (MouseCursorCrosshair), Rectangle (Rectangle), TraceLogLevel (LogWarning))
-import Raylib.Types.Core (Vector2 (..))
+import Raylib.Types (
+    KeyboardKey (..),
+    MouseButton (MouseButtonLeft),
+    MouseCursor (MouseCursorCrosshair),
+    Rectangle (Rectangle),
+    TraceLogLevel (LogWarning),
+ )
+import Raylib.Types.Core (MouseButton (MouseButtonRight), Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
-import Shared (System (..), gameLoop, getNextPos)
+import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, isPointInRect)
 import System.Random (mkStdGen)
 import Types (
     Ant (..),
@@ -76,43 +85,53 @@ initFoodWorld = do
     return $ World window antTexture playerAnt nestPos True True False True walls Nothing [] Nothing
 
 
+-- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.
+-- Continue incrementing foodAmount while the mouse is held down.
+-- When the mouse is released, stop incrementing foodAmount and add the foodBeingDrawn object to the food list.
+-- Right click to remove food objects.
 handleFoodInput :: World -> IO World
 handleFoodInput w = do
-    -- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.
-    -- Continue incrementing foodAmount while the mouse is held down.
-    -- When the mouse is released, stop incrementing foodAmount and add the Food object to the food list.
     mousePos <- getMousePosition
     isMouseLeftPressed <- isMouseButtonDown MouseButtonLeft
-    let fbd = wFoodBeingDrawn w
-    case (isMouseLeftPressed, fbd) of
-        (True, Nothing) -> return $ w{wFoodBeingDrawn = Just (Food mousePos foodGrowthAmount)}
-        (True, Just (Food pos amount)) -> return $ w{wFoodBeingDrawn = Just (Food pos (amount + foodGrowthAmount))}
-        (False, Just food) -> return $ w{wFoodBeingDrawn = Nothing, wFood = food : wFood w}
-        (False, Nothing) -> return w
+    isMouseRightPressed <- isMouseButtonDown MouseButtonRight
+    case (isMouseLeftPressed, isMouseRightPressed, wFoodBeingDrawn w) of
+        (True, _, Nothing) ->
+            let collisionRect = calcCenteredRect mousePos collisionRectSize
+            in  return $ w{wFoodBeingDrawn = Just (Food mousePos foodGrowthAmount collisionRect)}
+        (True, _, Just (Food pos amount rect)) ->
+            return $ w{wFoodBeingDrawn = Just (Food pos (amount + foodGrowthAmount) rect)}
+        (False, _, Just food) ->
+            return $ w{wFoodBeingDrawn = Nothing, wFood = food : wFood w}
+        (False, True, Nothing) ->
+            let foodToKeep = filter (not . isPointInRect mousePos . foodCollisionRect) (wFood w)
+            in  return w{wFood = foodToKeep}
+        (False, False, Nothing) ->
+            return w
 
 
 updateFoodWorld :: World -> World
 updateFoodWorld w = w
 
 
+-- Use a constant rectangle size for food, and just scale the amount circle.
+drawFood :: Food -> IO ()
+drawFood (Food pos amount rect) = do
+    -- Draw food as a circle
+    let radius = int2Float amount * foodScale
+    drawCircleV pos radius foodColor
+
+    -- Draw the collision rectangle
+    drawRectangleLinesEx rect 2 black
+
+
 renderFoodWorld :: World -> IO ()
 renderFoodWorld w = do
-    forM_ (wFood w) $ \(Food pos amount) -> do
-        -- Draw food as a circle at foodPos with a radius of foodAmount * foodScale
-        let radius = int2Float amount * foodScale
-        drawCircleV pos radius foodColor
+    -- Draw all food
+    forM_ (wFood w) drawFood
 
-        -- Draw a rectangle inscribed inside the circle
-        -- TODO Do this the other way around:
-        -- the rectangle should be the true radius of the food, and the circle should be circumscribed around it
-        let (Vector2 x y) = pos
-            side = (radius * 2) / sqrt 2
-            box = Rectangle (x - side / 2) (y - side / 2) side side
-        drawRectangleRec box black
-
-    -- Also draw foodBeingDrawn the same way
+    -- Draw foodBeingDrawn (Note to self: I can use forM_ here, too.)
     case wFoodBeingDrawn w of
-        Just (Food pos amount) -> drawCircleV pos (int2Float amount * foodScale) foodColor
+        Just food -> drawFood food
         Nothing -> return ()
 
 

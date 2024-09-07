@@ -1,7 +1,7 @@
 module Shared where
 
 import Control.Monad (unless, (>=>))
-import Raylib.Types (Vector2 (..))
+import Raylib.Types (Rectangle (..), Vector2 (..))
 import Raylib.Util.Math (deg2Rad)
 
 
@@ -11,6 +11,16 @@ getNextPos angle speed (Vector2 x y) =
         x' = x + speed * cos rad
         y' = y + speed * sin rad
     in  Vector2 x' y'
+
+
+calcCenteredRect :: Vector2 -> Float -> Rectangle
+calcCenteredRect (Vector2 x y) size =
+    Rectangle (x - size / 2) (y - size / 2) size size
+
+
+isPointInRect :: Vector2 -> Rectangle -> Bool
+isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
+    x > rx && x < rx + rw && y > ry && y < ry + rh
 
 
 data System w = System

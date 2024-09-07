@@ -7,7 +7,8 @@ import System.Random (StdGen)
 
 data Food = Food
     { foodPos :: Vector2,
-      foodAmount :: Int
+      foodAmount :: Int,
+      foodCollisionRect :: Rectangle
     }
     deriving (Eq, Show)
 
