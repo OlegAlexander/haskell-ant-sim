@@ -87,7 +87,8 @@ initFoodWorld = do
 
 -- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.
 -- Continue incrementing foodAmount while the mouse is held down.
--- When the mouse is released, stop incrementing foodAmount and add the foodBeingDrawn object to the food list.
+-- When the mouse is released, stop incrementing foodAmount and add the
+--      foodBeingDrawn object to the food list.
 -- Right click to remove food objects.
 handleFoodInput :: World -> IO World
 handleFoodInput w = do

@@ -50,7 +50,7 @@ import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
 import Shared (System (..), gameLoop, getNextPos)
 import System.Random (mkStdGen)
-import Types (Ant (..), EntityType (..), GoDir (..), Mode (..), Sprite (..), WheelPos (..), World (..))
+import Types (Ant (..), EntityType (..), Food (..), GoDir (..), Mode (..), Sprite (..), WheelPos (..), World (..))
 
 
 mkPlayerAnt :: Float -> Float -> Int -> Ant
@@ -68,6 +68,13 @@ canGoThere (Vector2 x y) (rect@(Rectangle rx ry rw rh), entityType) =
 
 checkCollisions :: Vector2 -> [(Rectangle, EntityType)] -> [(Rectangle, EntityType)]
 checkCollisions pos rects = mapMaybe (canGoThere pos) rects
+
+
+getCollisionRects :: World -> [(Rectangle, EntityType)]
+getCollisionRects w =
+    let walls = map (\wall -> (wall, WallET)) (wWalls w)
+        foods = map (\food -> (foodCollisionRect food, FoodET)) (wFood w)
+    in  walls ++ foods
 
 
 initAMWorld :: IO World
@@ -117,7 +124,7 @@ updateAMWorld w =
     let playerAnt = wPlayerAnt w
         playerWheelPos = antWheelPos playerAnt
         playerAntGoDir = antGoDir playerAnt
-        wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
+        collisionRects = getCollisionRects w
 
         nextAngle =
             antAngle playerAnt
@@ -137,7 +144,7 @@ updateAMWorld w =
         nextPos = getNextPos nextAngle nextSpeed (antPos playerAnt)
 
         nextPos' =
-            if checkCollisions nextPos wallRects /= []
+            if checkCollisions nextPos collisionRects /= []
                 then antPos playerAnt
                 else nextPos
 
