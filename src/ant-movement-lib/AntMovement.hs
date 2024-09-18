@@ -6,15 +6,7 @@
 
 module AntMovement where
 
-import Constants (
-    antAcceleration,
-    antMaxSpeed,
-    antPng,
-    antTurnAngle,
-    fps,
-    screenHeight,
-    screenWidth,
- )
+import Constants (antAcceleration, antMaxSpeed, antPng, antTurnAngle, collisionRectSize, fps, screenHeight, screenWidth)
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
@@ -35,6 +27,7 @@ import Raylib.Core (
 import Raylib.Core.Shapes (
     drawCircleV,
     drawLineEx,
+    drawRectangleLinesEx,
     drawRectangleRec,
  )
 import Raylib.Core.Text (drawFPS)
@@ -48,9 +41,9 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
-import Shared (System (..), gameLoop, getNextPos)
+import Shared (System (..), calcCenteredRect, gameLoop, getNextPos)
 import System.Random (mkStdGen)
-import Types (Ant (..), EntityType (..), Food (..), GoDir (..), Mode (..), Sprite (..), WheelPos (..), World (..))
+import Types (Ant (..), EntityType (..), Food (..), GoDir (..), Mode (..), Nest (..), Sprite (..), WheelPos (..), World (..))
 
 
 mkPlayerAnt :: Float -> Float -> Int -> Ant
@@ -73,7 +66,7 @@ checkCollisions pos rects = mapMaybe (canGoThere pos) rects
 getCollisionRects :: World -> [(Rectangle, EntityType)]
 getCollisionRects w =
     let walls = map (\wall -> (wall, WallET)) (wWalls w)
-        foods = map (\food -> (foodCollisionRect food, FoodET)) (wFood w)
+        foods = [] -- map (\food -> (foodCollisionRect food, FoodET)) (wFood w)
     in  walls ++ foods
 
 
@@ -92,9 +85,9 @@ initAMWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
-        nestPos = antPos
+        nest = Nest antPos 0 (calcCenteredRect antPos collisionRectSize)
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
-    return $ World window antTexture playerAnt nestPos True True False True walls Nothing [] Nothing
+    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing
 
 
 handleAMInput :: World -> IO World
@@ -163,10 +156,8 @@ renderAMWorld w = do
         playerAnt = wPlayerAnt w
         antPos' = antPos playerAnt
 
-    -- draw the nest
-    drawCircleV (wNest w) 10 brown
-
     -- draw walls
+    -- TODO Why are you drawing the walls here?
     forM_ walls $ \(wall, color) -> drawRectangleRec wall color
 
     -- draw player ant as a circle

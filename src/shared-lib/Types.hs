@@ -13,6 +13,14 @@ data Food = Food
     deriving (Eq, Show)
 
 
+data Nest = Nest
+    { nestPos :: Vector2,
+      nestAmount :: Int,
+      nestCollisionRect :: Rectangle
+    }
+    deriving (Eq, Show)
+
+
 data EntityType
     = PlayerAntET
     | AntET
@@ -74,7 +82,7 @@ data World = World
     { wWindowResources :: WindowResources,
       wAntTexture :: Texture,
       wPlayerAnt :: Ant,
-      wNest :: Vector2,
+      wNest :: Nest,
       wRenderVisionRays :: Bool,
       wRenderVisionRects :: Bool,
       wRenderHomeVector :: Bool,

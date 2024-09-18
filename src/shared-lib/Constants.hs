@@ -82,3 +82,7 @@ foodGrowthAmount = 10
 
 collisionRectSize :: Float
 collisionRectSize = 30
+
+
+nestSize :: Float
+nestSize = 25
