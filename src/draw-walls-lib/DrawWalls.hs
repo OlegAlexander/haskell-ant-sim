@@ -1,6 +1,6 @@
 module DrawWalls where
 
-import Constants (antPng, minWallSize, wallColor)
+import Constants (antPng, collisionRectSize, minWallSize, wallColor)
 import Control.Monad (forM_, when)
 import Data.Maybe (fromJust, isJust, isNothing)
 import Raylib.Core (
@@ -23,17 +23,9 @@ import Raylib.Types (
 import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, lightGray)
-import Shared (System (..), gameLoop)
+import Shared (System (..), calcCenteredRect, gameLoop)
 import System.Random (mkStdGen)
-import Types (
-    Ant (..),
-    GoDir (Stop),
-    Mode (..),
-    Sprite (..),
-    WallDrawingState (..),
-    WheelPos (..),
-    World (..),
- )
+import Types (Ant (..), GoDir (Stop), Mode (..), Nest (..), Sprite (..), WallDrawingState (..), WheelPos (..), World (..))
 
 
 getWallDrawingState :: Bool -> Maybe (Vector2, Vector2) -> WallDrawingState
@@ -61,9 +53,9 @@ initWallsWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 0 0
-        nestPos = antPos
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
-    return $ World window antTexture playerAnt nestPos True True False True [] Nothing [] Nothing
+        nest = Nest antPos 0 (calcCenteredRect antPos collisionRectSize)
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
+    return $ World window antTexture playerAnt nest True True False True [] Nothing [] Nothing
 
 
 handleWallInput :: World -> IO World

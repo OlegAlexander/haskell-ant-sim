@@ -25,6 +25,7 @@ import Shared (System (..), gameLoop, getNextPos)
 -- import Debug.Trace (traceShowId)
 
 import AntMovement (antMovementSys)
+import Constants (collisionRectSize)
 import Data.List (sortBy)
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
@@ -58,9 +59,10 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
+import Shared (calcCenteredRect)
 import System.Random (mkStdGen)
 import Text.Read.Lex qualified as AntMovement
-import Types (Ant (..), Degrees, EntityType (..), GoDir (..), Mode (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
+import Types (Ant (..), Degrees, EntityType (..), GoDir (..), Mode (..), Nest (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
@@ -222,7 +224,7 @@ updateVisionRays rects ant =
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
 
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
@@ -254,9 +256,9 @@ initFRWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
-        nestPos = antPos
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
-    return $ World window antTexture playerAnt nestPos True True False True walls Nothing [] Nothing
+        nest = Nest antPos 0 (calcCenteredRect antPos collisionRectSize)
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
+    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing
 
 
 handleFRInput :: World -> IO World
@@ -282,7 +284,7 @@ updateFRWorld :: World -> World
 updateFRWorld w =
     let playerAnt = wPlayerAnt w
         wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
-        (nestAngle, nestDistance) = calcNestDirectionAndDistance (wNest w) (antPos playerAnt)
+        (nestAngle, nestDistance) = calcNestDirectionAndDistance (nestPos (wNest w)) (antPos playerAnt)
         playerAnt' =
             playerAnt
                 { antNestAngle = nestAngle,
@@ -303,7 +305,7 @@ renderFRWorld w = do
 
     -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
-    drawCircleV (wNest w) 10 brown
+    drawCircleV (nestPos (wNest w)) 10 brown
 
     -- draw walls
     forM_ walls $ \(wall, color) -> drawRectangleRec wall color

@@ -15,7 +15,7 @@ data Food = Food
 
 data Nest = Nest
     { nestPos :: Vector2,
-      nestAmount :: Int,
+      nestScore :: Int,
       nestCollisionRect :: Rectangle
     }
     deriving (Eq, Show)
@@ -57,7 +57,8 @@ data Ant = Ant
       antVisionRays :: [VisionRay],
       antNestAngle :: Degrees,
       antNestDistance :: Float,
-      antHasFood :: Bool
+      antHasFood :: Bool,
+      antScore :: Int
     }
     deriving (Eq, Show)
 

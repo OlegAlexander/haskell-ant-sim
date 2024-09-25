@@ -13,19 +13,7 @@ import Data.List (foldl')
 
 -- import Debug.Trace (trace, traceShow)
 
-import Constants (
-    antAcceleration,
-    antJitterAngle,
-    antMaxSpeed,
-    antPng,
-    antScale,
-    antTurnAngle,
-    borderWallThickness,
-    fps,
-    screenHeight,
-    screenWidth,
-    title,
- )
+import Constants (antAcceleration, antJitterAngle, antMaxSpeed, antPng, antScale, antTurnAngle, borderWallThickness, collisionRectSize, fps, screenHeight, screenWidth, title)
 import DrawWalls (drawWallsSys1)
 import FlatlandRenderer (flatlandRendererSys)
 import GHC.Float (int2Float)
@@ -54,9 +42,9 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (lightGray, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
-import Shared (System (..), gameLoop)
+import Shared (System (..), calcCenteredRect, gameLoop)
 import System.Random (mkStdGen, randomIO, randomR)
-import Types (Ant (..), GoDir (..), Mode (SeekFood), Sprite (LeftSprite, RightSprite), WheelPos (Center, TurnLeft, TurnRight), World (..))
+import Types (Ant (..), GoDir (..), Mode (SeekFood), Nest (..), Sprite (LeftSprite, RightSprite), WheelPos (Center, TurnLeft, TurnRight), World (..))
 
 
 -- ----------------------------- PART Constants ----------------------------- --
@@ -78,7 +66,7 @@ borderWalls =
 mkAnt :: Float -> Float -> Int -> Ant
 mkAnt x y seed =
     let (angle, rng) = randomR (0, 360) (mkStdGen seed)
-    in  Ant (Vector2 x y) angle 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
+    in  Ant (Vector2 x y) angle 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
 
 
 mkAnts :: Float -> Float -> [Int] -> [Ant]
@@ -281,7 +269,7 @@ squishAnts x y width ants = filter (not . isSquished) ants
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
 
 
 -- ----------------------------- Fold World Test ---------------------------- --
@@ -325,7 +313,8 @@ initWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
         playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
-        nestPos = Vector2 screenCenterW screenCenterH
+        antPos' = antPos playerAnt
+        nest = Nest antPos' 0 (calcCenteredRect antPos' collisionRectSize)
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 500 600 50 50
@@ -335,7 +324,7 @@ initWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     antTexture <- loadTexture antPng window
-    return $ World window antTexture playerAnt nestPos True True False True walls Nothing [] Nothing
+    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing
 
 
 handleWorldInput :: World -> IO World

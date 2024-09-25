@@ -60,7 +60,7 @@ initFoodWorld = do
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest antPos 0 (calcCenteredRect antPos collisionRectSize)
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
     return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing
 
 
@@ -93,23 +93,46 @@ updateFoodWorld :: World -> World
 updateFoodWorld w =
     -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
     let ant = wPlayerAnt w
+        nest = wNest w
         foods = wFood w
-        antInFoods = any (isPointInRect (antPos ant) . foodCollisionRect) foods
+        antInFoods = map (isPointInRect (antPos ant) . foodCollisionRect) foods
+        foodAmounts = map foodAmount foods
+        foodAmounts' = zipWith (\amt isIn -> if isIn then amt - 1 else amt) foodAmounts antInFoods
+        antInAnyFoods = or antInFoods
 
         -- If an ant has food and enters the nest rectangle, set antHasFood to False
         nestRect = nestCollisionRect (wNest w)
         antInNest = isPointInRect (antPos ant) nestRect
 
-        antHasFood' = case (antHasFood ant, antInNest, antInFoods) of
-            (False, _, True) -> True
-            (True, True, _) -> False
-            _ -> antHasFood ant
+        (antHasFood', antScore', nestScore') =
+            case (antHasFood ant, antInNest, antInAnyFoods) of
+                -- If the ant finds food, it gets a point
+                (False, _, True) -> (True, antScore ant + 1, nestScore nest)
+                -- If the ant brings the food back to the nest, it gets a point and the nest gets a point
+                (True, True, _) -> (False, antScore ant + 1, nestScore nest + 1)
+                -- Otherwise, do nothing
+                _ -> (antHasFood ant, antScore ant, nestScore nest)
 
-        -- TODO decrement food when ant touches it
-        -- Increment nest food amount when ant touches it with food
+        -- TODO Fix ant drinking all the food! It should only drink one piece of food at a time.
+        foods' =
+            zipWith
+                ( \food amt ->
+                    if antHasFood'
+                        then food{foodAmount = amt}
+                        else food
+                )
+                foods
+                foodAmounts'
 
-        _ = traceShowId ("antHasFood ant", antHasFood ant, "antInNest", antInNest, "antInFoods", antInFoods)
-    in  w{wPlayerAnt = ant{antHasFood = antHasFood'}}
+        _ = traceShowId (antHasFood', antScore', nestScore')
+    in  -- TODO decrement food when ant touches it
+        -- Delete food when amount is 0
+
+        w
+            { wPlayerAnt = ant{antHasFood = antHasFood', antScore = antScore'},
+              wNest = nest{nestScore = nestScore'},
+              wFood = foods'
+            }
 
 
 -- Use a constant rectangle size for food, and just scale the amount circle.
@@ -126,6 +149,7 @@ drawFood (Food pos amount rect) = do
 renderFoodWorld :: World -> IO ()
 renderFoodWorld w = do
     let nest = wNest w
+        playerAnt = wPlayerAnt w
 
     -- draw the nest
     drawCircleV (nestPos nest) nestSize brown
@@ -140,6 +164,13 @@ renderFoodWorld w = do
     case wFoodBeingDrawn w of
         Just food -> drawFood food
         Nothing -> return ()
+
+    -- If the ant has food, draw a piece of food in its mouth
+    when (antHasFood playerAnt) $ do
+        let antPos' = antPos playerAnt
+            antAngle' = antAngle playerAnt
+            foodPiecePos = getNextPos antAngle' 20 antPos'
+        drawCircleV foodPiecePos 10 foodColor
 
 
 foodSys :: System World
