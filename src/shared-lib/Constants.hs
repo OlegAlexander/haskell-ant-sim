@@ -69,7 +69,7 @@ borderWallThickness = 30
 
 
 foodScale :: Float
-foodScale = 0.2
+foodScale = 1.0
 
 
 foodColor :: Color
@@ -77,11 +77,11 @@ foodColor = yellow
 
 
 foodGrowthAmount :: Int
-foodGrowthAmount = 10
+foodGrowthAmount = 1
 
 
 collisionRectSize :: Float
-collisionRectSize = 30
+collisionRectSize = 50
 
 
 nestSize :: Float

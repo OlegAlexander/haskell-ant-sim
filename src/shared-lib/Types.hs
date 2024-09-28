@@ -58,7 +58,7 @@ data Ant = Ant
       antNestAngle :: Degrees,
       antNestDistance :: Float,
       antHasFood :: Bool,
-      antScore :: Int
+      antScore :: Float
     }
     deriving (Eq, Show)
 
