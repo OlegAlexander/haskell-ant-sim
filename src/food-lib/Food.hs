@@ -139,7 +139,8 @@ updateFoodWorld w =
                     ( True,
                       antScore ant + 0.5,
                       nestScore nest,
-                      setAt i (foods !! i){foodAmount = foodAmount (foods !! i) - 1} foods
+                      let foodObj = (foods !! i)
+                      in  setAt i foodObj{foodAmount = foodAmount foodObj - 1} foods
                     )
                 -- If the ant brings the food back to the nest, it gets 0.5 points and the nest gets a point
                 (True, True, _) -> (False, antScore ant + 0.5, nestScore nest + 1, foods)
