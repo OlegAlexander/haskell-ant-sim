@@ -61,7 +61,6 @@ import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, whit
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
 import Shared (calcCenteredRect)
 import System.Random (mkStdGen)
-import Text.Read.Lex qualified as AntMovement
 import Types (Ant (..), Degrees, EntityType (..), GoDir (..), Mode (..), Nest (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
 

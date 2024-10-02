@@ -9,7 +9,7 @@ Ant simulation in Haskell.
 git clone https://github.com/OlegAlexander/haskell-ant-sim.git
 cd haskell-ant-sim
 cabal update
-cabal run main
+cabal run ant-sim
 ```
 
 # Controls

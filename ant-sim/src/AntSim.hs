@@ -2,7 +2,7 @@
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use guards" #-}
 
-module MainGame where
+module AntSim where
 
 -- ------------------------------ PART Imports ------------------------------ --
 
