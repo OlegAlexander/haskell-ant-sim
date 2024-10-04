@@ -59,9 +59,21 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import Shared (calcCenteredRect)
+import Shared (calcCenteredRect, calcRectCenter)
 import System.Random (mkStdGen)
-import Types (Ant (..), Degrees, EntityType (..), GoDir (..), Mode (..), Nest (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
+import Types (
+    Ant (..),
+    Container (..),
+    Degrees,
+    EntityType (..),
+    GoDir (..),
+    Mode (..),
+    Nest (..),
+    Sprite (..),
+    VisionRay (..),
+    WheelPos (..),
+    World (..),
+ )
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
@@ -255,7 +267,7 @@ initFRWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
-        nest = Nest antPos 0 (calcCenteredRect antPos collisionRectSize)
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
     return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing
 
@@ -283,7 +295,9 @@ updateFRWorld :: World -> World
 updateFRWorld w =
     let playerAnt = wPlayerAnt w
         wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
-        (nestAngle, nestDistance) = calcNestDirectionAndDistance (nestPos (wNest w)) (antPos playerAnt)
+        nest = wNest w
+        nestPos = calcRectCenter (nest & nestContainer & containerRect)
+        (nestAngle, nestDistance) = calcNestDirectionAndDistance nestPos (antPos playerAnt)
         playerAnt' =
             playerAnt
                 { antNestAngle = nestAngle,
@@ -301,10 +315,12 @@ renderFRWorld w = do
         rays = wPlayerAnt w & antVisionRays
         playerAnt = wPlayerAnt w
         antPos' = antPos playerAnt
+        nest = wNest w
+        nestPos = calcRectCenter (nest & nestContainer & containerRect)
 
     -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
-    drawCircleV (nestPos (wNest w)) 10 brown
+    drawCircleV nestPos 10 brown
 
     -- draw walls
     forM_ walls $ \(wall, color) -> drawRectangleRec wall color

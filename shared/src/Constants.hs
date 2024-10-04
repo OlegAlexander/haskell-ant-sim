@@ -1,7 +1,7 @@
 module Constants where
 
 import Raylib.Types (Color)
-import Raylib.Util.Colors (white, yellow)
+import Raylib.Util.Colors (blue, white, yellow)
 
 
 screenWidth :: Int
@@ -86,3 +86,15 @@ collisionRectSize = 50
 
 nestSize :: Float
 nestSize = 25
+
+
+pheromoneColor :: Color
+pheromoneColor = blue
+
+
+pheromoneSize :: Float
+pheromoneSize = 10
+
+
+pheromoneScale :: Float
+pheromoneScale = 1.0

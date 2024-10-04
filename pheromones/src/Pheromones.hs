@@ -2,7 +2,7 @@
 {-# HLINT ignore "Use forM_" #-}
 {-# HLINT ignore "Avoid lambda" #-}
 
-module Food where
+module Pheromones where
 
 import AntMovement (antMovementSys)
 import Constants (
@@ -82,8 +82,8 @@ import Types (
  )
 
 
-initFoodWorld :: IO World
-initFoodWorld = do
+initPheromoneWorld :: IO World
+initPheromoneWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
         walls = []
@@ -104,8 +104,8 @@ initFoodWorld = do
 -- When the mouse is released, stop incrementing foodAmount and add the
 --      foodBeingDrawn object to the food list.
 -- Right click to remove food objects.
-handleFoodInput :: World -> IO World
-handleFoodInput w = do
+handlePheromoneInput :: World -> IO World
+handlePheromoneInput w = do
     mousePos <- getMousePosition
     isMouseLeftPressed <- isMouseButtonDown MouseButtonLeft
     isMouseRightPressed <- isMouseButtonDown MouseButtonRight
@@ -134,8 +134,8 @@ handleFoodInput w = do
             return w
 
 
-updateFoodWorld :: World -> World
-updateFoodWorld w =
+updatePheromoneWorld :: World -> World
+updatePheromoneWorld w =
     -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
     let ant = wPlayerAnt w
         nest = wNest w
@@ -175,8 +175,8 @@ updateFoodWorld w =
 
 
 -- Use a constant rectangle size for food, and just scale the amount circle.
-drawFood :: Food -> IO ()
-drawFood (Food (Container amount rect)) = do
+drawPheromone :: Food -> IO ()
+drawPheromone (Food (Container amount rect)) = do
     -- Draw food as a circle
     let radius = int2Float amount * foodScale + 9
         pos = calcRectCenter rect
@@ -187,8 +187,8 @@ drawFood (Food (Container amount rect)) = do
     return () -- Deal with the formatter :(
 
 
-renderFoodWorld :: World -> IO ()
-renderFoodWorld w = do
+renderPheromoneWorld :: World -> IO ()
+renderPheromoneWorld w = do
     let nest = wNest w
         nestPos = calcRectCenter (nest & nestContainer & containerRect)
         playerAnt = wPlayerAnt w
@@ -200,11 +200,11 @@ renderFoodWorld w = do
     -- drawRectangleLinesEx (nestCollisionRect nest) 2 black
 
     -- Draw all food
-    forM_ (wFood w) drawFood
+    forM_ (wFood w) drawPheromone
 
     -- Draw foodBeingDrawn (Note to self: I can use forM_ here, too.)
     case wFoodBeingDrawn w of
-        Just food -> drawFood food
+        Just food -> drawPheromone food
         Nothing -> return ()
 
     -- If the ant has food, draw a piece of food in its mouth
@@ -215,13 +215,13 @@ renderFoodWorld w = do
         drawCircleV foodPiecePos 10 foodColor
 
 
-foodSys :: System World
-foodSys = System handleFoodInput updateFoodWorld renderFoodWorld
+pheromoneSys :: System World
+pheromoneSys = System handlePheromoneInput updatePheromoneWorld renderPheromoneWorld
 
 
-foodSysWrapped :: System World
-foodSysWrapped =
-    let allSystems = foodSys <> antMovementSys
+pheromoneSysWrapped :: System World
+pheromoneSysWrapped =
+    let allSystems = pheromoneSys <> antMovementSys
     in  allSystems
             { render = \w -> drawing $ do
                 f11Pressed <- isKeyPressed KeyF11
@@ -232,6 +232,6 @@ foodSysWrapped =
             }
 
 
-driveFood :: IO ()
-driveFood =
-    initFoodWorld >>= gameLoop foodSysWrapped windowShouldClose
+drivePheromones :: IO ()
+drivePheromones =
+    initPheromoneWorld >>= gameLoop pheromoneSysWrapped windowShouldClose

@@ -1,1 +1,1 @@
-find ant-movement ant-sim draw-walls food flatland-renderer shared -name '*.hs' | xargs graphmod --quiet --no-cabal --colors=2 | dot -Tpng -Gdpi=300 -o diagrams/graphmod.png
+find . -name '*.hs' ! -path '*dist-newstyle*' ! -name 'Main.hs' | xargs graphmod --quiet --no-cabal --no-cluster --colors=2 | dot -Tpng -Gdpi=300 -o diagrams/graphmod.png

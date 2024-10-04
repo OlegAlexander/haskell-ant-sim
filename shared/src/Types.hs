@@ -5,20 +5,16 @@ import Raylib.Util (WindowResources)
 import System.Random (StdGen)
 
 
-data Food = Food
-    { foodPos :: Vector2,
-      foodAmount :: Int,
-      foodCollisionRect :: Rectangle
+data Container = Container
+    { containerAmount :: Int,
+      containerRect :: Rectangle
     }
     deriving (Eq, Show)
 
 
-data Nest = Nest
-    { nestPos :: Vector2,
-      nestScore :: Int,
-      nestCollisionRect :: Rectangle
-    }
-    deriving (Eq, Show)
+newtype Food = Food {foodContainer :: Container} deriving (Eq, Show)
+newtype Nest = Nest {nestContainer :: Container} deriving (Eq, Show)
+newtype Pheromone = Pheromone {pheromoneContainer :: Container} deriving (Eq, Show)
 
 
 data EntityType

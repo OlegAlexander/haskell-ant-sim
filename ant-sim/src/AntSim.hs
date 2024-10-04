@@ -44,7 +44,7 @@ import Raylib.Util.Colors (lightGray, white)
 import Raylib.Util.Math (deg2Rad, rad2Deg)
 import Shared (System (..), calcCenteredRect, gameLoop)
 import System.Random (mkStdGen, randomIO, randomR)
-import Types (Ant (..), GoDir (..), Mode (SeekFood), Nest (..), Sprite (LeftSprite, RightSprite), WheelPos (Center, TurnLeft, TurnRight), World (..))
+import Types (Ant (..), Container (..), GoDir (..), Mode (SeekFood), Nest (..), Sprite (LeftSprite, RightSprite), WheelPos (Center, TurnLeft, TurnRight), World (..))
 
 
 -- ----------------------------- PART Constants ----------------------------- --
@@ -314,7 +314,7 @@ initWorld = do
         screenCenterH = int2Float screenHeight / 2
         playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
         antPos' = antPos playerAnt
-        nest = Nest antPos' 0 (calcCenteredRect antPos' collisionRectSize)
+        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 500 600 50 50

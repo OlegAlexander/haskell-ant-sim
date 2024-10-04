@@ -35,6 +35,10 @@ calcCenteredRect (Vector2 x y) size =
     Rectangle (x - size / 2) (y - size / 2) size size
 
 
+calcRectCenter :: Rectangle -> Vector2
+calcRectCenter (Rectangle x y w h) = Vector2 (x + w / 2) (y + h / 2)
+
+
 isPointInRect :: Vector2 -> Rectangle -> Bool
 isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
     x > rx && x < rx + rw && y > ry && y < ry + rh

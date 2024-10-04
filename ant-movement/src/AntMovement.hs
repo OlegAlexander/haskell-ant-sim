@@ -43,7 +43,17 @@ import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
 import Shared (System (..), calcCenteredRect, gameLoop, getNextPos)
 import System.Random (mkStdGen)
-import Types (Ant (..), EntityType (..), Food (..), GoDir (..), Mode (..), Nest (..), Sprite (..), WheelPos (..), World (..))
+import Types (
+    Ant (..),
+    Container (..),
+    EntityType (..),
+    GoDir (..),
+    Mode (..),
+    Nest (..),
+    Sprite (..),
+    WheelPos (..),
+    World (..),
+ )
 
 
 mkPlayerAnt :: Float -> Float -> Int -> Ant
@@ -85,7 +95,7 @@ initAMWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
-        nest = Nest antPos 0 (calcCenteredRect antPos collisionRectSize)
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
     return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing
 

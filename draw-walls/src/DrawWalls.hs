@@ -25,7 +25,17 @@ import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, lightGray)
 import Shared (System (..), calcCenteredRect, gameLoop)
 import System.Random (mkStdGen)
-import Types (Ant (..), GoDir (Stop), Mode (..), Nest (..), Sprite (..), WallDrawingState (..), WheelPos (..), World (..))
+import Types (
+    Ant (..),
+    Container (..),
+    GoDir (Stop),
+    Mode (..),
+    Nest (..),
+    Sprite (..),
+    WallDrawingState (..),
+    WheelPos (..),
+    World (..),
+ )
 
 
 getWallDrawingState :: Bool -> Maybe (Vector2, Vector2) -> WallDrawingState
@@ -53,7 +63,7 @@ initWallsWorld = do
     antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 0 0
-        nest = Nest antPos 0 (calcCenteredRect antPos collisionRectSize)
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
     return $ World window antTexture playerAnt nest True True False True [] Nothing [] Nothing
 
