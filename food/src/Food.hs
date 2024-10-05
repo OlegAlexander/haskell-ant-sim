@@ -96,7 +96,7 @@ initFoodWorld = do
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
-    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing
+    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing []
 
 
 -- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.

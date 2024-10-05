@@ -160,7 +160,7 @@ normalizeDistance dist = min 1.0 (dist / antVisionMaxDistance)
 
 
 entityTypeToColor :: EntityType -> Color
-entityTypeToColor = \case
+entityTypeToColor et = case et of
     PlayerAntET -> blue
     AntET -> blue
     DeadAntET -> white
@@ -269,7 +269,7 @@ initFRWorld = do
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
-    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing
+    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing []
 
 
 handleFRInput :: World -> IO World

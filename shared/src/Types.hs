@@ -87,5 +87,6 @@ data World = World
       wWalls :: [Rectangle],
       wWallBeingDrawn :: Maybe (Vector2, Vector2),
       wFood :: [Food],
-      wFoodBeingDrawn :: Maybe Food
+      wFoodBeingDrawn :: Maybe Food,
+      wPheromones :: [Pheromone]
     }

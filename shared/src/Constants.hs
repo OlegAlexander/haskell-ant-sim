@@ -97,4 +97,8 @@ pheromoneSize = 10
 
 
 pheromoneScale :: Float
-pheromoneScale = 1.0
+pheromoneScale = 0.01
+
+
+initPheromoneAmount :: Int
+initPheromoneAmount = 1000
