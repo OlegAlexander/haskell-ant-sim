@@ -319,12 +319,11 @@ initWorld = do
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 500 600 50 50
         walls = [testWall1, testWall2, testWall3] ++ borderWalls
-    window <- initWindow screenWidth screenHeight title
+    _ <- initWindow screenWidth screenHeight title
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    antTexture <- loadTexture antPng window
-    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing []
+    return $ World playerAnt nest True True False True walls Nothing [] Nothing []
 
 
 handleWorldInput :: World -> IO World
@@ -354,21 +353,7 @@ updateWorld w =
 
 
 renderWorld :: World -> IO ()
-renderWorld w = do
-    let antTexture = wAntTexture w
-        playerAnt = wPlayerAnt w
-        texW = texture'width antTexture
-        texH = texture'height antTexture
-        spriteRect = case antSprite playerAnt of
-            LeftSprite -> Rectangle 0 0 (int2Float texW / 2) (int2Float texH)
-            RightSprite -> Rectangle (int2Float texW / 2) 0 (int2Float texW / 2) (int2Float texH)
-    drawTextureCentered
-        antTexture
-        spriteRect
-        antScale
-        (antAngle playerAnt)
-        (antPos playerAnt)
-        white
+renderWorld w = return ()
 
 
 mainGameSys :: System World

@@ -78,17 +78,16 @@ initPheromoneWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
         walls = []
-    window <- initWindow screenWidth screenHeight "Pheromones"
+    _ <- initWindow screenWidth screenHeight "Pheromones"
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
         pheromones = [Pheromone (Container initPheromoneAmount (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize))]
-    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing pheromones
+    return $ World playerAnt nest True True False True walls Nothing [] Nothing pheromones
 
 
 handlePheromoneInput :: World -> IO World

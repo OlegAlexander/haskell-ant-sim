@@ -260,16 +260,15 @@ initFRWorld = do
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 900 500 20 20
         walls = [testWall1, testWall2, testWall3]
-    window <- initWindow screenWidth screenHeight "Flatland Renderer"
+    _ <- initWindow screenWidth screenHeight "Flatland Renderer"
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
-    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing []
+    return $ World playerAnt nest True True False True walls Nothing [] Nothing []
 
 
 handleFRInput :: World -> IO World

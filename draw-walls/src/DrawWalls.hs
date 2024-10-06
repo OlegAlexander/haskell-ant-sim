@@ -57,15 +57,14 @@ bigEnough (Rectangle _ _ w h) = w > minWallSize && h > minWallSize
 
 initWallsWorld :: IO World
 initWallsWorld = do
-    window <- initWindow 1000 800 "Draw Walls"
+    _ <- initWindow 1000 800 "Draw Walls"
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
-    antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 0 0
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
-    return $ World window antTexture playerAnt nest True True False True [] Nothing [] Nothing []
+    return $ World playerAnt nest True True False True [] Nothing [] Nothing []
 
 
 handleWallInput :: World -> IO World

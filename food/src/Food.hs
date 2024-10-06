@@ -87,16 +87,15 @@ initFoodWorld = do
     let screenCenterW = int2Float screenWidth / 2
         screenCenterH = int2Float screenHeight / 2
         walls = []
-    window <- initWindow screenWidth screenHeight "Food"
+    _ <- initWindow screenWidth screenHeight "Food"
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    antTexture <- loadTexture antPng window
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
-    return $ World window antTexture playerAnt nest True True False True walls Nothing [] Nothing []
+    return $ World playerAnt nest True True False True walls Nothing [] Nothing []
 
 
 -- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.
