@@ -66,7 +66,7 @@ borderWalls =
 mkAnt :: Float -> Float -> Int -> Ant
 mkAnt x y seed =
     let (angle, rng) = randomR (0, 360) (mkStdGen seed)
-    in  Ant (Vector2 x y) angle 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
+    in  Ant (Vector2 x y) angle 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
 
 
 mkAnts :: Float -> Float -> [Int] -> [Ant]
@@ -269,7 +269,7 @@ squishAnts x y width ants = filter (not . isSquished) ants
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
 
 
 -- ----------------------------- Fold World Test ---------------------------- --

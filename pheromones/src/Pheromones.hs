@@ -5,7 +5,7 @@
 module Pheromones where
 
 import AntMovement (antMovementSys)
-import Constants (antAcceleration, antMaxSpeed, antPng, antTurnAngle, collisionRectSize, foodColor, foodGrowthAmount, foodScale, fps, initPheromoneAmount, nestSize, pheromoneColor, pheromoneScale, screenHeight, screenWidth)
+import Constants (antAcceleration, antMaxSpeed, antPng, antTurnAngle, collisionRectSize, foodColor, foodGrowthAmount, foodScale, fps, initPheromoneAmount, nestSize, pheromoneColor, pheromoneScale, regeneratePheromoneDelay, screenHeight, screenWidth)
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Foldable (find)
@@ -85,21 +85,56 @@ initPheromoneWorld = do
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
-        pheromones = [Pheromone (Container initPheromoneAmount (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize))]
-    return $ World playerAnt nest True True False True walls Nothing [] Nothing pheromones
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
+        pheromones =
+            [ Pheromone
+                ( Container
+                    initPheromoneAmount
+                    (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
+                )
+            ]
+    return $ World playerAnt nest True True False True walls Nothing [] Nothing []
 
 
 handlePheromoneInput :: World -> IO World
 handlePheromoneInput w = return w
 
 
+antDropsPheromone :: Ant -> Nest -> [Food] -> [Pheromone] -> (Ant, [Pheromone])
+antDropsPheromone ant nest foods pheromones =
+    -- Drop a pheromone if the ant has food,
+    -- and it's not on top of a food,
+    -- and it's not on top of a pheromone,
+    -- and it's not on top of the nest
+    -- and the ant's regeneration counter is greater than the regeneration delay.
+    -- Otherwise, just increment the regeneration counter.
+    -- TODO: The increment coutner logic should be a little more complicated.
+    let pos = antPos ant
+        hasFood = antHasFood ant
+        notOnFood = not $ any (\(Food (Container _ rect)) -> isPointInRect pos rect) foods
+        notOnPheromone = not $ any (\(Pheromone (Container _ rect)) -> isPointInRect pos rect) pheromones
+        notOnNest = not $ isPointInRect pos (nestContainer nest & containerRect)
+        regenerationCounter = regeneratePheromoneCounter ant
+        regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
+    in  if hasFood && notOnFood && notOnPheromone && notOnNest && regenCounterGreaterThanDelay
+            then
+                let pheromone = Pheromone (Container initPheromoneAmount (calcCenteredRect pos collisionRectSize))
+                in  (ant{regeneratePheromoneCounter = 0}, pheromone : pheromones)
+            else (ant{regeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
+
+
 updatePheromoneWorld :: World -> World
 updatePheromoneWorld w =
-    -- Dry up pheromones until they disappear
-    let pheromones = wPheromones w
-        pheromones' = map (\(Pheromone (Container amount rect)) -> Pheromone (Container (amount - 1) rect)) pheromones
-    in  w{wPheromones = filter (\(Pheromone (Container amount _)) -> amount > 0) pheromones'}
+    -- Evaporate pheromones until they disappear
+    let pheromones' =
+            wPheromones w
+                & map
+                    ( \(Pheromone (Container amount rect)) ->
+                        Pheromone (Container (amount - 1) rect)
+                    )
+                & filter (\(Pheromone (Container amount _)) -> amount > 0)
+        (playerAnt', pheromones'') = antDropsPheromone (wPlayerAnt w) (wNest w) (wFood w) pheromones'
+    in  w{wPheromones = pheromones'', wPlayerAnt = playerAnt'}
 
 
 -- Use a constant rectangle size for a pheromone, and just scale the amount circle.

@@ -102,3 +102,7 @@ pheromoneScale = 0.01
 
 initPheromoneAmount :: Int
 initPheromoneAmount = 1000
+
+
+regeneratePheromoneDelay :: Int
+regeneratePheromoneDelay = 20

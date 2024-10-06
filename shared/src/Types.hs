@@ -54,7 +54,8 @@ data Ant = Ant
       antNestAngle :: Degrees,
       antNestDistance :: Float,
       antHasFood :: Bool,
-      antScore :: Float
+      antScore :: Float,
+      regeneratePheromoneCounter :: Int
     }
     deriving (Eq, Show)
 

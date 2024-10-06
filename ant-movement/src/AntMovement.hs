@@ -59,7 +59,7 @@ import Types (
 mkPlayerAnt :: Float -> Float -> Int -> Ant
 mkPlayerAnt x y seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
 
 
 canGoThere :: Vector2 -> (Rectangle, EntityType) -> Maybe (Rectangle, EntityType)
@@ -95,7 +95,7 @@ initAMWorld = do
     let rng = mkStdGen 0
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0
+        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
     return $ World playerAnt nest True True False True walls Nothing [] Nothing []
 
 
