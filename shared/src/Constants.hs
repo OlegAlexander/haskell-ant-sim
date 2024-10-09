@@ -1,7 +1,7 @@
 module Constants where
 
 import Raylib.Types (Color)
-import Raylib.Util.Colors (blue, white, yellow)
+import Raylib.Util.Colors (blue, brown, white, yellow)
 
 
 screenWidth :: Int
@@ -41,7 +41,7 @@ antJitterAngle = 1
 
 
 antVisionAngle :: Float
-antVisionAngle = 180
+antVisionAngle = 135
 
 
 antVisionMaxDistance :: Float
@@ -86,6 +86,10 @@ collisionRectSize = 50
 
 nestSize :: Float
 nestSize = 25
+
+
+nestColor :: Color
+nestColor = brown
 
 
 pheromoneColor :: Color

@@ -167,7 +167,7 @@ renderAMWorld w = do
 
     -- draw walls
     -- TODO Why are you drawing the walls here?
-    forM_ walls $ \(wall, color) -> drawRectangleRec wall color
+    -- forM_ walls $ \(wall, color) -> drawRectangleRec wall color
 
     -- draw player ant as a circle
     drawCircleV antPos' 5 black

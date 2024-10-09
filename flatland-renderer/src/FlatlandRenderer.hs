@@ -25,7 +25,7 @@ import Shared (System (..), gameLoop, getNextPos)
 -- import Debug.Trace (traceShowId)
 
 import AntMovement (antMovementSys)
-import Constants (collisionRectSize)
+import Constants (collisionRectSize, foodColor, initPheromoneAmount, nestColor, pheromoneColor)
 import Data.List (sortBy)
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
@@ -61,19 +61,7 @@ import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, whit
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
 import Shared (calcCenteredRect, calcRectCenter)
 import System.Random (mkStdGen)
-import Types (
-    Ant (..),
-    Container (..),
-    Degrees,
-    EntityType (..),
-    GoDir (..),
-    Mode (..),
-    Nest (..),
-    Sprite (..),
-    VisionRay (..),
-    WheelPos (..),
-    World (..),
- )
+import Types (Ant (..), Container (..), Degrees, EntityType (..), Food (..), GoDir (..), Mode (..), Nest (..), Pheromone (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
@@ -163,11 +151,11 @@ entityTypeToColor :: EntityType -> Color
 entityTypeToColor et = case et of
     PlayerAntET -> blue
     AntET -> blue
-    DeadAntET -> white
-    PheromoneET -> green
-    FoodET -> Color 255 165 0 255
-    NestET -> Color 255 255 0 255
-    WallET -> red
+    DeadAntET -> black
+    PheromoneET -> pheromoneColor
+    FoodET -> foodColor
+    NestET -> nestColor
+    WallET -> wallColor
     UnknownET -> black
 
 
@@ -258,8 +246,7 @@ initFRWorld = do
         screenCenterH = int2Float screenHeight / 2
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
-        testWall3 = Rectangle 900 500 20 20
-        walls = [testWall1, testWall2, testWall3]
+        walls = [testWall1, testWall2]
     _ <- initWindow screenWidth screenHeight "Flatland Renderer"
     setTargetFPS fps
     setTraceLogLevel LogWarning
@@ -268,7 +255,15 @@ initFRWorld = do
         antPos = Vector2 screenCenterW screenCenterH
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
-    return $ World playerAnt nest True True False True walls Nothing [] Nothing []
+        pheromones =
+            [ Pheromone
+                ( Container
+                    initPheromoneAmount
+                    (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
+                )
+            ]
+        food = [Food (Container 10 (calcCenteredRect (antPos |+| Vector2 300 300) collisionRectSize))]
+    return $ World playerAnt nest True True False True walls Nothing food Nothing pheromones
 
 
 handleFRInput :: World -> IO World
@@ -290,10 +285,19 @@ handleFRInput w = do
             }
 
 
+collectVisibleRects :: World -> [(Rectangle, EntityType)]
+collectVisibleRects w =
+    let wallsRects = wWalls w & map (\r -> (r, WallET))
+        pheromoneRects = wPheromones w & map (\(Pheromone c) -> (c & containerRect, PheromoneET))
+        foodRects = wFood w & map (\(Food c) -> (c & containerRect, FoodET))
+        nestRect = (wNest w & nestContainer & containerRect, NestET)
+    in  wallsRects ++ pheromoneRects ++ foodRects ++ [nestRect]
+
+
 updateFRWorld :: World -> World
 updateFRWorld w =
     let playerAnt = wPlayerAnt w
-        wallRects = zip (wWalls w) [WallET, PheromoneET, AntET]
+        visibleRects = collectVisibleRects w
         nest = wNest w
         nestPos = calcRectCenter (nest & nestContainer & containerRect)
         (nestAngle, nestDistance) = calcNestDirectionAndDistance nestPos (antPos playerAnt)
@@ -302,27 +306,24 @@ updateFRWorld w =
                 { antNestAngle = nestAngle,
                   antNestDistance = nestDistance
                 }
-        playerAnt'' = updateVisionRays wallRects playerAnt'
+        playerAnt'' = updateVisionRays visibleRects playerAnt'
     in  w{wPlayerAnt = playerAnt''}
 
 
 renderFRWorld :: World -> IO ()
 renderFRWorld w = do
-    let walls = zip (wWalls w) [red, green, blue] -- TODO Temporary
-        renderVisionRays = wRenderVisionRays w
+    let renderVisionRays = wRenderVisionRays w
         renderVisionRects = wRenderVisionRects w
         rays = wPlayerAnt w & antVisionRays
         playerAnt = wPlayerAnt w
         antPos' = antPos playerAnt
-        nest = wNest w
-        nestPos = calcRectCenter (nest & nestContainer & containerRect)
 
     -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
-    drawCircleV nestPos 10 brown
+    -- drawCircleV nestPos 10 brown
 
-    -- draw walls
-    forM_ walls $ \(wall, color) -> drawRectangleRec wall color
+    -- -- draw walls
+    -- forM_ walls $ \(wall, color) -> drawRectangleRec wall color
 
     -- draw vision rays
     when renderVisionRays $ do

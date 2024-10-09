@@ -108,7 +108,7 @@ antDropsPheromone ant nest foods pheromones =
     -- and it's not on top of the nest
     -- and the ant's regeneration counter is greater than the regeneration delay.
     -- Otherwise, just increment the regeneration counter.
-    -- TODO: The increment coutner logic should be a little more complicated.
+    -- TODO: The increment counter logic should be a little more complicated.
     let pos = antPos ant
         hasFood = antHasFood ant
         notOnFood = not $ any (\(Food (Container _ rect)) -> isPointInRect pos rect) foods
