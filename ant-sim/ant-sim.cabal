@@ -19,7 +19,12 @@ common options
 library
     import:           options
     exposed-modules:  AntSim
-    build-depends:    shared, ant-movement, food, flatland-renderer, draw-walls
+    build-depends:    shared, 
+                        ant-movement, 
+                        food, 
+                        flatland-renderer, 
+                        draw-walls,
+                        pheromones
     hs-source-dirs:   src
 
 executable ant-sim

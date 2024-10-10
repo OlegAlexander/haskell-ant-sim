@@ -113,33 +113,22 @@ renderWallsWorld w = do
         drawRectangleLinesEx wall 2 blue
 
 
-renderWallsBorderWorld :: World -> IO ()
-renderWallsBorderWorld w = do
-    let walls = wWalls w
-    forM_ walls $ \wall -> drawRectangleLinesEx wall 4 black
-
-
-drawWallsSys1 :: System World
-drawWallsSys1 =
+drawWallsSys :: System World
+drawWallsSys =
     mempty
         { handleInput = handleWallInput,
           render = renderWallsWorld
         }
 
 
-drawWallsSys2 :: System World
-drawWallsSys2 = mempty{render = renderWallsBorderWorld}
-
-
 drawWallsSysWrapped :: System World
 drawWallsSysWrapped =
-    let allSystems = drawWallsSys1 <> drawWallsSys2
-    in  allSystems
-            { render = \w -> drawing $ do
-                clearBackground lightGray
-                drawText "Press w to draw walls" 10 10 30 blue
-                render allSystems w
-            }
+    drawWallsSys
+        { render = \w -> drawing $ do
+            clearBackground lightGray
+            drawText "Press w to draw walls" 10 10 30 blue
+            render drawWallsSys w
+        }
 
 
 driveDrawWalls :: IO ()
