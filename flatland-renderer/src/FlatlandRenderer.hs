@@ -26,7 +26,9 @@ import Shared (System (..), gameLoop, getNextPos)
 
 import AntMovement (antMovementSys)
 import Constants (collisionRectSize, foodColor, initPheromoneAmount, nestColor, pheromoneColor)
+import Data.Function (on)
 import Data.List (sortBy)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
@@ -59,55 +61,44 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import Shared (calcCenteredRect, calcRectCenter)
+import Shared (calcCenteredRect, calcRectCenter, isPointInRect)
 import System.Random (mkStdGen)
 import Types (Ant (..), Container (..), Degrees, EntityType (..), Food (..), GoDir (..), Mode (..), Nest (..), Pheromone (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
+intersectRayRect :: Vector2 -> Vector2 -> (Rectangle, EntityType) -> Maybe (Float, EntityType)
 intersectRayRect
-    :: Vector2
-    -> Vector2
-    -> (Rectangle, EntityType)
-    -> Maybe (Float, EntityType)
-intersectRayRect
-    (Vector2 rayOriginX rayOriginY)
-    (Vector2 rayDirX rayDirY)
-    (Rectangle rectX rectY rectW rectH, entityType) =
-        let
-            -- Intersection distances for the vertical edges of the rectangle
-            distNearX = (rectX - rayOriginX) / rayDirX
-            distFarX = (rectX + rectW - rayOriginX) / rayDirX
+    camPos@(Vector2 rayOriginX rayOriginY)
+    rayDir@(Vector2 rayDirX rayDirY)
+    (rect@(Rectangle rectX rectY rectW rectH), entityType)
+        -- Skip if the ant is inside the rectangle
+        | isPointInRect camPos rect = Nothing
+        | otherwise =
+            let
+                -- Intersection distances for the vertical edges of the rectangle
+                distNearX = (rectX - rayOriginX) / rayDirX
+                distFarX = (rectX + rectW - rayOriginX) / rayDirX
 
-            -- Intersection distances for the horizontal edges of the rectangle
-            distNearY = (rectY - rayOriginY) / rayDirY
-            distFarY = (rectY + rectH - rayOriginY) / rayDirY
+                -- Intersection distances for the horizontal edges of the rectangle
+                distNearY = (rectY - rayOriginY) / rayDirY
+                distFarY = (rectY + rectH - rayOriginY) / rayDirY
 
-            -- Calculate the entry and exit distances along the ray
-            distEntry = max (min distNearX distFarX) (min distNearY distFarY)
-            distExit = min (max distNearX distFarX) (max distNearY distFarY)
-        in
-            -- Determine if there is an intersection
-            if distExit < 0 || distEntry > distExit
-                then Nothing
-                else
-                    Just
-                        ( if distEntry < 0
-                            then (distExit, entityType)
-                            else (distEntry, entityType)
-                        )
+                -- Calculate the entry and exit distances along the ray
+                distEntry = max (min distNearX distFarX) (min distNearY distFarY)
+                distExit = min (max distNearX distFarX) (max distNearY distFarY)
+            in
+                -- Determine if there is an intersection
+                if distExit < 0 || distEntry > distExit
+                    then Nothing
+                    else Just (if distEntry < 0 then (distExit, entityType) else (distEntry, entityType))
 
 
 -- Compute the minimum distance to any rectangle
-minimumDistance
-    :: Vector2
-    -> Vector2
-    -> [(Rectangle, EntityType)]
-    -> Maybe (Float, EntityType)
+minimumDistance :: Vector2 -> Vector2 -> [(Rectangle, EntityType)] -> Maybe (Float, EntityType)
 minimumDistance camPos rayDir rects =
     let intersections = mapMaybe (intersectRayRect camPos rayDir) rects
-        sortedIntersections =
-            sortBy (\(d1, _) (d2, _) -> compare d1 d2) intersections
+        sortedIntersections = sortBy (\(d1, _) (d2, _) -> compare d1 d2) intersections
     in  listToMaybe sortedIntersections
 
 
