@@ -6,7 +6,15 @@
 
 module AntMovement where
 
-import Constants (antAcceleration, antMaxSpeed, antPng, antTurnAngle, collisionRectSize, fps, screenHeight, screenWidth)
+import Constants (
+    antAcceleration,
+    antMaxSpeed,
+    antTurnAngle,
+    collisionRectSize,
+    fps,
+    screenHeight,
+    screenWidth,
+ )
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
@@ -31,7 +39,6 @@ import Raylib.Core.Shapes (
     drawRectangleRec,
  )
 import Raylib.Core.Text (drawFPS)
-import Raylib.Core.Textures (loadTexture)
 import Raylib.Types (
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),

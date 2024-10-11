@@ -1,6 +1,6 @@
 module DrawWalls where
 
-import Constants (antPng, collisionRectSize, minWallSize, wallColor)
+import Constants (collisionRectSize, minWallSize, wallColor)
 import Control.Monad (forM_, when)
 import Data.Maybe (fromJust, isJust, isNothing)
 import Raylib.Core (
@@ -14,7 +14,6 @@ import Raylib.Core (
  )
 import Raylib.Core.Shapes (drawRectangleLinesEx, drawRectangleRec)
 import Raylib.Core.Text (drawText)
-import Raylib.Core.Textures (loadTexture)
 import Raylib.Types (
     KeyboardKey (KeyW),
     Rectangle (Rectangle),

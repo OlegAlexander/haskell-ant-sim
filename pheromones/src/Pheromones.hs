@@ -5,7 +5,23 @@
 module Pheromones where
 
 import AntMovement (antMovementSys)
-import Constants (antAcceleration, antMaxSpeed, antPng, antTurnAngle, collisionRectSize, foodColor, foodGrowthAmount, foodScale, fps, initPheromoneAmount, nestSize, pheromoneColor, pheromoneScale, regeneratePheromoneDelay, screenHeight, screenWidth)
+import Constants (
+    antAcceleration,
+    antMaxSpeed,
+    antTurnAngle,
+    collisionRectSize,
+    foodColor,
+    foodGrowthAmount,
+    foodScale,
+    fps,
+    initPheromoneAmount,
+    nestSize,
+    pheromoneColor,
+    pheromoneScale,
+    regeneratePheromoneDelay,
+    screenHeight,
+    screenWidth,
+ )
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Foldable (find)

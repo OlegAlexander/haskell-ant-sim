@@ -8,7 +8,6 @@ import AntMovement (antMovementSys)
 import Constants (
     antAcceleration,
     antMaxSpeed,
-    antPng,
     antTurnAngle,
     collisionRectSize,
     foodColor,

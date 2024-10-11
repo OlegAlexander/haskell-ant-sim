@@ -52,10 +52,6 @@ antVisionResolution :: Int
 antVisionResolution = 64
 
 
-antPng :: String
-antPng = "assets/ant.png"
-
-
 wallColor :: Color
 wallColor = white
 
@@ -81,7 +77,7 @@ foodGrowthAmount = 1
 
 
 collisionRectSize :: Float
-collisionRectSize = 50
+collisionRectSize = 30
 
 
 nestSize :: Float

@@ -4,8 +4,6 @@
 
 module AntSim where
 
--- ------------------------------ PART Imports ------------------------------ --
-
 import Control.Monad (when)
 import Data.Fixed (mod')
 import Data.Function ((&))
@@ -18,7 +16,6 @@ import Constants (
     antAcceleration,
     antJitterAngle,
     antMaxSpeed,
-    antPng,
     antScale,
     antTurnAngle,
     borderWallThickness,

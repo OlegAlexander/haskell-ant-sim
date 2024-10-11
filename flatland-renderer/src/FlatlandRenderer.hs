@@ -7,11 +7,15 @@
 module FlatlandRenderer where
 
 import Constants (
-    antPng,
     antVisionAngle,
     antVisionMaxDistance,
     antVisionResolution,
+    collisionRectSize,
+    foodColor,
     fps,
+    initPheromoneAmount,
+    nestColor,
+    pheromoneColor,
     screenHeight,
     screenWidth,
     wallColor,
@@ -20,21 +24,24 @@ import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
-import Shared (System (..), gameLoop, getNextPos)
+import Shared (
+    System (..),
+    calcCenteredRect,
+    calcRectCenter,
+    gameLoop,
+    getNextPos,
+    isPointInRect,
+ )
 
 -- import Debug.Trace (traceShowId)
 
 import AntMovement (antMovementSys)
-import Constants (collisionRectSize, foodColor, initPheromoneAmount, nestColor, pheromoneColor)
-import Data.Function (on)
 import Data.List (sortBy)
-import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
     initWindow,
-    isKeyDown,
     isKeyPressed,
     setMouseCursor,
     setTargetFPS,
@@ -48,8 +55,7 @@ import Raylib.Core.Shapes (
     drawLineV,
     drawRectangleRec,
  )
-import Raylib.Core.Text (drawFPS)
-import Raylib.Core.Textures (loadTexture)
+
 import Raylib.Types (
     Color (..),
     KeyboardKey (..),
@@ -61,7 +67,6 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import Shared (calcCenteredRect, calcRectCenter, isPointInRect)
 import System.Random (mkStdGen)
 import Types (Ant (..), Container (..), Degrees, EntityType (..), Food (..), GoDir (..), Mode (..), Nest (..), Pheromone (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
