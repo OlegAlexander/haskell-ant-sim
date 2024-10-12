@@ -12,10 +12,6 @@ screenHeight :: Int
 screenHeight = 1080
 
 
-title :: String
-title = "Raylib POC"
-
-
 fps :: Int
 fps = 60
 

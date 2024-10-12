@@ -71,9 +71,10 @@ import Shared (
     gameLoop,
     getNextPos,
     isPointInRect,
+    mkPlayerAnt,
     setAt,
  )
-import System.Random (mkStdGen)
+import System.Random (mkStdGen, randomIO)
 import Types (
     Ant (..),
     Container (..),
@@ -91,24 +92,24 @@ import Types (
 
 initPheromoneWorld :: IO World
 initPheromoneWorld = do
-    let screenCenterW = int2Float screenWidth / 2
-        screenCenterH = int2Float screenHeight / 2
-        walls = []
     _ <- initWindow screenWidth screenHeight "Pheromones"
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    let rng = mkStdGen 0
-        antPos = Vector2 screenCenterW screenCenterH
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
-        pheromones =
-            [ Pheromone
-                ( Container
-                    initPheromoneAmount
-                    (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
-                )
-            ]
+    seed <- randomIO
+    let screenCenterW = int2Float screenWidth / 2
+        screenCenterH = int2Float screenHeight / 2
+        playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
+        antPos' = antPos playerAnt
+        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
+        walls = []
+    -- pheromones =
+    --     [ Pheromone
+    --         ( Container
+    --             initPheromoneAmount
+    --             (calcCenteredRect (antPos' |+| Vector2 100 100) collisionRectSize)
+    --         )
+    --     ]
     return $ World playerAnt nest True True False True walls Nothing [] Nothing []
 
 

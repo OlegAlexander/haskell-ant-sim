@@ -48,8 +48,8 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
-import Shared (System (..), calcCenteredRect, gameLoop, getNextPos)
-import System.Random (mkStdGen)
+import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkPlayerAnt)
+import System.Random (mkStdGen, randomIO)
 import Types (
     Ant (..),
     Container (..),
@@ -61,12 +61,6 @@ import Types (
     WheelPos (..),
     World (..),
  )
-
-
-mkPlayerAnt :: Float -> Float -> Int -> Ant
-mkPlayerAnt x y seed =
-    let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
 
 
 canGoThere :: Vector2 -> (Rectangle, EntityType) -> Maybe (Rectangle, EntityType)
@@ -89,9 +83,7 @@ getCollisionRects w =
 
 initAMWorld :: IO World
 initAMWorld = do
-    let screenCenterW = int2Float screenWidth / 2
-        screenCenterH = int2Float screenHeight / 2
-        testWall1 = Rectangle 200 200 500 300
+    let testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 900 500 20 20
         walls = [testWall1, testWall2, testWall3]
@@ -99,10 +91,12 @@ initAMWorld = do
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    let rng = mkStdGen 0
-        antPos = Vector2 screenCenterW screenCenterH
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
+    seed <- randomIO
+    let screenCenterW = int2Float screenWidth / 2
+        screenCenterH = int2Float screenHeight / 2
+        playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
+        antPos' = antPos playerAnt
+        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
     return $ World playerAnt nest True True False True walls Nothing [] Nothing []
 
 

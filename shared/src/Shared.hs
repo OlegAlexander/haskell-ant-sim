@@ -3,6 +3,8 @@ module Shared where
 import Control.Monad (unless, (>=>))
 import Raylib.Types (Rectangle (..), Vector2 (..))
 import Raylib.Util.Math (deg2Rad)
+import System.Random (mkStdGen)
+import Types (Ant (..), GoDir (..), Mode (..), Sprite (..), WheelPos (..))
 
 
 {- |
@@ -42,6 +44,12 @@ calcRectCenter (Rectangle x y w h) = Vector2 (x + w / 2) (y + h / 2)
 isPointInRect :: Vector2 -> Rectangle -> Bool
 isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
     x > rx && x < rx + rw && y > ry && y < ry + rh
+
+
+mkPlayerAnt :: Float -> Float -> Int -> Ant
+mkPlayerAnt x y seed =
+    let rng = mkStdGen seed
+    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
 
 
 data System w = System

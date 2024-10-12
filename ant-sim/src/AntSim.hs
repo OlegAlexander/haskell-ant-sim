@@ -23,7 +23,6 @@ import Constants (
     fps,
     screenHeight,
     screenWidth,
-    title,
  )
 import DrawWalls (drawWallsSys)
 import FlatlandRenderer (flatlandRendererSys)
@@ -49,7 +48,7 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (lightGray, white)
-import Shared (System (..), calcCenteredRect, gameLoop)
+import Shared (System (..), calcCenteredRect, gameLoop, mkPlayerAnt)
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (
     Ant (..),
@@ -61,12 +60,6 @@ import Types (
     WheelPos (Center, TurnLeft, TurnRight),
     World (..),
  )
-
-
-mkPlayerAnt :: Float -> Float -> Int -> Ant
-mkPlayerAnt x y seed =
-    let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
 
 
 initWorld :: IO World

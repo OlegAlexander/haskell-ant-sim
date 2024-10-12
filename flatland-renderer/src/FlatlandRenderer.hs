@@ -67,7 +67,8 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import System.Random (mkStdGen)
+import Shared (mkPlayerAnt)
+import System.Random (mkStdGen, randomIO)
 import Types (Ant (..), Container (..), Degrees, EntityType (..), Food (..), GoDir (..), Mode (..), Nest (..), Pheromone (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
 
 
@@ -216,12 +217,6 @@ updateVisionRays rects ant =
     in  ant{antVisionRays = visionRays}
 
 
-mkPlayerAnt :: Float -> Float -> Int -> Ant
-mkPlayerAnt x y seed =
-    let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
-
-
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
 visionRayToLine (VisionRay p1 angle rayLength _) =
     (p1, getNextPos angle rayLength p1)
@@ -247,18 +242,18 @@ initFRWorld = do
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    let rng = mkStdGen 0
-        antPos = Vector2 screenCenterW screenCenterH
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
+    seed <- randomIO
+    let playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
+        antPos' = antPos playerAnt
+        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
         pheromones =
             [ Pheromone
                 ( Container
                     initPheromoneAmount
-                    (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
+                    (calcCenteredRect (antPos' |+| Vector2 100 100) collisionRectSize)
                 )
             ]
-        food = [Food (Container 10 (calcCenteredRect (antPos |+| Vector2 300 300) collisionRectSize))]
+        food = [Food (Container 10 (calcCenteredRect (antPos' |+| Vector2 300 300) collisionRectSize))]
     return $ World playerAnt nest True True False True walls Nothing food Nothing pheromones
 
 
