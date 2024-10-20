@@ -48,6 +48,10 @@ antVisionResolution :: Int
 antVisionResolution = 64
 
 
+compassMaxDistance :: Float
+compassMaxDistance = 1000
+
+
 wallColor :: Color
 wallColor = white
 

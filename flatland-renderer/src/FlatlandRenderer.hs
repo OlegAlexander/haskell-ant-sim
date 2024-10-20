@@ -11,6 +11,7 @@ import Constants (
     antVisionMaxDistance,
     antVisionResolution,
     collisionRectSize,
+    compassMaxDistance,
     foodColor,
     fps,
     initPheromoneAmount,
@@ -69,7 +70,21 @@ import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, whit
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
 import Shared (mkPlayerAnt)
 import System.Random (mkStdGen, randomIO)
-import Types (Ant (..), Container (..), Degrees, EntityType (..), Food (..), GoDir (..), Mode (..), Nest (..), Pheromone (..), Sprite (..), VisionRay (..), WheelPos (..), World (..))
+import Types (
+    Ant (..),
+    Container (..),
+    Degrees,
+    EntityType (..),
+    Food (..),
+    GoDir (..),
+    Mode (..),
+    Nest (..),
+    Pheromone (..),
+    Sprite (..),
+    VisionRay (..),
+    WheelPos (..),
+    World (..),
+ )
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
@@ -222,12 +237,18 @@ visionRayToLine (VisionRay p1 angle rayLength _) =
     (p1, getNextPos angle rayLength p1)
 
 
+normalizeCompassDistance :: Float -> Float
+normalizeCompassDistance dist = min 1.0 (dist / compassMaxDistance)
+
+
 calcNestDirectionAndDistance :: Vector2 -> Vector2 -> (Degrees, Float)
 calcNestDirectionAndDistance (Vector2 nestX nestY) (Vector2 antX antY) =
     let dx = nestX - antX
         dy = nestY - antY
-        angle = (-(atan2 dy dx * rad2Deg)) `mod'` 360
-        distance = sqrt (dx * dx + dy * dy)
+        -- Normalize the angle to the range [0, 1]
+        angle = ((-(atan2 dy dx * rad2Deg)) `mod'` 360) / 360
+        -- Clamp and normalize the distance to the nest
+        distance = normalizeCompassDistance $ sqrt (dx * dx + dy * dy)
     in  (angle, distance)
 
 
@@ -325,8 +346,8 @@ renderFRWorld w = do
     when (wRenderHomeVector w) $ do
         let homeVectorEnd =
                 getNextPos
-                    (antNestAngle playerAnt)
-                    (antNestDistance playerAnt * 0.2)
+                    (antNestAngle playerAnt * 360)
+                    (antNestDistance playerAnt * compassMaxDistance * 0.2)
                     antPos'
         drawLineEx antPos' homeVectorEnd 5 gray
 
@@ -351,14 +372,19 @@ renderFRWorld w = do
                 Vector2 (int2Float screenWidth - 150) (int2Float screenHeight - 150)
             compassEnd =
                 getNextPos
-                    (antNestAngle playerAnt)
-                    (antNestDistance playerAnt * 0.4)
+                    (antNestAngle playerAnt * 360)
+                    (antNestDistance playerAnt * compassMaxDistance * 0.4)
                     compassCenter
             antDirEnd =
                 getNextPos
                     (antAngle playerAnt)
                     80
                     compassCenter
+
+        -- If the ant has food, draw a piece of food in its mouth in the compass
+        when (antHasFood playerAnt) $ do
+            drawCircleV antDirEnd 30 foodColor
+
         drawCircleV compassCenter 20 gray
         drawLineEx compassCenter antDirEnd 20 gray
         drawLineEx compassCenter compassEnd 10 white

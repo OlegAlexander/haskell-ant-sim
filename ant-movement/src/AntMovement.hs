@@ -81,6 +81,13 @@ getCollisionRects w =
     in  walls ++ foods
 
 
+wrapAroundScreen :: Vector2 -> Vector2
+wrapAroundScreen (Vector2 x y) =
+    let x' = x `mod'` int2Float screenWidth
+        y' = y `mod'` int2Float screenHeight
+    in  Vector2 x' y'
+
+
 initAMWorld :: IO World
 initAMWorld = do
     let testWall1 = Rectangle 200 200 500 300
@@ -153,7 +160,7 @@ updateAMWorld w =
 
         playerAnt' =
             playerAnt
-                { antPos = nextPos',
+                { antPos = wrapAroundScreen nextPos',
                   antAngle = nextAngle,
                   antSpeed = nextSpeed
                 }
