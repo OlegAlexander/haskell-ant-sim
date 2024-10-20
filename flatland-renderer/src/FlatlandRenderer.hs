@@ -195,6 +195,11 @@ scalarTimesColor scalar color =
     in  linearToRgb (r' * scalar, g' * scalar, b' * scalar, a')
 
 
+makeVisionRect :: Int -> Int -> Int -> Rectangle
+makeVisionRect x rectWidth rectHeight =
+    Rectangle (int2Float x) 0 (int2Float rectWidth) (int2Float rectHeight)
+
+
 -- Convert the vision rays to a row of tall rectangles for rendering.
 visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
 visionRaysToRects rays =
@@ -205,15 +210,7 @@ visionRaysToRects rays =
         colorsTimesDepthMap = zipWith scalarTimesColor depthMap colors
         rectsAndColors =
             zipWith
-                ( \x color ->
-                    ( Rectangle
-                        (int2Float x)
-                        0
-                        (int2Float rectWidth)
-                        (int2Float rectHeight),
-                      color
-                    )
-                )
+                (\x color -> (makeVisionRect x rectWidth rectHeight, color))
                 [0, rectWidth ..]
                 colorsTimesDepthMap
     in  rectsAndColors
