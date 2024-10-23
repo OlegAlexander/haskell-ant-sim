@@ -34,11 +34,9 @@ import Shared (
     isPointInRect,
  )
 
--- import Debug.Trace (traceShowId)
-
 import AntMovement (antMovementSys)
 import Data.List (sortBy)
-import Debug.Trace (traceShowId)
+import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,

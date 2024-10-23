@@ -1,5 +1,5 @@
 cabal-version:   3.0
-name:            pheromones
+name:            ant-ai
 version:         0.1.0.0
 license:         NONE
 author:          olegalexander@gmail.com
@@ -19,16 +19,19 @@ common options
 
 library
     import:           options
-    exposed-modules:  Pheromones
-    build-depends:    shared, ant-movement, food
+    exposed-modules:  AntAI
+    build-depends:    shared, 
+                        ant-movement, 
+                        food, 
+                        flatland-renderer, 
+                        draw-walls,
+                        pheromones
     hs-source-dirs:   src
 
-
-executable pheromones
+executable ant-ai
     import:           options
     main-is:          Main.hs
     build-depends:
-        pheromones
+        ant-ai
 
     hs-source-dirs:   app
-
