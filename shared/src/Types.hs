@@ -1,6 +1,6 @@
 module Types where
 
-import Raylib.Types (Rectangle, Texture, Vector2)
+import Raylib.Types (Color, Rectangle, Texture, Vector2)
 import Raylib.Util (WindowResources)
 import System.Random (StdGen)
 
@@ -36,7 +36,8 @@ data VisionRay = VisionRay
     { rayPos :: Vector2,
       rayAngle :: Degrees,
       rayLength :: Float,
-      rayHitEntityType :: EntityType
+      rayHitEntityType :: EntityType,
+      rayColor :: Color
     }
     deriving (Eq, Show)
 

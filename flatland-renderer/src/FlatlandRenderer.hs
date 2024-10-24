@@ -129,7 +129,9 @@ castRay camPos maxDist rects angle =
         minDist = minimumDistance camPos rayDir rects
         (dist, entityType) = fromMaybe (maxDist, UnknownET) minDist
         entityType' = if dist >= maxDist then UnknownET else entityType
-    in  VisionRay camPos angle (min dist maxDist) entityType'
+        depth = 1 - normalizeDistance dist
+        color = scalarTimesColor depth (entityTypeToColor entityType')
+    in  VisionRay camPos angle (min dist maxDist) entityType' color
 
 
 -- Calculate the vision rays for a given camera position and view parameters
@@ -201,22 +203,21 @@ makeVisionRect x rectWidth rectHeight =
 -- Convert the vision rays to a row of tall rectangles for rendering.
 visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
 visionRaysToRects rays =
-    let depthMap = map ((1 -) . normalizeDistance . rayLength) rays
-        rectWidth = screenWidth `div` length depthMap
+    let rectWidth = screenWidth `div` length rays
         rectHeight = screenHeight `div` 1
-        colors = map (entityTypeToColor . rayHitEntityType) rays
-        colorsTimesDepthMap = zipWith scalarTimesColor depthMap colors
+        colors = map rayColor rays
         rectsAndColors =
             zipWith
                 (\x color -> (makeVisionRect x rectWidth rectHeight, color))
                 [0, rectWidth ..]
-                colorsTimesDepthMap
+                colors
     in  rectsAndColors
 
 
 updateVisionRays :: [(Rectangle, EntityType)] -> Ant -> Ant
 updateVisionRays rects ant =
-    let visionRays =
+    ant
+        { antVisionRays =
             calcVisionRays
                 (antPos ant)
                 (antAngle ant)
@@ -224,11 +225,11 @@ updateVisionRays rects ant =
                 antVisionResolution
                 antVisionMaxDistance
                 rects
-    in  ant{antVisionRays = visionRays}
+        }
 
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
-visionRayToLine (VisionRay p1 angle rayLength _) =
+visionRayToLine (VisionRay p1 angle rayLength _ _) =
     (p1, getNextPos angle rayLength p1)
 
 
@@ -332,10 +333,10 @@ renderFRWorld w = do
     -- -- draw walls
     -- forM_ walls $ \(wall, color) -> drawRectangleRec wall color
 
-    -- draw vision rays
+    -- draw vision rays with colors
     when renderVisionRays $ do
-        let visionLines = map visionRayToLine rays
-        forM_ visionLines $ \(start, end) -> drawLineV start end white
+        let visionLines = map (\ray -> (visionRayToLine ray, rayColor ray)) rays
+        forM_ visionLines $ \((start, end), color) -> drawLineV start end color
 
     -- draw home vector for the player ant
     when (wRenderHomeVector w) $ do
