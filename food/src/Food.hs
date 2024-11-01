@@ -189,7 +189,7 @@ drawFood (Food (Container amount rect)) = do
 renderFoodWorld :: World -> IO ()
 renderFoodWorld w = do
     let nest = wNest w
-        nestPos = calcRectCenter (nest & nestContainer & containerRect)
+        nestPos = nest & nestContainer & containerRect & calcRectCenter
         playerAnt = wPlayerAnt w
 
     -- draw the nest

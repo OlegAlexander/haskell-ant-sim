@@ -131,13 +131,13 @@ antDropsPheromone ant nest foods pheromones =
         notOnFood = not $ any (\(Food (Container _ rect)) -> isPointInRect pos rect) foods
         notOnPheromone = not $ any (\(Pheromone (Container _ rect)) -> isPointInRect pos rect) pheromones
         notOnNest = not $ isPointInRect pos (nestContainer nest & containerRect)
-        regenerationCounter = regeneratePheromoneCounter ant
+        regenerationCounter = antRegeneratePheromoneCounter ant
         regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
     in  if hasFood && notOnFood && notOnPheromone && notOnNest && regenCounterGreaterThanDelay
             then
                 let pheromone = Pheromone (Container initPheromoneAmount (calcCenteredRect pos collisionRectSize))
-                in  (ant{regeneratePheromoneCounter = 0}, pheromone : pheromones)
-            else (ant{regeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
+                in  (ant{antRegeneratePheromoneCounter = 0}, pheromone : pheromones)
+            else (ant{antRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
 
 
 updatePheromoneWorld :: World -> World

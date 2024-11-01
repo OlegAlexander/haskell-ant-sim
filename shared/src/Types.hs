@@ -1,3 +1,5 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module Types where
 
 import Raylib.Types (Color, Rectangle, Texture, Vector2)
@@ -56,7 +58,7 @@ data Ant = Ant
       antNestDistance :: Float,
       antHasFood :: Bool,
       antScore :: Float,
-      regeneratePheromoneCounter :: Int
+      antRegeneratePheromoneCounter :: Int
     }
     deriving (Eq, Show)
 
