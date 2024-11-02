@@ -1,6 +1,7 @@
 module Main where
 
-import AntAI (message)
+import AntAI qualified
+
 
 main :: IO ()
-main = putStrLn message
+main = AntAI.main

@@ -1,1 +1,8 @@
 packages: */*.cabal
+
+-- https://stackoverflow.com/questions/69091022/how-to-correctly-build-cabal-project-using-hmatrix-under-windows-10
+package hmatrix
+   flags: +openblas
+   extra-include-dirs: C:/Users/olega/Downloads/OpenBLAS-0.3.28-x64/include
+   extra-lib-dirs: C:/Users/olega/Downloads/OpenBLAS-0.3.28-x64/bin
+   extra-lib-dirs: C:/Users/olega/Downloads/OpenBLAS-0.3.28-x64/lib

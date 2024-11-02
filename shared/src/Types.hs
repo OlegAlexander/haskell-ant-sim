@@ -1,9 +1,6 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-
 module Types where
 
-import Raylib.Types (Color, Rectangle, Texture, Vector2)
-import Raylib.Util (WindowResources)
+import Raylib.Types (Color, Rectangle, Vector2)
 import System.Random (StdGen)
 
 
@@ -60,7 +57,7 @@ data Ant = Ant
       antScore :: Float,
       antRegeneratePheromoneCounter :: Int
     }
-    deriving (Eq, Show)
+    deriving (Show) -- No Eq because of StdGen 1.1
 
 
 data Mode = SeekFood | SeekNest deriving (Eq, Show)
