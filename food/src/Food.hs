@@ -64,7 +64,7 @@ import Shared (
     gameLoop,
     getNextPos,
     isPointInRect,
-    mkPlayerAnt,
+    mkAnt,
     setAt,
  )
 import System.Random (mkStdGen, randomIO)
@@ -89,13 +89,11 @@ initFoodWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let screenCenterW = int2Float screenWidth / 2
-        screenCenterH = int2Float screenHeight / 2
-        playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
-        antPos' = antPos playerAnt
+    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos' seed
         nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
         walls = []
-    return $ World playerAnt nest True True False True walls Nothing [] Nothing []
+    return $ World playerAnt [] nest True True False True walls Nothing [] Nothing []
 
 
 -- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.

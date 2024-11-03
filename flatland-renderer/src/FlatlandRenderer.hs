@@ -66,7 +66,7 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import Shared (mkPlayerAnt)
+import Shared (mkAnt)
 import System.Random (mkStdGen, randomIO)
 import Types (
     Ant (..),
@@ -260,8 +260,8 @@ initFRWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
-        antPos' = antPos playerAnt
+    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos' seed
         nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
         pheromones =
             [ Pheromone
@@ -271,7 +271,7 @@ initFRWorld = do
                 )
             ]
         food = [Food (Container 10 (calcCenteredRect (antPos' |+| Vector2 300 300) collisionRectSize))]
-    return $ World playerAnt nest True True False True walls Nothing food Nothing pheromones
+    return $ World playerAnt [] nest True True False True walls Nothing food Nothing pheromones
 
 
 handleFRInput :: World -> IO World

@@ -48,7 +48,7 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (lightGray, white)
-import Shared (System (..), calcCenteredRect, gameLoop, mkPlayerAnt)
+import Shared (System (..), calcCenteredRect, gameLoop, mkAnt)
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (
     Ant (..),
@@ -65,16 +65,14 @@ import Types (
 initWorld :: IO World
 initWorld = do
     seed <- randomIO
-    let screenCenterW = int2Float screenWidth / 2
-        screenCenterH = int2Float screenHeight / 2
-        playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
-        antPos' = antPos playerAnt
+    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos' seed
         nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
         walls = []
     _ <- initWindow screenWidth screenHeight "Haskell Ant Sim"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return $ World playerAnt nest True False False True walls Nothing [] Nothing []
+    return $ World playerAnt [] nest True False False True walls Nothing [] Nothing []
 
 
 antSimSys :: System World

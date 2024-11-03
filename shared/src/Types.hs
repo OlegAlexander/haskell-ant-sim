@@ -78,6 +78,7 @@ data WallDrawingState = Idle | Started | InProgress | Finished
 
 data World = World
     { wPlayerAnt :: Ant,
+      wAnts :: [Ant],
       wNest :: Nest,
       wRenderVisionRays :: Bool,
       wRenderVisionRects :: Bool,

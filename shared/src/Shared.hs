@@ -46,10 +46,10 @@ isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
     x > rx && x < rx + rw && y > ry && y < ry + rh
 
 
-mkPlayerAnt :: Float -> Float -> Int -> Ant
-mkPlayerAnt x y seed =
+mkAnt :: Vector2 -> Int -> Ant
+mkAnt pos seed =
     let rng = mkStdGen seed
-    in  Ant (Vector2 x y) 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
+    in  Ant pos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
 
 
 data System w = System

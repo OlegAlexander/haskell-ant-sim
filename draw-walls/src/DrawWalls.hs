@@ -63,7 +63,7 @@ initWallsWorld = do
         antPos = Vector2 0 0
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
-    return $ World playerAnt nest True True False True [] Nothing [] Nothing []
+    return $ World playerAnt [] nest True True False True [] Nothing [] Nothing []
 
 
 handleWallInput :: World -> IO World

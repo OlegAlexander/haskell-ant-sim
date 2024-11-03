@@ -48,7 +48,7 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
-import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkPlayerAnt)
+import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt)
 import System.Random (mkStdGen, randomIO)
 import Types (
     Ant (..),
@@ -99,12 +99,10 @@ initAMWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let screenCenterW = int2Float screenWidth / 2
-        screenCenterH = int2Float screenHeight / 2
-        playerAnt = mkPlayerAnt screenCenterW screenCenterH seed
-        antPos' = antPos playerAnt
+    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos' seed
         nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
-    return $ World playerAnt nest True True False True walls Nothing [] Nothing []
+    return $ World playerAnt [] nest True True False True walls Nothing [] Nothing []
 
 
 handleAMInput :: World -> IO World
