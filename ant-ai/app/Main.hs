@@ -1,7 +1,7 @@
 module Main where
 
-import AntAI qualified
+import AntAI (driveAntAI)
 
 
 main :: IO ()
-main = AntAI.main
+main = driveAntAI

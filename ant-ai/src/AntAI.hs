@@ -12,7 +12,19 @@ import Data.List (foldl')
 -- import Debug.Trace (trace, traceShow)
 
 import AntMovement (antMovementSys)
-import Constants (antAcceleration, antJitterAngle, antMaxSpeed, antScale, antTurnAngle, borderWallThickness, collisionRectSize, fps, numAnts, screenHeight, screenWidth)
+import Constants (
+    antAcceleration,
+    antJitterAngle,
+    antMaxSpeed,
+    antScale,
+    antTurnAngle,
+    borderWallThickness,
+    collisionRectSize,
+    fps,
+    numAnts,
+    screenHeight,
+    screenWidth,
+ )
 import DrawWalls (drawWallsSys)
 import FlatlandRenderer (flatlandRendererSys)
 import Food (foodSys)
@@ -51,25 +63,42 @@ import Types (
  )
 
 
-initWorld :: IO World
-initWorld = do
+initAntAIWorld :: IO World
+initAntAIWorld = do
     playerAntSeed <- randomIO
     antSeeds <- replicateM numAnts randomIO
     let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos' playerAntSeed
-        ants = foldl' (\ants' seed -> mkAnt antPos' seed : ants') [] antSeeds
+        ants = map (mkAnt antPos') antSeeds
         nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
         walls = []
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return $ World playerAnt ants nest True False False True walls Nothing [] Nothing []
+    return $ World playerAnt ants nest False False False True walls Nothing [] Nothing []
+
+
+handleAntAIInput :: World -> IO World
+handleAntAIInput w = return w
+
+
+updateAntAIWorld :: World -> World
+updateAntAIWorld w = w
+
+
+renderAntAIWorld :: World -> IO ()
+renderAntAIWorld w = return ()
 
 
 antAISys :: System World
-antAISys =
+antAISys = System handleAntAIInput updateAntAIWorld renderAntAIWorld
+
+
+antAISysWrapped :: System World
+antAISysWrapped =
     let allSystems =
-            drawWallsSys
+            antAISys
+                <> drawWallsSys
                 <> pheromoneSys
                 <> foodSys
                 <> antMovementSys
@@ -84,5 +113,5 @@ antAISys =
             }
 
 
-main :: IO ()
-main = initWorld >>= gameLoop antAISys windowShouldClose
+driveAntAI :: IO ()
+driveAntAI = initAntAIWorld >>= gameLoop antAISysWrapped windowShouldClose
