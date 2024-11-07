@@ -18,6 +18,7 @@ import Constants (
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
+import Data.IntMap (update)
 import Data.Maybe (mapMaybe)
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
@@ -127,42 +128,42 @@ handleAMInput w = do
             }
 
 
-updateAMWorld :: World -> World
-updateAMWorld w =
-    let playerAnt = wPlayerAnt w
-        playerWheelPos = antWheelPos playerAnt
-        playerAntGoDir = antGoDir playerAnt
-        collisionRects = getCollisionRects w
-
+updateAntMovement :: World -> Ant -> Ant
+updateAntMovement w ant =
+    let collisionRects = getCollisionRects w
         nextAngle =
-            antAngle playerAnt
+            antAngle ant
                 & \angle ->
-                    case playerWheelPos of
+                    case antWheelPos ant of
                         TurnRight -> (angle - antTurnAngle) `mod'` 360
                         TurnLeft -> (angle + antTurnAngle) `mod'` 360
                         Center -> angle `mod'` 360
         nextSpeed =
-            case playerAntGoDir of
-                Forward -> min antMaxSpeed (antSpeed playerAnt + antAcceleration)
-                Backward -> max ((-antMaxSpeed) / 4) (antSpeed playerAnt - antAcceleration)
-                Stop -> case compare (antSpeed playerAnt) 0 of
-                    LT -> min 0 (antSpeed playerAnt + antAcceleration)
-                    GT -> max 0 (antSpeed playerAnt - antAcceleration)
+            case antGoDir ant of
+                Forward -> min antMaxSpeed (antSpeed ant + antAcceleration)
+                Backward -> max ((-antMaxSpeed) / 4) (antSpeed ant - antAcceleration)
+                Stop -> case compare (antSpeed ant) 0 of
+                    LT -> min 0 (antSpeed ant + antAcceleration)
+                    GT -> max 0 (antSpeed ant - antAcceleration)
                     EQ -> 0
-        nextPos = getNextPos nextAngle nextSpeed (antPos playerAnt)
+        nextPos = getNextPos nextAngle nextSpeed (antPos ant)
 
         nextPos' =
             if checkCollisions nextPos collisionRects /= []
-                then antPos playerAnt
+                then antPos ant
                 else nextPos
 
-        playerAnt' =
-            playerAnt
+        ant' =
+            ant
                 { antPos = wrapAroundScreen nextPos',
                   antAngle = nextAngle,
                   antSpeed = nextSpeed
                 }
-    in  w{wPlayerAnt = playerAnt'}
+    in  ant'
+
+
+updateAMWorld :: World -> World
+updateAMWorld w = w{wPlayerAnt = updateAntMovement w (wPlayerAnt w)}
 
 
 renderAMWorld :: World -> IO ()

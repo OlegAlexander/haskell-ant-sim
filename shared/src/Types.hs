@@ -90,3 +90,12 @@ data World = World
       wFoodBeingDrawn :: Maybe Food,
       wPheromones :: [Pheromone]
     }
+
+
+data AntDecision
+    = GoLeft
+    | GoForwardLeft
+    | GoForward
+    | GoForwardRight
+    | GoRight
+    deriving (Enum, Eq, Show)

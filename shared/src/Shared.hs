@@ -1,9 +1,10 @@
 module Shared where
 
 import Control.Monad (unless, (>=>))
+import Data.Function ((&))
 import Raylib.Types (Rectangle (..), Vector2 (..))
 import Raylib.Util.Math (deg2Rad)
-import System.Random (mkStdGen)
+import System.Random (mkStdGen, randomR)
 import Types (Ant (..), GoDir (..), Mode (..), Sprite (..), WheelPos (..))
 
 
@@ -48,8 +49,8 @@ isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
 
 mkAnt :: Vector2 -> Int -> Ant
 mkAnt pos seed =
-    let rng = mkStdGen seed
-    in  Ant pos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
+    let (randomAngle, rng) = mkStdGen seed & randomR (0, 360)
+    in  Ant pos randomAngle 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
 
 
 data System w = System

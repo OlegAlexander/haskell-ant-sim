@@ -4,14 +4,14 @@
 
 module AntAI where
 
-import Control.Monad (replicateM, when)
+import Control.Monad (forM, forM_, replicateM, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.List (foldl')
 
 -- import Debug.Trace (trace, traceShow)
 
-import AntMovement (antMovementSys)
+import AntMovement (antMovementSys, updateAntMovement)
 import Constants (
     antAcceleration,
     antJitterAngle,
@@ -41,32 +41,25 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
+import Raylib.Core.Shapes (drawCircleV, drawLineEx)
 import Raylib.Core.Text (drawFPS)
 import Raylib.Types (
+    Color,
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (lightGray, white)
-import Shared (System (..), calcCenteredRect, gameLoop, mkAnt)
+import Raylib.Util.Colors (darkBrown, green, lightGray, white)
+import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt)
 import System.Random (mkStdGen, randomIO, randomR)
-import Types (
-    Ant (..),
-    Container (..),
-    GoDir (..),
-    Mode (SeekFood),
-    Nest (..),
-    Sprite (LeftSprite, RightSprite),
-    WheelPos (Center, TurnLeft, TurnRight),
-    World (..),
- )
+import Types (Ant (..), AntDecision (..), Container (..), GoDir (..), Mode (SeekFood), Nest (..), Sprite (LeftSprite, RightSprite), WheelPos (Center, TurnLeft, TurnRight), World (..))
 
 
 initAntAIWorld :: IO World
 initAntAIWorld = do
     playerAntSeed <- randomIO
-    antSeeds <- replicateM numAnts randomIO
+    antSeeds <- replicateM 100 randomIO
     let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos' playerAntSeed
         ants = map (mkAnt antPos') antSeeds
@@ -82,12 +75,41 @@ handleAntAIInput :: World -> IO World
 handleAntAIInput w = return w
 
 
+antBrainForward :: Ant -> AntDecision
+antBrainForward _ = GoForward
+
+
+applyAntDecision :: AntDecision -> Ant -> Ant
+applyAntDecision decision ant = case decision of
+    GoLeft -> ant{antWheelPos = TurnLeft, antGoDir = Stop}
+    GoForwardLeft -> ant{antWheelPos = TurnLeft, antGoDir = Forward}
+    GoForward -> ant{antWheelPos = Center, antGoDir = Forward}
+    GoForwardRight -> ant{antWheelPos = TurnRight, antGoDir = Forward}
+    GoRight -> ant{antWheelPos = TurnRight, antGoDir = Stop}
+
+
 updateAntAIWorld :: World -> World
-updateAntAIWorld w = w
+updateAntAIWorld w =
+    let ants = wAnts w
+        antDecisions = map antBrainForward ants
+        ants' =
+            ants
+                & zipWith applyAntDecision antDecisions
+                & map (updateAntMovement w)
+    in  w{wAnts = ants'}
+
+
+-- TODO Move this to Shared
+drawAnt :: Color -> Ant -> IO ()
+drawAnt color ant = do
+    let antPos' = antPos ant
+    drawCircleV antPos' 5 color
+    let antDir = getNextPos (antAngle ant) 20 antPos'
+    drawLineEx antPos' antDir 5 color
 
 
 renderAntAIWorld :: World -> IO ()
-renderAntAIWorld w = return ()
+renderAntAIWorld w = forM_ (wAnts w) (drawAnt darkBrown)
 
 
 antAISys :: System World
@@ -100,7 +122,7 @@ antAISysWrapped =
             antAISys
                 <> drawWallsSys
                 <> pheromoneSys
-                <> foodSys
+                -- <> foodSys
                 <> antMovementSys
                 <> flatlandRendererSys
     in  allSystems
