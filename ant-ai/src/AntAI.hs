@@ -11,6 +11,7 @@ import Data.List (foldl')
 
 -- import Debug.Trace (trace, traceShow)
 
+import AI.HNN.FF.Network
 import AntMovement (antMovementSys, updateAntMovement)
 import Constants (
     antAcceleration,
@@ -26,9 +27,10 @@ import Constants (
     screenWidth,
  )
 import DrawWalls (drawWallsSys)
-import FlatlandRenderer (flatlandRendererSys)
+import FlatlandRenderer (flatlandRendererSys, updateAntFR)
 import Food (foodSys)
 import GHC.Float (int2Float)
+import Numeric.LinearAlgebra (Vector (..))
 import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
@@ -68,7 +70,7 @@ import Types (
 initAntAIWorld :: IO World
 initAntAIWorld = do
     playerAntSeed <- randomIO
-    antSeeds <- replicateM 100 randomIO
+    antSeeds <- replicateM 10 randomIO
     let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos' playerAntSeed
         ants = map (mkAnt antPos') antSeeds
@@ -112,7 +114,7 @@ updateAntAIWorld w =
         ants' =
             ants
                 & zipWith applyAntDecision antDecisions
-                & map (updateAntMovement w)
+                & map (updateAntFR w . updateAntMovement w)
     in  w{wAnts = ants'}
 
 

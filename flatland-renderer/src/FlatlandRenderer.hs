@@ -55,6 +55,7 @@ import Raylib.Core.Shapes (
     drawRectangleRec,
  )
 
+import Data.IntMap (update)
 import Raylib.Types (
     Color (..),
     KeyboardKey (..),
@@ -259,7 +260,7 @@ initFRWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+    let antPos' = Vector2 screenCenterW screenCenterH
         playerAnt = mkAnt antPos' seed
         nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
         pheromones =
@@ -301,20 +302,17 @@ collectVisibleRects w =
     in  wallsRects ++ pheromoneRects ++ foodRects ++ [nestRect]
 
 
+updateAntFR :: World -> Ant -> Ant
+updateAntFR w ant =
+    let visibleRects = collectVisibleRects w
+        nestPos = wNest w & nestContainer & containerRect & calcRectCenter
+        (nestAngle, nestDistance) = calcNestDirectionAndDistance nestPos (antPos ant)
+    in  ant{antNestAngle = nestAngle, antNestDistance = nestDistance}
+            & updateVisionRays visibleRects
+
+
 updateFRWorld :: World -> World
-updateFRWorld w =
-    let playerAnt = wPlayerAnt w
-        visibleRects = collectVisibleRects w
-        nest = wNest w
-        nestPos = calcRectCenter (nest & nestContainer & containerRect)
-        (nestAngle, nestDistance) = calcNestDirectionAndDistance nestPos (antPos playerAnt)
-        playerAnt' =
-            playerAnt
-                { antNestAngle = nestAngle,
-                  antNestDistance = nestDistance
-                }
-        playerAnt'' = updateVisionRays visibleRects playerAnt'
-    in  w{wPlayerAnt = playerAnt''}
+updateFRWorld w = w{wPlayerAnt = updateAntFR w (wPlayerAnt w)}
 
 
 renderFRWorld :: World -> IO ()
