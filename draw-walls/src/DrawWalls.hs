@@ -1,8 +1,10 @@
 module DrawWalls where
 
+import Constants
 import Constants (collisionRectSize, minWallSize, wallColor)
 import Control.Monad (forM_, when)
 import Data.Maybe (fromJust, isJust, isNothing)
+import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
     getMousePosition,
@@ -22,13 +24,12 @@ import Raylib.Types (
 import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, lightGray)
-import Shared (System (..), calcCenteredRect, gameLoop)
-import System.Random (mkStdGen)
+import Shared (System (..), calcCenteredRect, gameLoop, mkAnt)
+import System.Random (Random (..))
 import Types (
     Ant (..),
     Container (..),
     GoDir (Stop),
-    Mode (..),
     Nest (..),
     Sprite (..),
     WallDrawingState (..),
@@ -59,10 +60,10 @@ initWallsWorld = do
     _ <- initWindow 1000 800 "Draw Walls"
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
-    let rng = mkStdGen 0
-        antPos = Vector2 0 0
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        playerAnt = Ant antPos 0 0 SeekFood rng Stop Center LeftSprite [] 0 0 False 0 0
+    seed <- randomIO
+    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos' seed
+        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
     return $ World playerAnt [] nest True True False True [] Nothing [] Nothing []
 
 

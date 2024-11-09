@@ -74,7 +74,6 @@ import Types (
     EntityType (..),
     Food (..),
     GoDir (..),
-    Mode (..),
     Nest (..),
     Sprite (..),
     WheelPos (..),

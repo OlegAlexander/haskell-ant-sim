@@ -81,7 +81,6 @@ import Types (
     EntityType (..),
     Food (..),
     GoDir (..),
-    Mode (..),
     Nest (..),
     Pheromone (Pheromone),
     Sprite (..),

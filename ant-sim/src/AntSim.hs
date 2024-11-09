@@ -54,7 +54,6 @@ import Types (
     Ant (..),
     Container (..),
     GoDir (..),
-    Mode (SeekFood),
     Nest (..),
     Sprite (LeftSprite, RightSprite),
     WheelPos (Center, TurnLeft, TurnRight),

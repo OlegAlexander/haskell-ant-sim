@@ -56,7 +56,6 @@ import Types (
     Container (..),
     EntityType (..),
     GoDir (..),
-    Mode (..),
     Nest (..),
     Sprite (..),
     WheelPos (..),

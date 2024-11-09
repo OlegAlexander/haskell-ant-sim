@@ -53,7 +53,16 @@ import Raylib.Util (drawing)
 import Raylib.Util.Colors (darkBrown, green, lightGray, white)
 import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt)
 import System.Random (mkStdGen, randomIO, randomR)
-import Types (Ant (..), AntDecision (..), Container (..), GoDir (..), Mode (SeekFood), Nest (..), Sprite (LeftSprite, RightSprite), WheelPos (Center, TurnLeft, TurnRight), World (..))
+import Types (
+    Ant (..),
+    AntDecision (..),
+    Container (..),
+    GoDir (..),
+    Nest (..),
+    Sprite (LeftSprite, RightSprite),
+    WheelPos (Center, TurnLeft, TurnRight),
+    World (..),
+ )
 
 
 initAntAIWorld :: IO World
@@ -79,6 +88,10 @@ antBrainForward :: Ant -> AntDecision
 antBrainForward _ = GoForward
 
 
+antBrainRandom :: Ant -> AntDecision
+antBrainRandom ant = undefined
+
+
 applyAntDecision :: AntDecision -> Ant -> Ant
 applyAntDecision decision ant = case decision of
     GoLeft -> ant{antWheelPos = TurnLeft, antGoDir = Stop}
@@ -86,6 +99,10 @@ applyAntDecision decision ant = case decision of
     GoForward -> ant{antWheelPos = Center, antGoDir = Forward}
     GoForwardRight -> ant{antWheelPos = TurnRight, antGoDir = Forward}
     GoRight -> ant{antWheelPos = TurnRight, antGoDir = Stop}
+    GoBackwardRight -> ant{antWheelPos = TurnRight, antGoDir = Backward}
+    GoBackward -> ant{antWheelPos = Center, antGoDir = Backward}
+    GoBackwardLeft -> ant{antWheelPos = TurnLeft, antGoDir = Backward}
+    GoNowhere -> ant{antWheelPos = Center, antGoDir = Stop}
 
 
 updateAntAIWorld :: World -> World
@@ -122,7 +139,7 @@ antAISysWrapped =
             antAISys
                 <> drawWallsSys
                 <> pheromoneSys
-                -- <> foodSys
+                <> foodSys
                 <> antMovementSys
                 <> flatlandRendererSys
     in  allSystems

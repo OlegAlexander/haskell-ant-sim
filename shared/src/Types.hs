@@ -45,7 +45,6 @@ data Ant = Ant
     { antPos :: Vector2,
       antAngle :: Degrees,
       antSpeed :: Float,
-      antMode :: Mode,
       antRng :: StdGen,
       antGoDir :: GoDir,
       antWheelPos :: WheelPos,
@@ -58,9 +57,6 @@ data Ant = Ant
       antRegeneratePheromoneCounter :: Int
     }
     deriving (Show) -- No Eq because of StdGen 1.1
-
-
-data Mode = SeekFood | SeekNest deriving (Eq, Show)
 
 
 data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
@@ -98,4 +94,8 @@ data AntDecision
     | GoForward
     | GoForwardRight
     | GoRight
+    | GoBackwardRight
+    | GoBackward
+    | GoBackwardLeft
+    | GoNowhere
     deriving (Enum, Eq, Show)
