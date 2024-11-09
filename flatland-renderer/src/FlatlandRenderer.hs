@@ -295,18 +295,18 @@ handleFRInput w = do
 
 collectVisibleRects :: World -> [(Rectangle, EntityType)]
 collectVisibleRects w =
-    let wallsRects = wWalls w & map (\r -> (r, WallET))
-        pheromoneRects = wPheromones w & map (\(Pheromone c) -> (c & containerRect, PheromoneET))
-        foodRects = wFood w & map (\(Food c) -> (c & containerRect, FoodET))
-        nestRect = (wNest w & nestContainer & containerRect, NestET)
+    let wallsRects = w & wWalls & map (\r -> (r, WallET))
+        pheromoneRects = w & wPheromones & map (\(Pheromone c) -> (c & containerRect, PheromoneET))
+        foodRects = w & wFood & map (\(Food c) -> (c & containerRect, FoodET))
+        nestRect = (w & wNest & nestContainer & containerRect, NestET)
     in  wallsRects ++ pheromoneRects ++ foodRects ++ [nestRect]
 
 
 updateAntFR :: World -> Ant -> Ant
 updateAntFR w ant =
-    let visibleRects = collectVisibleRects w
-        nestPos = wNest w & nestContainer & containerRect & calcRectCenter
-        (nestAngle, nestDistance) = calcNestDirectionAndDistance nestPos (antPos ant)
+    let visibleRects = w & collectVisibleRects
+        nestPos = w & wNest & nestContainer & containerRect & calcRectCenter
+        (nestAngle, nestDistance) = ant & antPos & calcNestDirectionAndDistance nestPos
     in  ant{antNestAngle = nestAngle, antNestDistance = nestDistance}
             & updateVisionRays visibleRects
 
@@ -317,11 +317,11 @@ updateFRWorld w = w{wPlayerAnt = updateAntFR w (wPlayerAnt w)}
 
 renderFRWorld :: World -> IO ()
 renderFRWorld w = do
-    let renderVisionRays = wRenderVisionRays w
-        renderVisionRects = wRenderVisionRects w
-        rays = wPlayerAnt w & antVisionRays
-        playerAnt = wPlayerAnt w
-        antPos' = antPos playerAnt
+    let renderVisionRays = w & wRenderVisionRays
+        renderVisionRects = w & wRenderVisionRects
+        rays = w & wPlayerAnt & antVisionRays
+        playerAnt = w & wPlayerAnt
+        antPos' = playerAnt & antPos
 
     -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
@@ -332,7 +332,7 @@ renderFRWorld w = do
 
     -- draw vision rays with colors
     when renderVisionRays $ do
-        let visionLines = map (\ray -> (visionRayToLine ray, rayColor ray)) rays
+        let visionLines = rays & map (\ray -> (visionRayToLine ray, rayColor ray))
         forM_ visionLines $ \((start, end), color) -> drawLineV start end color
 
     -- draw home vector for the player ant
