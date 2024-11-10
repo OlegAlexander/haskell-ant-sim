@@ -123,12 +123,12 @@ antDropsPheromone ant nest foods pheromones =
     -- and the ant's regeneration counter is greater than the regeneration delay.
     -- Otherwise, just increment the regeneration counter.
     -- TODO: The increment counter logic should be a little more complicated.
-    let pos = antPos ant
-        hasFood = antHasFood ant
-        notOnFood = not $ any (\(Food (Container _ rect)) -> isPointInRect pos rect) foods
-        notOnPheromone = not $ any (\(Pheromone (Container _ rect)) -> isPointInRect pos rect) pheromones
-        notOnNest = not $ isPointInRect pos (nestContainer nest & containerRect)
-        regenerationCounter = antRegeneratePheromoneCounter ant
+    let pos = ant & antPos
+        hasFood = ant & antHasFood
+        notOnFood = not (foods & any (\(Food (Container _ rect)) -> isPointInRect pos rect))
+        notOnPheromone = not (pheromones & any (\(Pheromone (Container _ rect)) -> isPointInRect pos rect))
+        notOnNest = not (nest & nestContainer & containerRect & isPointInRect pos)
+        regenerationCounter = ant & antRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
     in  if hasFood && notOnFood && notOnPheromone && notOnNest && regenCounterGreaterThanDelay
             then
