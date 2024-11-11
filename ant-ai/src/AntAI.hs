@@ -1,6 +1,7 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use guards" #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module AntAI where
 
@@ -109,7 +110,7 @@ applyAntDecision decision ant = case decision of
 
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
-    let ants = wAnts w
+    let ants = w.wAnts
         antDecisions = map antBrainForward ants
         ants' =
             ants
@@ -121,14 +122,14 @@ updateAntAIWorld w =
 -- TODO Move this to Shared
 drawAnt :: Color -> Ant -> IO ()
 drawAnt color ant = do
-    let antPos' = antPos ant
+    let antPos' = ant.antPos
     drawCircleV antPos' 5 color
-    let antDir = getNextPos (antAngle ant) 20 antPos'
+    let antDir = getNextPos ant.antAngle 20 antPos'
     drawLineEx antPos' antDir 5 color
 
 
 renderAntAIWorld :: World -> IO ()
-renderAntAIWorld w = forM_ (wAnts w) (drawAnt darkBrown)
+renderAntAIWorld w = forM_ w.wAnts (drawAnt darkBrown)
 
 
 antAISys :: System World

@@ -1,6 +1,7 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use forM_" #-}
 {-# HLINT ignore "Avoid lambda" #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module Pheromones where
 
@@ -123,12 +124,12 @@ antDropsPheromone ant nest foods pheromones =
     -- and the ant's regeneration counter is greater than the regeneration delay.
     -- Otherwise, just increment the regeneration counter.
     -- TODO: The increment counter logic should be a little more complicated.
-    let pos = ant & antPos
-        hasFood = ant & antHasFood
+    let pos = ant.antPos
+        hasFood = ant.antHasFood
         notOnFood = not (foods & any (\(Food (Container _ rect)) -> isPointInRect pos rect))
         notOnPheromone = not (pheromones & any (\(Pheromone (Container _ rect)) -> isPointInRect pos rect))
-        notOnNest = not (nest & nestContainer & containerRect & isPointInRect pos)
-        regenerationCounter = ant & antRegeneratePheromoneCounter
+        notOnNest = not (nest.nestContainer.containerRect & isPointInRect pos)
+        regenerationCounter = ant.antRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
     in  if hasFood && notOnFood && notOnPheromone && notOnNest && regenCounterGreaterThanDelay
             then
@@ -141,13 +142,13 @@ updatePheromoneWorld :: World -> World
 updatePheromoneWorld w =
     -- Evaporate pheromones until they disappear
     let pheromones' =
-            wPheromones w
+            w.wPheromones
                 & map
                     ( \(Pheromone (Container amount rect)) ->
                         Pheromone (Container (amount - 1) rect)
                     )
                 & filter (\(Pheromone (Container amount _)) -> amount > 0)
-        (playerAnt', pheromones'') = antDropsPheromone (wPlayerAnt w) (wNest w) (wFood w) pheromones'
+        (playerAnt', pheromones'') = antDropsPheromone w.wPlayerAnt w.wNest w.wFood pheromones'
     in  w{wPheromones = pheromones'', wPlayerAnt = playerAnt'}
 
 
@@ -165,7 +166,7 @@ drawPheromone (Pheromone (Container amount rect)) = do
 
 
 renderPheromoneWorld :: World -> IO ()
-renderPheromoneWorld w = forM_ (wPheromones w) drawPheromone
+renderPheromoneWorld w = forM_ w.wPheromones drawPheromone
 
 
 pheromoneSys :: System World

@@ -1,3 +1,6 @@
+-- Use NoFieldSelectors to force the use of OverloadedRecordDot everywhere.
+{-# LANGUAGE NoFieldSelectors #-}
+
 module Types where
 
 import Raylib.Types (Color, Rectangle, Vector2)

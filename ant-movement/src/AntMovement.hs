@@ -3,6 +3,7 @@
 {-# HLINT ignore "Use guards" #-}
 {-# HLINT ignore "Use uncurry" #-}
 {-# HLINT ignore "Use tuple-section" #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module AntMovement where
 
@@ -76,7 +77,7 @@ checkCollisions pos rects = mapMaybe (canGoThere pos) rects
 
 getCollisionRects :: World -> [(Rectangle, EntityType)]
 getCollisionRects w =
-    let walls = map (\wall -> (wall, WallET)) (wWalls w)
+    let walls = map (\wall -> (wall, WallET)) w.wWalls
         foods = [] -- map (\food -> (foodCollisionRect food, FoodET)) (wFood w)
     in  walls ++ foods
 
@@ -111,9 +112,9 @@ handleAMInput w = do
     down <- isKeyDown KeyDown
     left <- isKeyDown KeyLeft
     right <- isKeyDown KeyRight
-    let playerAnt = wPlayerAnt w
+    let playerAnt = w.wPlayerAnt
         playerWheelPos =
-            antWheelPos playerAnt
+            playerAnt.antWheelPos
                 & \_ ->
                     if right then TurnRight else if left then TurnLeft else Center
         playerAntGoDir = if up then Forward else if down then Backward else Stop
@@ -131,25 +132,25 @@ updateAntMovement :: World -> Ant -> Ant
 updateAntMovement w ant =
     let collisionRects = getCollisionRects w
         nextAngle =
-            antAngle ant
+            ant.antAngle
                 & \angle ->
-                    case antWheelPos ant of
+                    case ant.antWheelPos of
                         TurnRight -> (angle - antTurnAngle) `mod'` 360
                         TurnLeft -> (angle + antTurnAngle) `mod'` 360
                         Center -> angle `mod'` 360
         nextSpeed =
-            case antGoDir ant of
-                Forward -> min antMaxSpeed (antSpeed ant + antAcceleration)
-                Backward -> max ((-antMaxSpeed) / 4) (antSpeed ant - antAcceleration)
-                Stop -> case compare (antSpeed ant) 0 of
-                    LT -> min 0 (antSpeed ant + antAcceleration)
-                    GT -> max 0 (antSpeed ant - antAcceleration)
+            case ant.antGoDir of
+                Forward -> min antMaxSpeed (ant.antSpeed + antAcceleration)
+                Backward -> max ((-antMaxSpeed) / 4) (ant.antSpeed - antAcceleration)
+                Stop -> case compare ant.antSpeed 0 of
+                    LT -> min 0 (ant.antSpeed + antAcceleration)
+                    GT -> max 0 (ant.antSpeed - antAcceleration)
                     EQ -> 0
-        nextPos = getNextPos nextAngle nextSpeed (antPos ant)
+        nextPos = getNextPos nextAngle nextSpeed ant.antPos
 
         nextPos' =
             if checkCollisions nextPos collisionRects /= []
-                then antPos ant
+                then ant.antPos
                 else nextPos
 
         ant' =
@@ -162,14 +163,14 @@ updateAntMovement w ant =
 
 
 updateAMWorld :: World -> World
-updateAMWorld w = w{wPlayerAnt = updateAntMovement w (wPlayerAnt w)}
+updateAMWorld w = w{wPlayerAnt = updateAntMovement w w.wPlayerAnt}
 
 
 renderAMWorld :: World -> IO ()
 renderAMWorld w = do
-    let walls = zip (wWalls w) [red, green, blue] -- TODO Temporary
-        playerAnt = wPlayerAnt w
-        antPos' = antPos playerAnt
+    let walls = zip w.wWalls [red, green, blue] -- TODO Temporary
+        playerAnt = w.wPlayerAnt
+        antPos' = playerAnt.antPos
 
     -- draw walls
     -- TODO Why are you drawing the walls here?
@@ -179,7 +180,7 @@ renderAMWorld w = do
     drawCircleV antPos' 5 black
 
     -- draw ant direction as a line
-    let antDir = getNextPos (antAngle playerAnt) 20 antPos'
+    let antDir = getNextPos playerAnt.antAngle 20 antPos'
     drawLineEx antPos' antDir 5 black
 
 

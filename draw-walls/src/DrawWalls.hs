@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module DrawWalls where
 
 import Constants
@@ -70,8 +72,8 @@ initWallsWorld = do
 handleWallInput :: World -> IO World
 handleWallInput w = do
     wPressed <- isKeyPressed KeyW
-    let walls = wWalls w
-        wbd = wWallBeingDrawn w
+    let walls = w.wWalls
+        wbd = w.wWallBeingDrawn
         status = getWallDrawingState wPressed wbd
     case status of
         Idle -> return w
@@ -103,8 +105,8 @@ handleWallInput w = do
 
 renderWallsWorld :: World -> IO ()
 renderWallsWorld w = do
-    let walls = wWalls w
-        wbd = wWallBeingDrawn w
+    let walls = w.wWalls
+        wbd = w.wWallBeingDrawn
     forM_ walls $ \wall -> drawRectangleRec wall wallColor
     when (isJust wbd) $ do
         let (start, end) = fromJust wbd

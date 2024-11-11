@@ -3,6 +3,7 @@
 {-# HLINT ignore "Use guards" #-}
 {-# HLINT ignore "Use uncurry" #-}
 {-# HLINT ignore "Use tuple-section" #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module FlatlandRenderer where
 
@@ -205,7 +206,7 @@ visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
 visionRaysToRects rays =
     let rectWidth = screenWidth `div` length rays
         rectHeight = screenHeight `div` 1
-        colors = map rayColor rays
+        colors = rays & map (.rayColor)
         rectsAndColors =
             zipWith
                 (\x color -> (makeVisionRect x rectWidth rectHeight, color))
@@ -219,8 +220,8 @@ updateVisionRays rects ant =
     ant
         { antVisionRays =
             calcVisionRays
-                (antPos ant)
-                (antAngle ant)
+                ant.antPos
+                ant.antAngle
                 antVisionAngle
                 antVisionResolution
                 antVisionMaxDistance
@@ -280,10 +281,10 @@ handleFRInput w = do
     vKey <- isKeyPressed KeyV
     hKey <- isKeyPressed KeyH
     cKey <- isKeyPressed KeyC
-    let toggleVisionRays = rKey /= wRenderVisionRays w
-        toggleVisionRects = vKey /= wRenderVisionRects w
-        toggleHomeVector = hKey /= wRenderHomeVector w
-        toggleHomeCompass = cKey /= wRenderHomeCompass w
+    let toggleVisionRays = rKey /= w.wRenderVisionRays
+        toggleVisionRects = vKey /= w.wRenderVisionRects
+        toggleHomeVector = hKey /= w.wRenderHomeVector
+        toggleHomeCompass = cKey /= w.wRenderHomeCompass
     return
         w
             { wRenderVisionRays = toggleVisionRays,
@@ -295,33 +296,33 @@ handleFRInput w = do
 
 collectVisibleRects :: World -> [(Rectangle, EntityType)]
 collectVisibleRects w =
-    let wallsRects = w & wWalls & map (\r -> (r, WallET))
-        pheromoneRects = w & wPheromones & map (\(Pheromone c) -> (c & containerRect, PheromoneET))
-        foodRects = w & wFood & map (\(Food c) -> (c & containerRect, FoodET))
-        nestRect = (w & wNest & nestContainer & containerRect, NestET)
+    let wallsRects = w.wWalls & map (\r -> (r, WallET))
+        pheromoneRects = w.wPheromones & map (\(Pheromone c) -> (c.containerRect, PheromoneET))
+        foodRects = w.wFood & map (\(Food c) -> (c.containerRect, FoodET))
+        nestRect = (w.wNest.nestContainer.containerRect, NestET)
     in  wallsRects ++ pheromoneRects ++ foodRects ++ [nestRect]
 
 
 updateAntFR :: World -> Ant -> Ant
 updateAntFR w ant =
     let visibleRects = w & collectVisibleRects
-        nestPos = w & wNest & nestContainer & containerRect & calcRectCenter
-        (nestAngle, nestDistance) = ant & antPos & calcNestDirectionAndDistance nestPos
+        nestPos = w.wNest.nestContainer.containerRect & calcRectCenter
+        (nestAngle, nestDistance) = ant.antPos & calcNestDirectionAndDistance nestPos
     in  ant{antNestAngle = nestAngle, antNestDistance = nestDistance}
             & updateVisionRays visibleRects
 
 
 updateFRWorld :: World -> World
-updateFRWorld w = w{wPlayerAnt = updateAntFR w (wPlayerAnt w)}
+updateFRWorld w = w{wPlayerAnt = updateAntFR w w.wPlayerAnt}
 
 
 renderFRWorld :: World -> IO ()
 renderFRWorld w = do
-    let renderVisionRays = w & wRenderVisionRays
-        renderVisionRects = w & wRenderVisionRects
-        rays = w & wPlayerAnt & antVisionRays
-        playerAnt = w & wPlayerAnt
-        antPos' = playerAnt & antPos
+    let renderVisionRays = w.wRenderVisionRays
+        renderVisionRects = w.wRenderVisionRects
+        rays = w.wPlayerAnt.antVisionRays
+        playerAnt = w.wPlayerAnt
+        antPos' = playerAnt.antPos
 
     -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
@@ -332,15 +333,15 @@ renderFRWorld w = do
 
     -- draw vision rays with colors
     when renderVisionRays $ do
-        let visionLines = rays & map (\ray -> (visionRayToLine ray, rayColor ray))
+        let visionLines = rays & map (\ray -> (visionRayToLine ray, ray.rayColor))
         forM_ visionLines $ \((start, end), color) -> drawLineV start end color
 
     -- draw home vector for the player ant
-    when (wRenderHomeVector w) $ do
+    when w.wRenderHomeVector $ do
         let homeVectorEnd =
                 getNextPos
-                    (antNestAngle playerAnt * 360)
-                    (antNestDistance playerAnt * compassMaxDistance * 0.2)
+                    (playerAnt.antNestAngle * 360)
+                    (playerAnt.antNestDistance * compassMaxDistance * 0.2)
                     antPos'
         drawLineEx antPos' homeVectorEnd 5 gray
 
@@ -351,7 +352,7 @@ renderFRWorld w = do
     drawCircleV antPos' 5 black
 
     -- draw ant direction as a line
-    let antDir = getNextPos (antAngle playerAnt) 20 antPos'
+    let antDir = getNextPos playerAnt.antAngle 20 antPos'
     drawLineEx antPos' antDir 5 black
 
     -- draw ant vision rects
@@ -360,22 +361,22 @@ renderFRWorld w = do
         forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
 
     -- draw home compass in the lower right corner of the screen
-    when (wRenderHomeCompass w) $ do
+    when w.wRenderHomeCompass $ do
         let compassCenter =
                 Vector2 (int2Float screenWidth - 150) (int2Float screenHeight - 150)
             compassEnd =
                 getNextPos
-                    (antNestAngle playerAnt * 360)
-                    (antNestDistance playerAnt * compassMaxDistance * 0.4)
+                    (playerAnt.antNestAngle * 360)
+                    (playerAnt.antNestDistance * compassMaxDistance * 0.4)
                     compassCenter
             antDirEnd =
                 getNextPos
-                    (antAngle playerAnt)
+                    playerAnt.antAngle
                     80
                     compassCenter
 
         -- If the ant has food, draw a piece of food in its mouth in the compass
-        when (antHasFood playerAnt) $ do
+        when playerAnt.antHasFood $ do
             drawCircleV antDirEnd 30 foodColor
 
         drawCircleV compassCenter 20 gray
