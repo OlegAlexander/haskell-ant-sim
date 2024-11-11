@@ -114,7 +114,7 @@ handleAMInput w = do
     right <- isKeyDown KeyRight
     let playerAnt = w.wPlayerAnt
         playerWheelPos =
-            playerAnt.antWheelPos
+            playerAnt.aWheelPos
                 & \_ ->
                     if right then TurnRight else if left then TurnLeft else Center
         playerAntGoDir = if up then Forward else if down then Backward else Stop
@@ -122,8 +122,8 @@ handleAMInput w = do
         w
             { wPlayerAnt =
                 playerAnt
-                    { antWheelPos = playerWheelPos,
-                      antGoDir = playerAntGoDir
+                    { aWheelPos = playerWheelPos,
+                      aGoDir = playerAntGoDir
                     }
             }
 
@@ -132,32 +132,32 @@ updateAntMovement :: World -> Ant -> Ant
 updateAntMovement w ant =
     let collisionRects = getCollisionRects w
         nextAngle =
-            ant.antAngle
+            ant.aAngle
                 & \angle ->
-                    case ant.antWheelPos of
+                    case ant.aWheelPos of
                         TurnRight -> (angle - antTurnAngle) `mod'` 360
                         TurnLeft -> (angle + antTurnAngle) `mod'` 360
                         Center -> angle `mod'` 360
         nextSpeed =
-            case ant.antGoDir of
-                Forward -> min antMaxSpeed (ant.antSpeed + antAcceleration)
-                Backward -> max ((-antMaxSpeed) / 4) (ant.antSpeed - antAcceleration)
-                Stop -> case compare ant.antSpeed 0 of
-                    LT -> min 0 (ant.antSpeed + antAcceleration)
-                    GT -> max 0 (ant.antSpeed - antAcceleration)
+            case ant.aGoDir of
+                Forward -> min antMaxSpeed (ant.aSpeed + antAcceleration)
+                Backward -> max ((-antMaxSpeed) / 4) (ant.aSpeed - antAcceleration)
+                Stop -> case compare ant.aSpeed 0 of
+                    LT -> min 0 (ant.aSpeed + antAcceleration)
+                    GT -> max 0 (ant.aSpeed - antAcceleration)
                     EQ -> 0
-        nextPos = getNextPos nextAngle nextSpeed ant.antPos
+        nextPos = getNextPos nextAngle nextSpeed ant.aPos
 
         nextPos' =
             if checkCollisions nextPos collisionRects /= []
-                then ant.antPos
+                then ant.aPos
                 else nextPos
 
         ant' =
             ant
-                { antPos = wrapAroundScreen nextPos',
-                  antAngle = nextAngle,
-                  antSpeed = nextSpeed
+                { aPos = wrapAroundScreen nextPos',
+                  aAngle = nextAngle,
+                  aSpeed = nextSpeed
                 }
     in  ant'
 
@@ -170,7 +170,7 @@ renderAMWorld :: World -> IO ()
 renderAMWorld w = do
     let walls = zip w.wWalls [red, green, blue] -- TODO Temporary
         playerAnt = w.wPlayerAnt
-        antPos' = playerAnt.antPos
+        antPos' = playerAnt.aPos
 
     -- draw walls
     -- TODO Why are you drawing the walls here?
@@ -180,7 +180,7 @@ renderAMWorld w = do
     drawCircleV antPos' 5 black
 
     -- draw ant direction as a line
-    let antDir = getNextPos playerAnt.antAngle 20 antPos'
+    let antDir = getNextPos playerAnt.aAngle 20 antPos'
     drawLineEx antPos' antDir 5 black
 
 

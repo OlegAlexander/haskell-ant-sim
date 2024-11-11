@@ -206,7 +206,7 @@ visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
 visionRaysToRects rays =
     let rectWidth = screenWidth `div` length rays
         rectHeight = screenHeight `div` 1
-        colors = rays & map (.rayColor)
+        colors = rays & map (.rColor)
         rectsAndColors =
             zipWith
                 (\x color -> (makeVisionRect x rectWidth rectHeight, color))
@@ -218,10 +218,10 @@ visionRaysToRects rays =
 updateVisionRays :: [(Rectangle, EntityType)] -> Ant -> Ant
 updateVisionRays rects ant =
     ant
-        { antVisionRays =
+        { aVisionRays =
             calcVisionRays
-                ant.antPos
-                ant.antAngle
+                ant.aPos
+                ant.aAngle
                 antVisionAngle
                 antVisionResolution
                 antVisionMaxDistance
@@ -297,18 +297,18 @@ handleFRInput w = do
 collectVisibleRects :: World -> [(Rectangle, EntityType)]
 collectVisibleRects w =
     let wallsRects = w.wWalls & map (\r -> (r, WallET))
-        pheromoneRects = w.wPheromones & map (\(Pheromone c) -> (c.containerRect, PheromoneET))
-        foodRects = w.wFood & map (\(Food c) -> (c.containerRect, FoodET))
-        nestRect = (w.wNest.nestContainer.containerRect, NestET)
+        pheromoneRects = w.wPheromones & map (\p -> (p.pContainer.cRect, PheromoneET))
+        foodRects = w.wFood & map (\f -> (f.fContainer.cRect, FoodET))
+        nestRect = (w.wNest.nContainer.cRect, NestET)
     in  wallsRects ++ pheromoneRects ++ foodRects ++ [nestRect]
 
 
 updateAntFR :: World -> Ant -> Ant
 updateAntFR w ant =
     let visibleRects = w & collectVisibleRects
-        nestPos = w.wNest.nestContainer.containerRect & calcRectCenter
-        (nestAngle, nestDistance) = ant.antPos & calcNestDirectionAndDistance nestPos
-    in  ant{antNestAngle = nestAngle, antNestDistance = nestDistance}
+        nestPos = w.wNest.nContainer.cRect & calcRectCenter
+        (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
+    in  ant{aNestAngle = nestAngle, aNestDistance = nestDistance}
             & updateVisionRays visibleRects
 
 
@@ -320,9 +320,9 @@ renderFRWorld :: World -> IO ()
 renderFRWorld w = do
     let renderVisionRays = w.wRenderVisionRays
         renderVisionRects = w.wRenderVisionRects
-        rays = w.wPlayerAnt.antVisionRays
+        rays = w.wPlayerAnt.aVisionRays
         playerAnt = w.wPlayerAnt
-        antPos' = playerAnt.antPos
+        antPos' = playerAnt.aPos
 
     -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
@@ -333,15 +333,15 @@ renderFRWorld w = do
 
     -- draw vision rays with colors
     when renderVisionRays $ do
-        let visionLines = rays & map (\ray -> (visionRayToLine ray, ray.rayColor))
+        let visionLines = rays & map (\ray -> (visionRayToLine ray, ray.rColor))
         forM_ visionLines $ \((start, end), color) -> drawLineV start end color
 
     -- draw home vector for the player ant
     when w.wRenderHomeVector $ do
         let homeVectorEnd =
                 getNextPos
-                    (playerAnt.antNestAngle * 360)
-                    (playerAnt.antNestDistance * compassMaxDistance * 0.2)
+                    (playerAnt.aNestAngle * 360)
+                    (playerAnt.aNestDistance * compassMaxDistance * 0.2)
                     antPos'
         drawLineEx antPos' homeVectorEnd 5 gray
 
@@ -352,7 +352,7 @@ renderFRWorld w = do
     drawCircleV antPos' 5 black
 
     -- draw ant direction as a line
-    let antDir = getNextPos playerAnt.antAngle 20 antPos'
+    let antDir = getNextPos playerAnt.aAngle 20 antPos'
     drawLineEx antPos' antDir 5 black
 
     -- draw ant vision rects
@@ -366,17 +366,17 @@ renderFRWorld w = do
                 Vector2 (int2Float screenWidth - 150) (int2Float screenHeight - 150)
             compassEnd =
                 getNextPos
-                    (playerAnt.antNestAngle * 360)
-                    (playerAnt.antNestDistance * compassMaxDistance * 0.4)
+                    (playerAnt.aNestAngle * 360)
+                    (playerAnt.aNestDistance * compassMaxDistance * 0.4)
                     compassCenter
             antDirEnd =
                 getNextPos
-                    playerAnt.antAngle
+                    playerAnt.aAngle
                     80
                     compassCenter
 
         -- If the ant has food, draw a piece of food in its mouth in the compass
-        when playerAnt.antHasFood $ do
+        when playerAnt.aHasFood $ do
             drawCircleV antDirEnd 30 foodColor
 
         drawCircleV compassCenter 20 gray

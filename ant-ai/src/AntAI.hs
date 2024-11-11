@@ -97,15 +97,15 @@ antBrainRandom ant = undefined
 
 applyAntDecision :: AntDecision -> Ant -> Ant
 applyAntDecision decision ant = case decision of
-    GoLeft -> ant{antWheelPos = TurnLeft, antGoDir = Stop}
-    GoForwardLeft -> ant{antWheelPos = TurnLeft, antGoDir = Forward}
-    GoForward -> ant{antWheelPos = Center, antGoDir = Forward}
-    GoForwardRight -> ant{antWheelPos = TurnRight, antGoDir = Forward}
-    GoRight -> ant{antWheelPos = TurnRight, antGoDir = Stop}
-    GoBackwardRight -> ant{antWheelPos = TurnRight, antGoDir = Backward}
-    GoBackward -> ant{antWheelPos = Center, antGoDir = Backward}
-    GoBackwardLeft -> ant{antWheelPos = TurnLeft, antGoDir = Backward}
-    GoNowhere -> ant{antWheelPos = Center, antGoDir = Stop}
+    GoLeft -> ant{aWheelPos = TurnLeft, aGoDir = Stop}
+    GoForwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Forward}
+    GoForward -> ant{aWheelPos = Center, aGoDir = Forward}
+    GoForwardRight -> ant{aWheelPos = TurnRight, aGoDir = Forward}
+    GoRight -> ant{aWheelPos = TurnRight, aGoDir = Stop}
+    GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
+    GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
+    GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
+    GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
 
 
 updateAntAIWorld :: World -> World
@@ -122,9 +122,9 @@ updateAntAIWorld w =
 -- TODO Move this to Shared
 drawAnt :: Color -> Ant -> IO ()
 drawAnt color ant = do
-    let antPos' = ant.antPos
+    let antPos' = ant.aPos
     drawCircleV antPos' 5 color
-    let antDir = getNextPos ant.antAngle 20 antPos'
+    let antDir = getNextPos ant.aAngle 20 antPos'
     drawLineEx antPos' antDir 5 color
 
 

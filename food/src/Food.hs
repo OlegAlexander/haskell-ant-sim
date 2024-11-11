@@ -123,7 +123,7 @@ handleFoodInput w = do
         --
         -- Right click to remove food objects
         (False, True, Nothing) ->
-            let foodToKeep = w.wFood & filter (not . isPointInRect mousePos . (.foodContainer.containerRect))
+            let foodToKeep = w.wFood & filter (not . isPointInRect mousePos . (.fContainer.cRect))
             in  return w{wFood = foodToKeep}
         --
         -- Otherwise, do nothing
@@ -139,34 +139,34 @@ updateFoodWorld w =
         foods = w.wFood
 
         -- Find the index of the first food object that the ant is in, if any
-        antInFoodIndex = foods & findIndex (\food -> isPointInRect ant.antPos food.foodContainer.containerRect)
+        antInFoodIndex = foods & findIndex (\food -> isPointInRect ant.aPos food.fContainer.cRect)
 
         -- If an ant has food and enters the nest rectangle, set antHasFood to False
-        antInNest = isPointInRect ant.antPos nest.nestContainer.containerRect
+        antInNest = isPointInRect ant.aPos nest.nContainer.cRect
 
         (antHasFood', antScore', nestScore', foods') =
-            case (ant.antHasFood, antInNest, antInFoodIndex) of
+            case (ant.aHasFood, antInNest, antInFoodIndex) of
                 -- If the ant finds food, it gets 0.5 points and one food unit is removed from the food object
                 (False, _, Just i) ->
                     ( True,
-                      ant.antScore + 0.5,
-                      nest.nestContainer.containerAmount,
+                      ant.aScore + 0.5,
+                      nest.nContainer.cAmount,
                       let Food (Container amount rect) = (foods !! i)
                           foodObj' = Food (Container (amount - 1) rect)
                       in  setAt i foodObj' foods
                     )
                 -- If the ant brings the food back to the nest, it gets 0.5 points and the nest gets a point
-                (True, True, _) -> (False, ant.antScore + 0.5, nest.nestContainer.containerAmount + 1, foods)
+                (True, True, _) -> (False, ant.aScore + 0.5, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
-                _ -> (ant.antHasFood, ant.antScore, nest.nestContainer.containerAmount, foods)
+                _ -> (ant.aHasFood, ant.aScore, nest.nContainer.cAmount, foods)
 
         -- Delete food when amount is 0
-        foods'' = foods' & filter (\food -> food.foodContainer.containerAmount > 0)
+        foods'' = foods' & filter (\food -> food.fContainer.cAmount > 0)
         -- _ = traceShowId (antHasFood', antScore', nestScore', map foodAmount foods'')
         _ = 0 -- Deal with the formatter :(
     in  w
-            { wPlayerAnt = ant{antHasFood = antHasFood', antScore = antScore'},
-              wNest = nest{nestContainer = nest.nestContainer{containerAmount = nestScore'}},
+            { wPlayerAnt = ant{aHasFood = antHasFood', aScore = antScore'},
+              wNest = nest{nContainer = nest.nContainer{cAmount = nestScore'}},
               wFood = foods''
             }
 
@@ -187,7 +187,7 @@ drawFood (Food (Container amount rect)) = do
 renderFoodWorld :: World -> IO ()
 renderFoodWorld w = do
     let nest = w.wNest
-        nestPos = nest.nestContainer.containerRect & calcRectCenter
+        nestPos = nest.nContainer.cRect & calcRectCenter
         playerAnt = w.wPlayerAnt
 
     -- draw the nest
@@ -205,9 +205,9 @@ renderFoodWorld w = do
         Nothing -> return ()
 
     -- If the ant has food, draw a piece of food in its mouth
-    when playerAnt.antHasFood $ do
-        let antPos' = playerAnt.antPos
-            antAngle' = playerAnt.antAngle
+    when playerAnt.aHasFood $ do
+        let antPos' = playerAnt.aPos
+            antAngle' = playerAnt.aAngle
             foodPiecePos = getNextPos antAngle' 20 antPos'
         drawCircleV foodPiecePos 10 foodColor
 

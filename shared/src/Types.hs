@@ -8,15 +8,15 @@ import System.Random (StdGen)
 
 
 data Container = Container
-    { containerAmount :: Int,
-      containerRect :: Rectangle
+    { cAmount :: Int,
+      cRect :: Rectangle
     }
     deriving (Eq, Show)
 
 
-newtype Food = Food {foodContainer :: Container} deriving (Eq, Show)
-newtype Nest = Nest {nestContainer :: Container} deriving (Eq, Show)
-newtype Pheromone = Pheromone {pheromoneContainer :: Container} deriving (Eq, Show)
+newtype Food = Food {fContainer :: Container} deriving (Eq, Show)
+newtype Nest = Nest {nContainer :: Container} deriving (Eq, Show)
+newtype Pheromone = Pheromone {pContainer :: Container} deriving (Eq, Show)
 
 
 data EntityType
@@ -35,29 +35,29 @@ type Degrees = Float
 
 
 data VisionRay = VisionRay
-    { rayPos :: Vector2,
-      rayAngle :: Degrees,
-      rayLength :: Float,
-      rayHitEntityType :: EntityType,
-      rayColor :: Color
+    { rPos :: Vector2,
+      rAngle :: Degrees,
+      rLength :: Float,
+      rHitEntityType :: EntityType,
+      rColor :: Color
     }
     deriving (Eq, Show)
 
 
 data Ant = Ant
-    { antPos :: Vector2,
-      antAngle :: Degrees,
-      antSpeed :: Float,
-      antRng :: StdGen,
-      antGoDir :: GoDir,
-      antWheelPos :: WheelPos,
-      antSprite :: Sprite,
-      antVisionRays :: [VisionRay],
-      antNestAngle :: Degrees,
-      antNestDistance :: Float,
-      antHasFood :: Bool,
-      antScore :: Float,
-      antRegeneratePheromoneCounter :: Int
+    { aPos :: Vector2,
+      aAngle :: Degrees,
+      aSpeed :: Float,
+      aRng :: StdGen,
+      aGoDir :: GoDir,
+      aWheelPos :: WheelPos,
+      aSprite :: Sprite,
+      aVisionRays :: [VisionRay],
+      aNestAngle :: Degrees,
+      aNestDistance :: Float,
+      aHasFood :: Bool,
+      aScore :: Float,
+      aRegeneratePheromoneCounter :: Int
     }
     deriving (Show) -- No Eq because of StdGen 1.1
 
