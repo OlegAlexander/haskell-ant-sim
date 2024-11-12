@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE NoFieldSelectors #-}
+
 module Shared where
 
 import Control.Monad (unless, (>=>))
@@ -64,9 +67,9 @@ instance Semigroup (System w) where
     (<>) :: System w -> System w -> System w
     (<>) sys1 sys2 =
         System
-            { handleInput = handleInput sys1 >=> handleInput sys2,
-              update = update sys2 . update sys1,
-              render = \w -> render sys1 w >> render sys2 w
+            { handleInput = sys1.handleInput >=> sys2.handleInput,
+              update = sys2.update . sys1.update,
+              render = \w -> sys1.render w >> sys2.render w
             }
 
 
@@ -76,10 +79,10 @@ instance Monoid (System w) where
 
 
 gameLoop :: System w -> IO Bool -> w -> IO ()
-gameLoop sys@System{handleInput, update, render} shouldExitFunc world = do
+gameLoop sys shouldExitFunc world = do
     shouldExit <- shouldExitFunc
     unless shouldExit $ do
-        world' <- handleInput world
-        let world'' = update world'
-        render world''
+        world' <- sys.handleInput world
+        let world'' = sys.update world'
+        sys.render world''
         gameLoop sys shouldExitFunc world''

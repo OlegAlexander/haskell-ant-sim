@@ -129,7 +129,7 @@ drawWallsSysWrapped =
         { render = \w -> drawing $ do
             clearBackground lightGray
             drawText "Press w to draw walls" 10 10 30 blue
-            render drawWallsSys w
+            drawWallsSys.render w
         }
 
 

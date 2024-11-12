@@ -1,6 +1,7 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use guards" #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module AntSim where
 
@@ -87,7 +88,7 @@ antSimSys =
                 f11Pressed <- isKeyPressed KeyF11
                 when f11Pressed toggleFullscreen
                 clearBackground lightGray
-                render allSystems w
+                allSystems.render w
                 drawFPS 10 10
             }
 
