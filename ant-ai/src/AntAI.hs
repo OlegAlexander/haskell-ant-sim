@@ -72,10 +72,10 @@ initAntAIWorld :: IO World
 initAntAIWorld = do
     playerAntSeed <- randomIO
     antSeeds <- replicateM 10 randomIO
-    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos' playerAntSeed
-        ants = map (mkAnt antPos') antSeeds
-        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
+    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos playerAntSeed
+        ants = map (mkAnt antPos) antSeeds
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         walls = []
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
@@ -122,10 +122,10 @@ updateAntAIWorld w =
 -- TODO Move this to Shared
 drawAnt :: Color -> Ant -> IO ()
 drawAnt color ant = do
-    let antPos' = ant.aPos
-    drawCircleV antPos' 5 color
-    let antDir = getNextPos ant.aAngle 20 antPos'
-    drawLineEx antPos' antDir 5 color
+    let antPos = ant.aPos
+    drawCircleV antPos 5 color
+    let antDir = antPos & getNextPos ant.aAngle 20
+    drawLineEx antPos antDir 5 color
 
 
 renderAntAIWorld :: World -> IO ()

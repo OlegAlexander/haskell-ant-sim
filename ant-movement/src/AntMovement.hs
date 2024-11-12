@@ -100,9 +100,9 @@ initAMWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos' seed
-        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
+    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos seed
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
     return $ World playerAnt [] nest True True False True walls Nothing [] Nothing []
 
 
@@ -170,18 +170,18 @@ renderAMWorld :: World -> IO ()
 renderAMWorld w = do
     let walls = zip w.wWalls [red, green, blue] -- TODO Temporary
         playerAnt = w.wPlayerAnt
-        antPos' = playerAnt.aPos
+        antPos = playerAnt.aPos
 
     -- draw walls
     -- TODO Why are you drawing the walls here?
     -- forM_ walls $ \(wall, color) -> drawRectangleRec wall color
 
     -- draw player ant as a circle
-    drawCircleV antPos' 5 black
+    drawCircleV antPos 5 black
 
     -- draw ant direction as a line
-    let antDir = getNextPos playerAnt.aAngle 20 antPos'
-    drawLineEx antPos' antDir 5 black
+    let antDir = antPos & getNextPos playerAnt.aAngle 20
+    drawLineEx antPos antDir 5 black
 
 
 antMovementSys :: System World

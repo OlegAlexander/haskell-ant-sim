@@ -65,9 +65,9 @@ import Types (
 initWorld :: IO World
 initWorld = do
     seed <- randomIO
-    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos' seed
-        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
+    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos seed
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         walls = []
     _ <- initWindow screenWidth screenHeight "Haskell Ant Sim"
     setTargetFPS fps

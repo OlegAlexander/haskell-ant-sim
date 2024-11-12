@@ -261,17 +261,17 @@ initFRWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos' = Vector2 screenCenterW screenCenterH
-        playerAnt = mkAnt antPos' seed
-        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
+    let antPos = Vector2 screenCenterW screenCenterH
+        playerAnt = mkAnt antPos seed
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         pheromones =
             [ Pheromone
                 ( Container
                     initPheromoneAmount
-                    (calcCenteredRect (antPos' |+| Vector2 100 100) collisionRectSize)
+                    (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
                 )
             ]
-        food = [Food (Container 10 (calcCenteredRect (antPos' |+| Vector2 300 300) collisionRectSize))]
+        food = [Food (Container 10 (calcCenteredRect (antPos |+| Vector2 300 300) collisionRectSize))]
     return $ World playerAnt [] nest True True False True walls Nothing food Nothing pheromones
 
 
@@ -322,7 +322,7 @@ renderFRWorld w = do
         renderVisionRects = w.wRenderVisionRects
         rays = w.wPlayerAnt.aVisionRays
         playerAnt = w.wPlayerAnt
-        antPos' = playerAnt.aPos
+        antPos = playerAnt.aPos
 
     -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
@@ -342,18 +342,18 @@ renderFRWorld w = do
                 getNextPos
                     (playerAnt.aNestAngle * 360)
                     (playerAnt.aNestDistance * compassMaxDistance * 0.2)
-                    antPos'
-        drawLineEx antPos' homeVectorEnd 5 gray
+                    antPos
+        drawLineEx antPos homeVectorEnd 5 gray
 
     -- TODO Drawing the ant is repeated in AntMovement.hs
     -- but I'm not sure how to avoid this duplication because I want the ant
     -- to be drawn on top of the vision rays.
     -- draw player ant as a circle
-    drawCircleV antPos' 5 black
+    drawCircleV antPos 5 black
 
     -- draw ant direction as a line
-    let antDir = getNextPos playerAnt.aAngle 20 antPos'
-    drawLineEx antPos' antDir 5 black
+    let antDir = getNextPos playerAnt.aAngle 20 antPos
+    drawLineEx antPos antDir 5 black
 
     -- draw ant vision rects
     when renderVisionRects $ do

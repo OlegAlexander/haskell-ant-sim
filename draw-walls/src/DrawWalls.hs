@@ -63,12 +63,13 @@ initWallsWorld = do
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos' seed
-        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
+    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos seed
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
     return $ World playerAnt [] nest True True False True [] Nothing [] Nothing []
 
 
+-- TODO Delete walls with right click just like Food
 handleWallInput :: World -> IO World
 handleWallInput w = do
     wPressed <- isKeyPressed KeyW

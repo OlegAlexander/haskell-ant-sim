@@ -89,9 +89,9 @@ initFoodWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos' seed
-        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
+    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos seed
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         walls = []
     return $ World playerAnt [] nest True True False True walls Nothing [] Nothing []
 
@@ -206,9 +206,7 @@ renderFoodWorld w = do
 
     -- If the ant has food, draw a piece of food in its mouth
     when playerAnt.aHasFood $ do
-        let antPos' = playerAnt.aPos
-            antAngle' = playerAnt.aAngle
-            foodPiecePos = getNextPos antAngle' 20 antPos'
+        let foodPiecePos = getNextPos playerAnt.aAngle 20 playerAnt.aPos
         drawCircleV foodPiecePos 10 foodColor
 
 

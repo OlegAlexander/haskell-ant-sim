@@ -97,15 +97,15 @@ initPheromoneWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos' = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos' seed
-        nest = Nest (Container 0 (calcCenteredRect antPos' collisionRectSize))
+    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt antPos seed
+        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         walls = []
     -- pheromones =
     --     [ Pheromone
     --         ( Container
     --             initPheromoneAmount
-    --             (calcCenteredRect (antPos' |+| Vector2 100 100) collisionRectSize)
+    --             (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
     --         )
     --     ]
     return $ World playerAnt [] nest True True False True walls Nothing [] Nothing []
@@ -124,16 +124,16 @@ antDropsPheromone ant nest foods pheromones =
     -- and the ant's regeneration counter is greater than the regeneration delay.
     -- Otherwise, just increment the regeneration counter.
     -- TODO: The increment counter logic should be a little more complicated.
-    let pos = ant.aPos
+    let antPos = ant.aPos
         hasFood = ant.aHasFood
-        notOnFood = not (foods & any (\(Food (Container _ rect)) -> isPointInRect pos rect))
-        notOnPheromone = not (pheromones & any (\(Pheromone (Container _ rect)) -> isPointInRect pos rect))
-        notOnNest = not (nest.nContainer.cRect & isPointInRect pos)
+        notOnFood = not (foods & any (\(Food (Container _ rect)) -> isPointInRect antPos rect))
+        notOnPheromone = not (pheromones & any (\(Pheromone (Container _ rect)) -> isPointInRect antPos rect))
+        notOnNest = not (nest.nContainer.cRect & isPointInRect antPos)
         regenerationCounter = ant.aRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
     in  if hasFood && notOnFood && notOnPheromone && notOnNest && regenCounterGreaterThanDelay
             then
-                let pheromone = Pheromone (Container initPheromoneAmount (calcCenteredRect pos collisionRectSize))
+                let pheromone = Pheromone (Container initPheromoneAmount (calcCenteredRect antPos collisionRectSize))
                 in  (ant{aRegeneratePheromoneCounter = 0}, pheromone : pheromones)
             else (ant{aRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
 
