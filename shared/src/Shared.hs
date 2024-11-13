@@ -5,10 +5,34 @@ module Shared where
 
 import Control.Monad (unless, (>=>))
 import Data.Function ((&))
-import Raylib.Types (Rectangle (..), Vector2 (..))
+import Raylib.Types (Color (..), Rectangle (..), Vector2 (..))
 import Raylib.Util.Math (deg2Rad)
 import System.Random (mkStdGen, randomR)
 import Types (Ant (..), GoDir (..), Sprite (..), WheelPos (..))
+
+
+rgbToLinear :: Color -> (Float, Float, Float, Float)
+rgbToLinear (Color r g b a) =
+    let r' = fromIntegral r / 255
+        g' = fromIntegral g / 255
+        b' = fromIntegral b / 255
+        a' = fromIntegral a / 255
+    in  (r', g', b', a')
+
+
+linearToRgb :: (Float, Float, Float, Float) -> Color
+linearToRgb (r, g, b, a) =
+    let r' = round $ r * 255
+        g' = round $ g * 255
+        b' = round $ b * 255
+        a' = round $ a * 255
+    in  Color r' g' b' a'
+
+
+scalarTimesColor :: Float -> Color -> Color
+scalarTimesColor scalar color =
+    let (r', g', b', a') = rgbToLinear color
+    in  linearToRgb (r' * scalar, g' * scalar, b' * scalar, a')
 
 
 {- |

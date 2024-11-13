@@ -3,6 +3,8 @@
 {-# HLINT ignore "Use guards" #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
+{-# HLINT ignore "Fuse concatMap/map" #-}
+
 module AntAI where
 
 import Control.Monad (forM, forM_, replicateM, when)
@@ -27,11 +29,12 @@ import Constants (
     screenHeight,
     screenWidth,
  )
+import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import DrawWalls (drawWallsSys)
 import FlatlandRenderer (flatlandRendererSys, updateAntFR)
 import Food (foodSys)
 import GHC.Float (int2Float)
-import Numeric.LinearAlgebra (Vector (..))
+import Numeric.LinearAlgebra (Vector (..), fromList)
 import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
@@ -51,10 +54,10 @@ import Raylib.Types (
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
  )
-import Raylib.Types.Core (Vector2 (..))
+import Raylib.Types.Core (Color (..), Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (darkBrown, green, lightGray, white)
-import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt)
+import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt, rgbToLinear)
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (
     Ant (..),
@@ -63,6 +66,7 @@ import Types (
     GoDir (..),
     Nest (..),
     Sprite (LeftSprite, RightSprite),
+    VisionRay (..),
     WheelPos (Center, TurnLeft, TurnRight),
     World (..),
  )
@@ -87,12 +91,21 @@ handleAntAIInput :: World -> IO World
 handleAntAIInput w = return w
 
 
-antBrainForward :: Ant -> AntDecision
-antBrainForward _ = GoForward
+antBrainForward :: Vector Float -> AntDecision
+antBrainForward inputVector = GoForward
 
 
-antBrainRandom :: Ant -> AntDecision
-antBrainRandom ant = undefined
+antBrainRandom :: Vector Float -> AntDecision
+antBrainRandom inputVector = undefined
+
+
+mkInputVector :: Ant -> Vector Float
+mkInputVector ant =
+    -- Flatten vision rgb colors to a single list of normalized floats
+    let visionRayColors =
+            ant.aVisionRays
+                & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
+    in  fromList visionRayColors
 
 
 applyAntDecision :: AntDecision -> Ant -> Ant
@@ -111,7 +124,7 @@ applyAntDecision decision ant = case decision of
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
     let ants = w.wAnts
-        antDecisions = map antBrainForward ants
+        antDecisions = ants & map (antBrainForward . mkInputVector)
         ants' =
             ants
                 & zipWith applyAntDecision antDecisions
