@@ -140,10 +140,8 @@ antDropsPheromone ant nest foods pheromones =
             && notOnNest
             && regenCounterGreaterThanDelay
             then
-                let pheromone =
-                        Pheromone
-                            ( Container initPheromoneAmount (calcCenteredRect antPos collisionRectSize)
-                            )
+                let pheromoneRect = calcCenteredRect antPos collisionRectSize
+                    pheromone = Pheromone (Container initPheromoneAmount pheromoneRect)
                 in  (ant{aRegeneratePheromoneCounter = 0}, pheromone : pheromones)
             else (ant{aRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
 
