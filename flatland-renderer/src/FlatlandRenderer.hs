@@ -131,7 +131,7 @@ castRay camPos maxDist rects angle =
         minDist = minimumDistance camPos rayDir rects
         (dist, entityType) = fromMaybe (maxDist, UnknownET) minDist
         entityType' = if dist >= maxDist then UnknownET else entityType
-        depth = 1 - normalizeDistance dist
+        depth = 1 - normalize dist maxDist
         color = scalarTimesColor depth (entityTypeToColor entityType')
     in  VisionRay camPos angle (min dist maxDist) entityType' color
 
@@ -154,11 +154,6 @@ calcVisionRays camPos camAngle camFov res maxDist rects =
         angles = [anglesStart, anglesNext .. anglesEnd]
         rays = map (castRay camPos maxDist rects) angles
     in  rays
-
-
--- Normalize the distance based on max distance
-normalizeDistance :: Float -> Float
-normalizeDistance dist = min 1.0 (dist / antVisionMaxDistance)
 
 
 entityTypeToColor :: EntityType -> Color
@@ -211,8 +206,9 @@ visionRayToLine (VisionRay p1 angle rayLength _ _) =
     (p1, getNextPos angle rayLength p1)
 
 
-normalizeCompassDistance :: Float -> Float
-normalizeCompassDistance dist = min 1.0 (dist / compassMaxDistance)
+-- Normalize a value to the range [0, 1]
+normalize :: Float -> Float -> Float
+normalize x maxVal = min 1.0 (x / maxVal)
 
 
 calcNestDirectionAndDistance :: Vector2 -> Vector2 -> (Degrees, Float)
@@ -222,7 +218,7 @@ calcNestDirectionAndDistance (Vector2 nestX nestY) (Vector2 antX antY) =
         -- Normalize the angle to the range [0, 1]
         angle = ((-(atan2 dy dx * rad2Deg)) `mod'` 360) / 360
         -- Clamp and normalize the distance to the nest
-        distance = normalizeCompassDistance $ sqrt (dx * dx + dy * dy)
+        distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
     in  (angle, distance)
 
 

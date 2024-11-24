@@ -3,8 +3,6 @@
 {-# HLINT ignore "Use guards" #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
-{-# HLINT ignore "Fuse concatMap/map" #-}
-
 module AntAI where
 
 import Control.Monad (forM, forM_, replicateM, when)
@@ -30,6 +28,7 @@ import Constants (
     screenWidth,
  )
 import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
+import Debug.Trace (traceShowId)
 import DrawWalls (drawWallsSys)
 import FlatlandRenderer (flatlandRendererSys, updateAntFR)
 import Food (foodSys)
@@ -75,7 +74,7 @@ import Types (
 initAntAIWorld :: IO World
 initAntAIWorld = do
     playerAntSeed <- randomIO
-    antSeeds <- replicateM 10 randomIO
+    antSeeds <- replicateM 1 randomIO
     let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos playerAntSeed
         ants = map (mkAnt antPos) antSeeds
@@ -102,10 +101,17 @@ antBrainRandom inputVector = undefined
 mkInputVector :: Ant -> Vector Float
 mkInputVector ant =
     -- Flatten vision rgb colors to a single list of normalized floats
+    -- Compass direction and distance to nest, normalized
+    -- Has food? 1.0 or 0.0
+    -- TODO Later, add a few random numbers to add jitter
     let visionRayColors =
             ant.aVisionRays
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
-    in  fromList visionRayColors
+        antNestAngle = ant.aNestAngle
+        antNestDistance = ant.aNestDistance
+        hasFood = if ant.aHasFood then 1.0 else 0.0
+        _ = traceShowId [antNestAngle, antNestDistance, hasFood]
+    in  fromList $ visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
 
 
 applyAntDecision :: AntDecision -> Ant -> Ant
@@ -125,11 +131,12 @@ updateAntAIWorld :: World -> World
 updateAntAIWorld w =
     let ants = w.wAnts
         antDecisions = ants & map (antBrainForward . mkInputVector)
-        ants' =
-            ants
-                & zipWith applyAntDecision antDecisions
-                & map (updateAntFR w . updateAntMovement w)
-    in  w{wAnts = ants'}
+    in  w
+            { wAnts =
+                ants
+                    & zipWith applyAntDecision antDecisions
+                    & map (updateAntFR w . updateAntMovement w)
+            }
 
 
 -- TODO Move this to Shared

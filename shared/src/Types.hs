@@ -53,8 +53,8 @@ data Ant = Ant
       aWheelPos :: WheelPos,
       aSprite :: Sprite,
       aVisionRays :: [VisionRay],
-      aNestAngle :: Degrees,
-      aNestDistance :: Float,
+      aNestAngle :: Float, -- Normalized degrees
+      aNestDistance :: Float, -- Normalized distance
       aHasFood :: Bool,
       aScore :: Float,
       aRegeneratePheromoneCounter :: Int
