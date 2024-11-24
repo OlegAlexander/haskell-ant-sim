@@ -83,7 +83,7 @@ import Types (
     Food (..),
     GoDir (..),
     Nest (..),
-    Pheromone (Pheromone),
+    Pheromone (..),
     Sprite (..),
     WheelPos (..),
     World (..),
@@ -126,14 +126,24 @@ antDropsPheromone ant nest foods pheromones =
     -- TODO: The increment counter logic should be a little more complicated.
     let antPos = ant.aPos
         hasFood = ant.aHasFood
-        notOnFood = not (foods & any (\(Food (Container _ rect)) -> isPointInRect antPos rect))
-        notOnPheromone = not (pheromones & any (\(Pheromone (Container _ rect)) -> isPointInRect antPos rect))
-        notOnNest = not (nest.nContainer.cRect & isPointInRect antPos)
+        notOnFood =
+            not (any (\food -> isPointInRect antPos food.fContainer.cRect) foods)
+        notOnPheromone =
+            not (any (\pheromone -> isPointInRect antPos pheromone.pContainer.cRect) pheromones)
+        notOnNest =
+            not (isPointInRect antPos nest.nContainer.cRect)
         regenerationCounter = ant.aRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
-    in  if hasFood && notOnFood && notOnPheromone && notOnNest && regenCounterGreaterThanDelay
+    in  if hasFood
+            && notOnFood
+            && notOnPheromone
+            && notOnNest
+            && regenCounterGreaterThanDelay
             then
-                let pheromone = Pheromone (Container initPheromoneAmount (calcCenteredRect antPos collisionRectSize))
+                let pheromone =
+                        Pheromone
+                            ( Container initPheromoneAmount (calcCenteredRect antPos collisionRectSize)
+                            )
                 in  (ant{aRegeneratePheromoneCounter = 0}, pheromone : pheromones)
             else (ant{aRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
 
@@ -141,13 +151,14 @@ antDropsPheromone ant nest foods pheromones =
 updatePheromoneWorld :: World -> World
 updatePheromoneWorld w =
     -- Evaporate pheromones until they disappear
+    -- TODO Fuse this map and filter
     let pheromones' =
             w.wPheromones
                 & map
                     ( \(Pheromone (Container amount rect)) ->
                         Pheromone (Container (amount - 1) rect)
                     )
-                & filter (\(Pheromone (Container amount _)) -> amount > 0)
+                & filter (\pheromone -> pheromone.pContainer.cAmount > 0)
         (playerAnt', pheromones'') = antDropsPheromone w.wPlayerAnt w.wNest w.wFood pheromones'
     in  w{wPheromones = pheromones'', wPlayerAnt = playerAnt'}
 
