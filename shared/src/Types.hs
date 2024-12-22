@@ -71,7 +71,7 @@ data GoDir = Forward | Stop | Backward deriving (Eq, Show)
 data Sprite = LeftSprite | RightSprite deriving (Eq, Show)
 
 
-data WallDrawingState = Idle | Started | InProgress | Finished
+data WallDrawingState = Idle | Started | InProgress | Finished | Deleted
     deriving (Eq, Show)
 
 

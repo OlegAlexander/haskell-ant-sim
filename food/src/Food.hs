@@ -106,6 +106,7 @@ handleFoodInput w = do
     mousePos <- getMousePosition
     isMouseLeftPressed <- isMouseButtonDown MouseButtonLeft
     isMouseRightPressed <- isMouseButtonDown MouseButtonRight
+    -- TODO Don't create food on top of walls or the nest
     case (isMouseLeftPressed, isMouseRightPressed, w.wFoodBeingDrawn) of
         --
         -- Left click to add food objects

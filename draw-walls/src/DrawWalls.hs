@@ -5,6 +5,7 @@ module DrawWalls where
 import Constants
 import Constants (collisionRectSize, minWallSize, wallColor)
 import Control.Monad (forM_, when)
+import Data.Function ((&))
 import Data.Maybe (fromJust, isJust, isNothing)
 import GHC.Float (int2Float)
 import Raylib.Core (
@@ -12,6 +13,7 @@ import Raylib.Core (
     getMousePosition,
     initWindow,
     isKeyPressed,
+    isMouseButtonDown,
     setMouseCursor,
     setTargetFPS,
     windowShouldClose,
@@ -23,10 +25,10 @@ import Raylib.Types (
     Rectangle (Rectangle),
     Vector2 (Vector2),
  )
-import Raylib.Types.Core (MouseCursor (MouseCursorCrosshair))
+import Raylib.Types.Core (MouseButton (MouseButtonRight), MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, lightGray)
-import Shared (System (..), calcCenteredRect, gameLoop, mkAnt)
+import Shared (System (..), calcCenteredRect, gameLoop, isPointInRect, mkAnt)
 import System.Random (Random (..))
 import Types (
     Ant (..),
@@ -40,8 +42,9 @@ import Types (
  )
 
 
-getWallDrawingState :: Bool -> Maybe (Vector2, Vector2) -> WallDrawingState
-getWallDrawingState wPressed wbd
+getWallDrawingState :: Bool -> Bool -> Maybe (Vector2, Vector2) -> WallDrawingState
+getWallDrawingState wPressed isMouseRightPressed wbd
+    | isMouseRightPressed = Deleted
     | wPressed && isNothing wbd = Started
     | not wPressed && isJust wbd = InProgress
     | wPressed && isJust wbd = Finished
@@ -69,13 +72,13 @@ initWallsWorld = do
     return $ World playerAnt [] nest True True False True [] Nothing [] Nothing []
 
 
--- TODO Delete walls with right click just like Food
 handleWallInput :: World -> IO World
 handleWallInput w = do
     wPressed <- isKeyPressed KeyW
+    isMouseRightPressed <- isMouseButtonDown MouseButtonRight
     let walls = w.wWalls
         wbd = w.wWallBeingDrawn
-        status = getWallDrawingState wPressed wbd
+        status = getWallDrawingState wPressed isMouseRightPressed wbd
     case status of
         Idle -> return w
         Started -> do
@@ -102,6 +105,10 @@ handleWallInput w = do
                     return w{wWalls = newWall : walls, wWallBeingDrawn = Nothing}
                 else
                     return w{wWalls = walls, wWallBeingDrawn = Nothing}
+        Deleted -> do
+            mousePos <- getMousePosition
+            let wallsToKeep = walls & filter (not . isPointInRect mousePos)
+            return w{wWalls = wallsToKeep}
 
 
 renderWallsWorld :: World -> IO ()
