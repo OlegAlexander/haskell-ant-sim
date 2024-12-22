@@ -11,6 +11,14 @@ import System.Random (mkStdGen, randomR)
 import Types (Ant (..), GoDir (..), Sprite (..), WheelPos (..))
 
 
+(|||) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
+(|||) p q x = p x || q x
+
+
+(&&&) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
+(&&&) p q x = p x && q x
+
+
 rgbToLinear :: Color -> (Float, Float, Float, Float)
 rgbToLinear (Color r g b a) =
     let r' = fromIntegral r / 255
