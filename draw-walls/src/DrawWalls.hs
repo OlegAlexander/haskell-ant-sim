@@ -76,13 +76,13 @@ handleWallInput :: World -> IO World
 handleWallInput w = do
     wPressed <- isKeyPressed KeyW
     isMouseRightPressed <- isMouseButtonDown MouseButtonRight
+    mousePos <- getMousePosition
     let walls = w.wWalls
         wbd = w.wWallBeingDrawn
         status = getWallDrawingState wPressed isMouseRightPressed wbd
     case status of
         Idle -> return w
         Started -> do
-            mousePos <- getMousePosition
             return
                 w
                     { wWalls = walls,
@@ -90,7 +90,6 @@ handleWallInput w = do
                         Just (mousePos, mousePos)
                     }
         InProgress -> do
-            mousePos <- getMousePosition
             return
                 w
                     { wWalls = walls,
@@ -106,7 +105,6 @@ handleWallInput w = do
                 else
                     return w{wWalls = walls, wWallBeingDrawn = Nothing}
         Deleted -> do
-            mousePos <- getMousePosition
             let wallsToKeep = walls & filter (not . isPointInRect mousePos)
             return w{wWalls = wallsToKeep}
 
