@@ -23,7 +23,7 @@ import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Foldable (find)
 import Data.Function ((&))
-import Data.List (findIndex)
+import Data.List (findIndex, mapAccumL)
 import Data.Maybe (mapMaybe)
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
@@ -132,21 +132,17 @@ handleFoodInput w = do
             return w
 
 
-updateFoodWorld :: World -> World
-updateFoodWorld w =
-    -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
-    let ant = w.wPlayerAnt
-        nest = w.wNest
-        foods = w.wFood
+-- This function is meant to be used with mapAccumL
+antFoodNestInteraction :: (Nest, [Food]) -> Ant -> ((Nest, [Food]), Ant)
+antFoodNestInteraction (nest, foods) ant =
+    -- Find the index of the first food object that the ant is in, if any
+    let antInFoodIndex = foods & findIndex (\food -> isPointInRect ant.aPos food.fContainer.cRect)
 
-        -- Find the index of the first food object that the ant is in, if any
-        antInFoodIndex = foods & findIndex (\food -> isPointInRect ant.aPos food.fContainer.cRect)
-
-        -- If an ant has food and enters the nest rectangle, set antHasFood to False
         antInNest = isPointInRect ant.aPos nest.nContainer.cRect
 
         (antHasFood', antScore', nestScore', foods') =
             case (ant.aHasFood, antInNest, antInFoodIndex) of
+                -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
                 -- If the ant finds food, it gets 0.5 points and one food unit is removed from the food object
                 (False, _, Just i) ->
                     ( True,
@@ -162,14 +158,17 @@ updateFoodWorld w =
                 _ -> (ant.aHasFood, ant.aScore, nest.nContainer.cAmount, foods)
 
         -- Delete food when amount is 0
-        foods'' = foods' & filter (\food -> food.fContainer.cAmount > 0)
-        -- _ = traceShowId (antHasFood', antScore', nestScore', map foodAmount foods'')
-        _ = 0 -- Deal with the formatter :(
-    in  w
-            { wPlayerAnt = ant{aHasFood = antHasFood', aScore = antScore'},
-              wNest = nest{nContainer = nest.nContainer{cAmount = nestScore'}},
-              wFood = foods''
-            }
+        !foods'' = foods' & filter (\food -> food.fContainer.cAmount > 0)
+        !nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
+        ant' = ant{aHasFood = antHasFood', aScore = antScore'}
+    in  ((nest', foods''), ant')
+
+
+updateFoodWorld :: World -> World
+updateFoodWorld w =
+    let ((nest', foods'), playerAnt') = w.wPlayerAnt & antFoodNestInteraction (w.wNest, w.wFood)
+        ((nest'', foods''), ants') = w.wAnts & mapAccumL antFoodNestInteraction (nest', foods')
+    in  w{wPlayerAnt = playerAnt', wNest = nest'', wFood = foods'', wAnts = ants'}
 
 
 -- Use a constant rectangle size for food, and just scale the amount circle.

@@ -14,19 +14,7 @@ import Data.List (foldl')
 
 import AI.HNN.FF.Network
 import AntMovement (antMovementSys, updateAntMovement)
-import Constants (
-    antAcceleration,
-    antJitterAngle,
-    antMaxSpeed,
-    antScale,
-    antTurnAngle,
-    borderWallThickness,
-    collisionRectSize,
-    fps,
-    numAnts,
-    screenHeight,
-    screenWidth,
- )
+import Constants (antAcceleration, antJitterAngle, antMaxSpeed, antScale, antTurnAngle, borderWallThickness, collisionRectSize, foodColor, fps, numAnts, screenHeight, screenWidth)
 import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import Debug.Trace (traceShowId)
 import DrawWalls (drawWallsSys)
@@ -55,7 +43,7 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Color (..), Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (darkBrown, green, lightGray, white)
+import Raylib.Util.Colors (darkBrown, green, lightGray, white, yellow)
 import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt, rgbToLinear)
 import System.Random (mkStdGen, randomIO, randomR)
 import Types (
@@ -74,7 +62,7 @@ import Types (
 initAntAIWorld :: IO World
 initAntAIWorld = do
     playerAntSeed <- randomIO
-    antSeeds <- replicateM 1 randomIO
+    antSeeds <- replicateM 100 randomIO
     let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos playerAntSeed
         ants = map (mkAnt antPos) antSeeds
@@ -110,8 +98,8 @@ mkInputVector ant =
         antNestAngle = ant.aNestAngle
         antNestDistance = ant.aNestDistance
         hasFood = if ant.aHasFood then 1.0 else 0.0
-        _ = traceShowId [antNestAngle, antNestDistance, hasFood]
-    in  fromList $ visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
+    in  -- _ = traceShowId [antNestAngle, antNestDistance, hasFood]
+        fromList $ visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
 
 
 applyAntDecision :: AntDecision -> Ant -> Ant
@@ -140,9 +128,15 @@ updateAntAIWorld w =
 
 
 -- TODO Move this to Shared
+-- TODO Draw ants on top of all other objects
 drawAnt :: Color -> Ant -> IO ()
 drawAnt color ant = do
     let antPos = ant.aPos
+    -- If the ant has food, draw a piece of food in its mouth
+    when ant.aHasFood $ do
+        let foodPiecePos = getNextPos ant.aAngle 20 antPos
+        drawCircleV foodPiecePos 10 foodColor
+    -- Draw the ant
     drawCircleV antPos 5 color
     let antDir = antPos & getNextPos ant.aAngle 20
     drawLineEx antPos antDir 5 color
