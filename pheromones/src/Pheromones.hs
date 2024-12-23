@@ -27,7 +27,8 @@ import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Foldable (find)
 import Data.Function ((&))
-import Data.List (findIndex)
+import Data.IntMap (mapAccum)
+import Data.List (findIndex, mapAccumL)
 import Data.Maybe (mapMaybe)
 import Data.Traversable (for)
 import Debug.Trace (traceShowId)
@@ -115,8 +116,9 @@ handlePheromoneInput :: World -> IO World
 handlePheromoneInput w = return w
 
 
-antDropsPheromone :: Ant -> Nest -> [Food] -> [Pheromone] -> (Ant, [Pheromone])
-antDropsPheromone ant nest foods pheromones =
+-- This function is meant to be with mapAccumL
+antDropsPheromone :: Nest -> [Food] -> [Pheromone] -> Ant -> ([Pheromone], Ant)
+antDropsPheromone nest foods pheromones ant =
     -- Drop a pheromone if the ant has food,
     -- and it's not on top of a food,
     -- and it's not on top of a pheromone,
@@ -134,31 +136,37 @@ antDropsPheromone ant nest foods pheromones =
             not (isPointInRect antPos nest.nContainer.cRect)
         regenerationCounter = ant.aRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
-    in  if hasFood
-            && notOnFood
-            && notOnPheromone
-            && notOnNest
-            && regenCounterGreaterThanDelay
-            then
-                let pheromoneRect = calcCenteredRect antPos collisionRectSize
-                    pheromone = Pheromone (Container initPheromoneAmount pheromoneRect)
-                in  (ant{aRegeneratePheromoneCounter = 0}, pheromone : pheromones)
-            else (ant{aRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
+        -- Force pheromones' because mapAccumL is lazy in the accumulator
+        (!pheromones', ant') =
+            if hasFood
+                && notOnFood
+                && notOnPheromone
+                && notOnNest
+                && regenCounterGreaterThanDelay
+                then
+                    let pheromoneRect = calcCenteredRect antPos collisionRectSize
+                        pheromone = Pheromone (Container initPheromoneAmount pheromoneRect)
+                    in  (pheromone : pheromones, ant{aRegeneratePheromoneCounter = 0})
+                else (pheromones, ant{aRegeneratePheromoneCounter = regenerationCounter + 1})
+    in  (pheromones', ant')
+
+
+decrementPheromoneAmount :: Pheromone -> Pheromone
+decrementPheromoneAmount (Pheromone (Container amount rect)) =
+    Pheromone (Container (amount - 1) rect)
 
 
 updatePheromoneWorld :: World -> World
 updatePheromoneWorld w =
     -- Evaporate pheromones until they disappear
-    -- TODO Fuse this map and filter
     let pheromones' =
             w.wPheromones
-                & map
-                    ( \(Pheromone (Container amount rect)) ->
-                        Pheromone (Container (amount - 1) rect)
-                    )
+                -- TODO Fuse this map and filter
+                & map decrementPheromoneAmount
                 & filter (\pheromone -> pheromone.pContainer.cAmount > 0)
-        (playerAnt', pheromones'') = antDropsPheromone w.wPlayerAnt w.wNest w.wFood pheromones'
-    in  w{wPheromones = pheromones'', wPlayerAnt = playerAnt'}
+        (pheromones'', playerAnt') = w.wPlayerAnt & antDropsPheromone w.wNest w.wFood pheromones'
+        (pheromones''', ants') = w.wAnts & mapAccumL (antDropsPheromone w.wNest w.wFood) pheromones''
+    in  w{wPlayerAnt = playerAnt', wAnts = ants', wPheromones = pheromones'''}
 
 
 -- Use a constant rectangle size for a pheromone, and just scale the amount circle.
