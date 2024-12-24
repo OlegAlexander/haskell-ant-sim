@@ -5,6 +5,7 @@ module Shared where
 
 import Control.Monad (unless, (>=>))
 import Data.Function ((&))
+import Data.Sequence qualified as Seq
 import Raylib.Types (Color (..), Rectangle (..), Vector2 (..))
 import Raylib.Util.Math (deg2Rad)
 import System.Random (mkStdGen, randomR)
@@ -85,7 +86,7 @@ isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
 mkAnt :: Vector2 -> Int -> Ant
 mkAnt pos seed =
     let (randomAngle, rng) = mkStdGen seed & randomR (0, 360)
-    in  Ant pos randomAngle 0 rng Stop Center LeftSprite [] 0 0 False 0 0
+    in  Ant pos randomAngle 0 rng Stop Center LeftSprite Seq.empty 0 0 False 0 0
 
 
 data System w = System

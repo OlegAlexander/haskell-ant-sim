@@ -26,6 +26,8 @@ import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Data.Sequence (Seq, (<|), (><), (|>))
+import Data.Sequence qualified as Seq
 import Shared (
     System (..),
     calcCenteredRect,
@@ -57,6 +59,7 @@ import Raylib.Core.Shapes (
     drawRectangleRec,
  )
 
+import Data.Foldable (Foldable (toList))
 import Data.IntMap (update)
 import Raylib.Types (
     Color (..),
@@ -144,7 +147,7 @@ calcVisionRays
     -> Int
     -> Float
     -> [(Rectangle, EntityType)]
-    -> [VisionRay]
+    -> Seq VisionRay
 calcVisionRays camPos camAngle camFov res maxDist rects =
     let halfFov = camFov / 2
         angleStep = camFov / int2Float (res - 1)
@@ -152,7 +155,7 @@ calcVisionRays camPos camAngle camFov res maxDist rects =
         anglesNext = anglesStart - angleStep
         anglesEnd = camAngle - halfFov
         angles = [anglesStart, anglesNext .. anglesEnd]
-        rays = map (castRay camPos maxDist rects) angles
+        rays = Seq.fromList (map (castRay camPos maxDist rects) angles)
     in  rays
 
 
@@ -174,11 +177,11 @@ makeVisionRect x rectWidth rectHeight =
 
 
 -- Convert the vision rays to a row of tall rectangles for rendering.
-visionRaysToRects :: [VisionRay] -> [(Rectangle, Color)]
+visionRaysToRects :: Seq VisionRay -> [(Rectangle, Color)]
 visionRaysToRects rays =
     let rectWidth = screenWidth `div` length rays
         rectHeight = screenHeight `div` 1
-        colors = rays & map (.rColor)
+        colors = rays & fmap (.rColor) & toList
         rectsAndColors =
             zipWith
                 (\x color -> (makeVisionRect x rectWidth rectHeight, color))
@@ -228,7 +231,7 @@ initFRWorld = do
         screenCenterH = int2Float screenHeight / 2
         testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
-        walls = [testWall1, testWall2]
+        walls = Seq.fromList [testWall1, testWall2]
     _ <- initWindow screenWidth screenHeight "Flatland Renderer"
     setTargetFPS fps
     setTraceLogLevel LogWarning
@@ -238,14 +241,15 @@ initFRWorld = do
         playerAnt = mkAnt antPos seed
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
         pheromones =
-            [ Pheromone
-                ( Container
-                    initPheromoneAmount
-                    (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
-                )
-            ]
-        food = [Food (Container 10 (calcCenteredRect (antPos |+| Vector2 300 300) collisionRectSize))]
-    return $ World playerAnt [] nest True True False True walls Nothing food Nothing pheromones
+            Seq.fromList
+                [ Pheromone
+                    ( Container
+                        initPheromoneAmount
+                        (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
+                    )
+                ]
+        food = Seq.fromList [Food (Container 10 (calcCenteredRect (antPos |+| Vector2 300 300) collisionRectSize))]
+    return $ World playerAnt Seq.empty nest True True False True walls Nothing food Nothing pheromones
 
 
 handleFRInput :: World -> IO World
@@ -269,9 +273,9 @@ handleFRInput w = do
 
 collectVisibleRects :: World -> [(Rectangle, EntityType)]
 collectVisibleRects w =
-    let wallsRects = w.wWalls & map (\r -> (r, WallET))
-        pheromoneRects = w.wPheromones & map (\p -> (p.pContainer.cRect, PheromoneET))
-        foodRects = w.wFood & map (\f -> (f.fContainer.cRect, FoodET))
+    let wallsRects = w.wWalls & fmap (\r -> (r, WallET)) & toList
+        pheromoneRects = w.wPheromones & fmap (\p -> (p.pContainer.cRect, PheromoneET)) & toList
+        foodRects = w.wFood & fmap (\f -> (f.fContainer.cRect, FoodET)) & toList
         nestRect = (w.wNest.nContainer.cRect, NestET)
     in  wallsRects ++ pheromoneRects ++ foodRects ++ [nestRect]
 
@@ -306,7 +310,7 @@ renderFRWorld w = do
 
     -- draw vision rays with colors
     when renderVisionRays $ do
-        let visionLines = rays & map (\ray -> (visionRayToLine ray, ray.rColor))
+        let visionLines = rays & fmap (\ray -> (visionRayToLine ray, ray.rColor))
         forM_ visionLines $ \((start, end), color) -> drawLineV start end color
 
     -- draw home vector for the player ant

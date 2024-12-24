@@ -17,7 +17,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 10
+numAnts = 100
 
 
 antScale :: Float
@@ -49,7 +49,7 @@ antVisionMaxDistance = 500
 
 
 antVisionResolution :: Int
-antVisionResolution = 64
+antVisionResolution = 32
 
 
 compassMaxDistance :: Float
@@ -110,3 +110,7 @@ initPheromoneAmount = 1000
 
 regeneratePheromoneDelay :: Int
 regeneratePheromoneDelay = 20
+
+
+maxPheromones :: Int
+maxPheromones = 50

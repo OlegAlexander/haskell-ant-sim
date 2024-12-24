@@ -18,9 +18,12 @@ import Constants (
  )
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
+import Data.Foldable (Foldable (toList))
 import Data.Function ((&))
 import Data.IntMap (update)
 import Data.Maybe (mapMaybe)
+import Data.Sequence (Seq, (<|), (><), (|>))
+import Data.Sequence qualified as Seq
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
@@ -77,7 +80,7 @@ checkCollisions pos rects = mapMaybe (canGoThere pos) rects
 
 getCollisionRects :: World -> [(Rectangle, EntityType)]
 getCollisionRects w =
-    let walls = map (\wall -> (wall, WallET)) w.wWalls
+    let walls = w.wWalls & fmap (\wall -> (wall, WallET)) & toList
         foods = [] -- map (\food -> (foodCollisionRect food, FoodET)) (wFood w)
     in  walls ++ foods
 
@@ -94,7 +97,7 @@ initAMWorld = do
     let testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 900 500 20 20
-        walls = [testWall1, testWall2, testWall3]
+        walls = Seq.fromList [testWall1, testWall2, testWall3]
     _ <- initWindow screenWidth screenHeight "Ant Movement"
     setTargetFPS fps
     setTraceLogLevel LogWarning
@@ -103,7 +106,7 @@ initAMWorld = do
     let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos seed
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-    return $ World playerAnt [] nest True True False True walls Nothing [] Nothing []
+    return $ World playerAnt Seq.empty nest True True False True walls Nothing Seq.empty Nothing Seq.empty
 
 
 handleAMInput :: World -> IO World
@@ -168,7 +171,7 @@ updateAMWorld w = w{wPlayerAnt = updateAntMovement w w.wPlayerAnt}
 
 renderAMWorld :: World -> IO ()
 renderAMWorld w = do
-    let walls = zip w.wWalls [red, green, blue] -- TODO Temporary
+    let walls = zip (w.wWalls & toList) [red, green, blue] -- TODO Temporary
         playerAnt = w.wPlayerAnt
         antPos = playerAnt.aPos
 

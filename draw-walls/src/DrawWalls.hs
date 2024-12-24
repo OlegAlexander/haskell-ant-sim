@@ -7,6 +7,8 @@ import Constants (collisionRectSize, minWallSize, wallColor)
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Maybe (fromJust, isJust, isNothing)
+import Data.Sequence (Seq, (<|), (><), (|>))
+import Data.Sequence qualified as Seq
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -69,7 +71,7 @@ initWallsWorld = do
     let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos seed
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-    return $ World playerAnt [] nest True True False True [] Nothing [] Nothing []
+    return $ World playerAnt Seq.empty nest True True False True Seq.empty Nothing Seq.empty Nothing Seq.empty
 
 
 handleWallInput :: World -> IO World
@@ -101,11 +103,11 @@ handleWallInput w = do
                 newWall = calcBoundingBox start end
             if bigEnough newWall
                 then
-                    return w{wWalls = newWall : walls, wWallBeingDrawn = Nothing}
+                    return w{wWalls = newWall <| walls, wWallBeingDrawn = Nothing}
                 else
                     return w{wWalls = walls, wWallBeingDrawn = Nothing}
         Deleted -> do
-            let wallsToKeep = walls & filter (not . isPointInRect mousePos)
+            let wallsToKeep = walls & Seq.filter (not . isPointInRect mousePos)
             return w{wWalls = wallsToKeep}
 
 

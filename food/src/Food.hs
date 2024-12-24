@@ -24,7 +24,9 @@ import Data.Fixed (mod')
 import Data.Foldable (find)
 import Data.Function ((&))
 import Data.List (findIndex, mapAccumL)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromJust, mapMaybe)
+import Data.Sequence (Seq, (!?), (<|), (><), (|>))
+import Data.Sequence qualified as Seq
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
@@ -92,8 +94,7 @@ initFoodWorld = do
     let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos seed
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        walls = []
-    return $ World playerAnt [] nest True True False True walls Nothing [] Nothing []
+    return $ World playerAnt Seq.empty nest True True False True Seq.empty Nothing Seq.empty Nothing Seq.empty
 
 
 -- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.
@@ -120,11 +121,11 @@ handleFoodInput w = do
             let foodBeingDrawn = Food (Container (amount + foodGrowthAmount) rect)
             in  return $ w{wFoodBeingDrawn = Just foodBeingDrawn}
         (False, _, Just food) ->
-            return $ w{wFoodBeingDrawn = Nothing, wFood = food : w.wFood}
+            return $ w{wFoodBeingDrawn = Nothing, wFood = food <| w.wFood}
         --
         -- Right click to remove food objects
         (False, True, Nothing) ->
-            let foodToKeep = w.wFood & filter (not . isPointInRect mousePos . (.fContainer.cRect))
+            let foodToKeep = w.wFood & Seq.filter (not . isPointInRect mousePos . (.fContainer.cRect))
             in  return w{wFood = foodToKeep}
         --
         -- Otherwise, do nothing
@@ -133,10 +134,10 @@ handleFoodInput w = do
 
 
 -- This function is meant to be used with mapAccumL
-antFoodNestInteraction :: (Nest, [Food]) -> Ant -> ((Nest, [Food]), Ant)
+antFoodNestInteraction :: (Nest, Seq Food) -> Ant -> ((Nest, Seq Food), Ant)
 antFoodNestInteraction (nest, foods) ant =
     -- Find the index of the first food object that the ant is in, if any
-    let antInFoodIndex = foods & findIndex (\food -> isPointInRect ant.aPos food.fContainer.cRect)
+    let antInFoodIndex = foods & Seq.findIndexL (\food -> isPointInRect ant.aPos food.fContainer.cRect)
 
         antInNest = isPointInRect ant.aPos nest.nContainer.cRect
 
@@ -148,9 +149,9 @@ antFoodNestInteraction (nest, foods) ant =
                     ( True,
                       ant.aScore + 0.5,
                       nest.nContainer.cAmount,
-                      let Food (Container amount rect) = (foods !! i)
+                      let Food (Container amount rect) = fromJust (foods !? i)
                           foodObj' = Food (Container (amount - 1) rect)
-                      in  setAt i foodObj' foods
+                      in  Seq.update i foodObj' foods
                     )
                 -- If the ant brings the food back to the nest, it gets 0.5 points and the nest gets a point
                 (True, True, _) -> (False, ant.aScore + 0.5, nest.nContainer.cAmount + 1, foods)
@@ -158,7 +159,7 @@ antFoodNestInteraction (nest, foods) ant =
                 _ -> (ant.aHasFood, ant.aScore, nest.nContainer.cAmount, foods)
 
         -- Delete food when amount is 0
-        !foods'' = foods' & filter (\food -> food.fContainer.cAmount > 0)
+        !foods'' = foods' & Seq.filter (\food -> food.fContainer.cAmount > 0)
         !nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
         ant' = ant{aHasFood = antHasFood', aScore = antScore'}
     in  ((nest', foods''), ant')

@@ -10,7 +10,8 @@ import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.List (foldl')
 
--- import Debug.Trace (trace, traceShow)
+import Data.Sequence (Seq, (<|), (><), (|>))
+import Data.Sequence qualified as Seq
 
 import AI.HNN.FF.Network
 import AntMovement (antMovementSys, updateAntMovement)
@@ -35,7 +36,7 @@ import Raylib.Core (
     windowShouldClose,
  )
 import Raylib.Core.Shapes (drawCircleV, drawLineEx)
-import Raylib.Core.Text (drawFPS)
+import Raylib.Core.Text (drawFPS, drawText)
 import Raylib.Types (
     Color,
     KeyboardKey (..),
@@ -62,16 +63,15 @@ import Types (
 initAntAIWorld :: IO World
 initAntAIWorld = do
     playerAntSeed <- randomIO
-    antSeeds <- replicateM 100 randomIO
+    antSeeds <- replicateM numAnts randomIO
     let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos playerAntSeed
-        ants = map (mkAnt antPos) antSeeds
+        ants = Seq.fromList (map (mkAnt antPos) antSeeds)
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        walls = []
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return $ World playerAnt ants nest False False False True walls Nothing [] Nothing []
+    return $ World playerAnt ants nest False False False True Seq.empty Nothing Seq.empty Nothing Seq.empty
 
 
 handleAntAIInput :: World -> IO World
@@ -118,12 +118,12 @@ applyAntDecision decision ant = case decision of
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
     let ants = w.wAnts
-        antDecisions = ants & map (antBrainForward . mkInputVector)
+        antDecisions = ants & fmap (antBrainForward . mkInputVector)
     in  w
             { wAnts =
                 ants
-                    & zipWith applyAntDecision antDecisions
-                    & map (updateAntFR w . updateAntMovement w)
+                    & Seq.zipWith applyAntDecision antDecisions
+                    & fmap (updateAntFR w . updateAntMovement w)
             }
 
 
@@ -143,7 +143,9 @@ drawAnt color ant = do
 
 
 renderAntAIWorld :: World -> IO ()
-renderAntAIWorld w = forM_ w.wAnts (drawAnt darkBrown)
+renderAntAIWorld w = do
+    drawText (show (length w.wPheromones) ++ " pheromones") 10 50 20 darkBrown
+    forM_ w.wAnts (drawAnt darkBrown)
 
 
 antAISys :: System World

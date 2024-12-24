@@ -10,7 +10,8 @@ import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.List (foldl')
 
--- import Debug.Trace (trace, traceShow)
+import Data.Sequence (Seq, (<|), (><), (|>))
+import Data.Sequence qualified as Seq
 
 import AntMovement (antMovementSys)
 import Constants (
@@ -68,11 +69,10 @@ initWorld = do
     let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos seed
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-        walls = []
     _ <- initWindow screenWidth screenHeight "Haskell Ant Sim"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return $ World playerAnt [] nest True False False True walls Nothing [] Nothing []
+    return $ World playerAnt Seq.empty nest True False False True Seq.empty Nothing Seq.empty Nothing Seq.empty
 
 
 antSimSys :: System World

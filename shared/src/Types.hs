@@ -3,6 +3,7 @@
 
 module Types where
 
+import Data.Sequence (Seq)
 import Raylib.Types (Color, Rectangle, Vector2)
 import System.Random (StdGen)
 
@@ -52,7 +53,7 @@ data Ant = Ant
       aGoDir :: GoDir,
       aWheelPos :: WheelPos,
       aSprite :: Sprite,
-      aVisionRays :: [VisionRay],
+      aVisionRays :: Seq VisionRay,
       aNestAngle :: Float, -- Normalized degrees
       aNestDistance :: Float, -- Normalized distance
       aHasFood :: Bool,
@@ -77,17 +78,17 @@ data WallDrawingState = Idle | Started | InProgress | Finished | Deleted
 
 data World = World
     { wPlayerAnt :: Ant,
-      wAnts :: [Ant],
+      wAnts :: Seq Ant,
       wNest :: Nest,
       wRenderVisionRays :: Bool,
       wRenderVisionRects :: Bool,
       wRenderHomeVector :: Bool,
       wRenderHomeCompass :: Bool,
-      wWalls :: [Rectangle],
+      wWalls :: Seq Rectangle,
       wWallBeingDrawn :: Maybe (Vector2, Vector2),
-      wFood :: [Food],
+      wFood :: Seq Food,
       wFoodBeingDrawn :: Maybe Food,
-      wPheromones :: [Pheromone]
+      wPheromones :: Seq Pheromone
     }
 
 
