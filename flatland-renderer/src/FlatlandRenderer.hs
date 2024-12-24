@@ -26,7 +26,7 @@ import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
-import Data.Sequence (Seq, (<|), (><), (|>))
+import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Shared (
     System (..),
@@ -35,6 +35,7 @@ import Shared (
     gameLoop,
     getNextPos,
     isPointInRect,
+    mkAnt,
     scalarTimesColor,
  )
 
@@ -72,7 +73,6 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import Shared (mkAnt)
 import System.Random (mkStdGen, randomIO)
 import Types (
     Ant (..),

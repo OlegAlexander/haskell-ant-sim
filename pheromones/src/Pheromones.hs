@@ -6,73 +6,58 @@
 module Pheromones where
 
 import AntMovement (antMovementSys)
-import Constants (antAcceleration, antMaxSpeed, antTurnAngle, collisionRectSize, foodColor, foodGrowthAmount, foodScale, fps, initPheromoneAmount, maxPheromones, nestSize, pheromoneColor, pheromoneScale, regeneratePheromoneDelay, screenHeight, screenWidth)
+import Constants (
+    collisionRectSize,
+    fps,
+    initPheromoneAmount,
+    maxPheromones,
+    pheromoneColor,
+    pheromoneScale,
+    regeneratePheromoneDelay,
+    screenHeight,
+    screenWidth,
+ )
 import Control.Monad (forM_, when)
-import Data.Fixed (mod')
-import Data.Foldable (find)
 import Data.Function ((&))
-import Data.IntMap (mapAccum)
-import Data.List (findIndex, mapAccumL)
-import Data.Maybe (mapMaybe)
-import Data.Sequence (Seq, (<|), (><), (|>))
+import Data.List (mapAccumL)
+import Data.Sequence (Seq, (<|))
 import Data.Sequence qualified as Seq
-import Data.Traversable (for)
-import Debug.Trace (traceShowId)
 import Food (foodSys)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
-    getMousePosition,
     initWindow,
-    isKeyDown,
     isKeyPressed,
-    isMouseButtonDown,
     setMouseCursor,
     setTargetFPS,
     setTraceLogLevel,
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (
-    drawCircleV,
-    drawLineEx,
-    drawRectangleLinesEx,
-    drawRectangleRec,
- )
-import Raylib.Core.Text (drawFPS)
-import Raylib.Core.Textures (loadTexture)
+import Raylib.Core.Shapes (drawCircleV)
 import Raylib.Types (
     KeyboardKey (..),
-    MouseButton (MouseButtonLeft),
     MouseCursor (MouseCursorCrosshair),
-    Rectangle (Rectangle),
     TraceLogLevel (LogWarning),
  )
-import Raylib.Types.Core (MouseButton (MouseButtonRight), Vector2 (..))
+import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
-import Raylib.Util.Math ((|+|))
+import Raylib.Util.Colors (lightGray)
 import Shared (
     System (..),
     calcCenteredRect,
     calcRectCenter,
     gameLoop,
-    getNextPos,
     isPointInRect,
     mkAnt,
-    setAt,
  )
-import System.Random (mkStdGen, randomIO)
+import System.Random (randomIO)
 import Types (
     Ant (..),
     Container (..),
-    EntityType (..),
     Food (..),
-    GoDir (..),
     Nest (..),
     Pheromone (..),
-    Sprite (..),
-    WheelPos (..),
     World (..),
  )
 

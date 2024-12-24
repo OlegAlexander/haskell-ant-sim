@@ -16,13 +16,11 @@ import Constants (
     screenHeight,
     screenWidth,
  )
-import Control.Monad (forM_, when)
+import Control.Monad (when)
 import Data.Fixed (mod')
 import Data.Foldable (Foldable (toList))
 import Data.Function ((&))
-import Data.IntMap (update)
 import Data.Maybe (mapMaybe)
-import Data.Sequence (Seq, (<|), (><), (|>))
 import Data.Sequence qualified as Seq
 import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
@@ -40,8 +38,6 @@ import Raylib.Core (
 import Raylib.Core.Shapes (
     drawCircleV,
     drawLineEx,
-    drawRectangleLinesEx,
-    drawRectangleRec,
  )
 import Raylib.Core.Text (drawFPS)
 import Raylib.Types (
@@ -52,16 +48,15 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, brown, green, lightGray, red)
+import Raylib.Util.Colors (black, blue, green, lightGray, red)
 import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt)
-import System.Random (mkStdGen, randomIO)
+import System.Random (randomIO)
 import Types (
     Ant (..),
     Container (..),
     EntityType (..),
     GoDir (..),
     Nest (..),
-    Sprite (..),
     WheelPos (..),
     World (..),
  )

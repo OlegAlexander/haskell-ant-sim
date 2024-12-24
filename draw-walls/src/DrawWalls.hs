@@ -2,12 +2,17 @@
 
 module DrawWalls where
 
-import Constants
-import Constants (collisionRectSize, minWallSize, wallColor)
+import Constants (
+    collisionRectSize,
+    minWallSize,
+    screenHeight,
+    screenWidth,
+    wallColor,
+ )
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Maybe (fromJust, isJust, isNothing)
-import Data.Sequence (Seq, (<|), (><), (|>))
+import Data.Sequence ((<|))
 import Data.Sequence qualified as Seq
 import GHC.Float (int2Float)
 import Raylib.Core (
@@ -29,17 +34,13 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (MouseButton (MouseButtonRight), MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, lightGray)
+import Raylib.Util.Colors (blue, lightGray)
 import Shared (System (..), calcCenteredRect, gameLoop, isPointInRect, mkAnt)
 import System.Random (Random (..))
 import Types (
-    Ant (..),
     Container (..),
-    GoDir (Stop),
     Nest (..),
-    Sprite (..),
     WallDrawingState (..),
-    WheelPos (..),
     World (..),
  )
 

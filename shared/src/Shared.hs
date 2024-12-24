@@ -44,23 +44,6 @@ scalarTimesColor scalar color =
     in  linearToRgb (r' * scalar, g' * scalar, b' * scalar, a')
 
 
-{- |
-Source: https://hackage.haskell.org/package/ilist-0.4.0.1/docs/Data-List-Index.html#v:setAt
-'setAt' sets the element at the index.
-
-If the index is negative or exceeds list length, the original list will be returned.
--}
-setAt :: Int -> a -> [a] -> [a]
-setAt i a ls
-    | i < 0 = ls
-    | otherwise = go i ls
-    where
-        go 0 (_ : xs) = a : xs
-        go n (x : xs) = x : go (n - 1) xs
-        go _ [] = []
-{-# INLINE setAt #-}
-
-
 getNextPos :: Float -> Float -> Vector2 -> Vector2
 getNextPos angle speed (Vector2 x y) =
     let rad = (-angle) * deg2Rad -- negate angle because of screen space coords

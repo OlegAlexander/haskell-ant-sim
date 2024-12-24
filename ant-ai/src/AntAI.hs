@@ -5,17 +5,21 @@
 
 module AntAI where
 
-import Control.Monad (forM, forM_, replicateM, when)
-import Data.Fixed (mod')
+import Control.Monad (forM_, replicateM, when)
 import Data.Function ((&))
-import Data.List (foldl')
 
-import Data.Sequence (Seq, (<|), (><), (|>))
 import Data.Sequence qualified as Seq
 
 import AI.HNN.FF.Network
 import AntMovement (antMovementSys, updateAntMovement)
-import Constants (antAcceleration, antJitterAngle, antMaxSpeed, antScale, antTurnAngle, borderWallThickness, collisionRectSize, foodColor, fps, numAnts, screenHeight, screenWidth)
+import Constants (
+    collisionRectSize,
+    foodColor,
+    fps,
+    numAnts,
+    screenHeight,
+    screenWidth,
+ )
 import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import Debug.Trace (traceShowId)
 import DrawWalls (drawWallsSys)
@@ -27,11 +31,9 @@ import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
     initWindow,
-    isKeyDown,
     isKeyPressed,
     setMouseCursor,
     setTargetFPS,
-    setTraceLogLevel,
     toggleFullscreen,
     windowShouldClose,
  )
@@ -42,18 +44,17 @@ import Raylib.Types (
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
  )
-import Raylib.Types.Core (Color (..), Vector2 (..))
+import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (darkBrown, green, lightGray, white, yellow)
+import Raylib.Util.Colors (darkBrown, lightGray)
 import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt, rgbToLinear)
-import System.Random (mkStdGen, randomIO, randomR)
+import System.Random (randomIO)
 import Types (
     Ant (..),
     AntDecision (..),
     Container (..),
     GoDir (..),
     Nest (..),
-    Sprite (LeftSprite, RightSprite),
     VisionRay (..),
     WheelPos (Center, TurnLeft, TurnRight),
     World (..),

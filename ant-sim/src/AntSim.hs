@@ -6,21 +6,12 @@
 module AntSim where
 
 import Control.Monad (when)
-import Data.Fixed (mod')
 import Data.Function ((&))
-import Data.List (foldl')
 
-import Data.Sequence (Seq, (<|), (><), (|>))
 import Data.Sequence qualified as Seq
 
 import AntMovement (antMovementSys)
 import Constants (
-    antAcceleration,
-    antJitterAngle,
-    antMaxSpeed,
-    antScale,
-    antTurnAngle,
-    borderWallThickness,
     collisionRectSize,
     fps,
     screenHeight,
@@ -34,11 +25,9 @@ import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
     initWindow,
-    isKeyDown,
     isKeyPressed,
     setMouseCursor,
     setTargetFPS,
-    setTraceLogLevel,
     toggleFullscreen,
     windowShouldClose,
  )
@@ -49,16 +38,12 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (lightGray, white)
+import Raylib.Util.Colors (lightGray)
 import Shared (System (..), calcCenteredRect, gameLoop, mkAnt)
-import System.Random (mkStdGen, randomIO, randomR)
+import System.Random (randomIO)
 import Types (
-    Ant (..),
     Container (..),
-    GoDir (..),
     Nest (..),
-    Sprite (LeftSprite, RightSprite),
-    WheelPos (Center, TurnLeft, TurnRight),
     World (..),
  )
 
