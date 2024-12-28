@@ -8,9 +8,7 @@ module AntAI where
 import Control.Monad (forM_, replicateM, when)
 import Data.Function ((&))
 
-import Data.Sequence qualified as Seq
-
-import AI.HNN.FF.Network
+-- import AI.HNN.FF.Network
 import AntMovement (antMovementSys, updateAntMovement)
 import Constants (
     collisionRectSize,
@@ -26,7 +24,11 @@ import DrawWalls (drawWallsSys)
 import FlatlandRenderer (flatlandRendererSys, updateAntFR)
 import Food (foodSys)
 import GHC.Float (int2Float)
-import Numeric.LinearAlgebra (Vector (..), fromList)
+
+-- import Numeric.LinearAlgebra (Vector (..), fromList)
+
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
@@ -79,28 +81,33 @@ handleAntAIInput :: World -> IO World
 handleAntAIInput w = return w
 
 
-antBrainForward :: Vector Float -> AntDecision
+antBrainForward :: Seq Float -> AntDecision
 antBrainForward inputVector = GoForward
 
 
-antBrainRandom :: Vector Float -> AntDecision
-antBrainRandom inputVector = undefined
+antBrainRandom :: Seq Float -> AntDecision
+antBrainRandom inputVector =
+    let randomDecision = case Seq.lookup (Seq.length inputVector - 1) inputVector of
+            Just value -> value & (* 4) & round & toEnum
+            Nothing -> toEnum 0 -- This should never happen
+    in  randomDecision
 
 
-mkInputVector :: Ant -> Vector Float
+mkInputVector :: Ant -> Seq Float
 mkInputVector ant =
     -- Flatten vision rgb colors to a single list of normalized floats
     -- Compass direction and distance to nest, normalized
     -- Has food? 1.0 or 0.0
-    -- TODO Later, add a few random numbers to add jitter
+    -- Add a random number to add jitter
     let visionRayColors =
             ant.aVisionRays
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
         antNestAngle = ant.aNestAngle
         antNestDistance = ant.aNestDistance
+        antRandomNoise = ant.aRandomNoise
         hasFood = if ant.aHasFood then 1.0 else 0.0
-    in  -- _ = traceShowId [antNestAngle, antNestDistance, hasFood]
-        fromList $ visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
+    in  -- _ = traceShowId [antNestAngle, antNestDistance, hasFood, antRandomNoise]
+        Seq.fromList $ visionRayColors ++ [antNestAngle, antNestDistance, hasFood, antRandomNoise]
 
 
 applyAntDecision :: AntDecision -> Ant -> Ant
@@ -110,16 +117,17 @@ applyAntDecision decision ant = case decision of
     GoForward -> ant{aWheelPos = Center, aGoDir = Forward}
     GoForwardRight -> ant{aWheelPos = TurnRight, aGoDir = Forward}
     GoRight -> ant{aWheelPos = TurnRight, aGoDir = Stop}
-    GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
-    GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
-    GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
-    GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
 
+
+-- GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
+-- GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
+-- GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
+-- GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
 
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
     let ants = w.wAnts
-        antDecisions = ants & fmap (antBrainForward . mkInputVector)
+        antDecisions = ants & fmap (antBrainRandom . mkInputVector)
     in  w
             { wAnts =
                 ants
@@ -145,7 +153,7 @@ drawAnt color ant = do
 
 renderAntAIWorld :: World -> IO ()
 renderAntAIWorld w = do
-    drawText (show (length w.wPheromones) ++ " pheromones") 10 50 20 darkBrown
+    drawText (show (Seq.length w.wPheromones) ++ " pheromones") 10 50 20 darkBrown
     forM_ w.wAnts (drawAnt darkBrown)
 
 
@@ -168,7 +176,7 @@ antAISysWrapped =
                 when f11Pressed toggleFullscreen
                 clearBackground lightGray
                 allSystems.render w
-                drawFPS 10 10
+                -- drawFPS 10 10
             }
 
 

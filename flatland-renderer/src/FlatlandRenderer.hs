@@ -61,7 +61,6 @@ import Raylib.Core.Shapes (
  )
 
 import Data.Foldable (Foldable (toList))
-import Data.IntMap (update)
 import Raylib.Types (
     Color (..),
     KeyboardKey (..),
@@ -71,21 +70,18 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, brown, gray, green, lightGray, red, white)
+import Raylib.Util.Colors (black, blue, gray, lightGray, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import System.Random (mkStdGen, randomIO)
+import System.Random (randomIO, randomR)
 import Types (
     Ant (..),
     Container (..),
     Degrees,
     EntityType (..),
     Food (..),
-    GoDir (..),
     Nest (..),
     Pheromone (..),
-    Sprite (..),
     VisionRay (..),
-    WheelPos (..),
     World (..),
  )
 
@@ -204,6 +200,12 @@ updateVisionRays rects ant =
         }
 
 
+updateRandomNoise :: Ant -> Ant
+updateRandomNoise ant =
+    let (noise, rng') = ant.aRng & randomR (0, 1)
+    in  ant{aRandomNoise = noise, aRng = rng'}
+
+
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
 visionRayToLine (VisionRay p1 angle rayLength _ _) =
     (p1, getNextPos angle rayLength p1)
@@ -287,6 +289,7 @@ updateAntFR w ant =
         (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
     in  ant{aNestAngle = nestAngle, aNestDistance = nestDistance}
             & updateVisionRays visibleRects
+            & updateRandomNoise
 
 
 updateFRWorld :: World -> World
@@ -336,6 +339,10 @@ renderFRWorld w = do
     when renderVisionRects $ do
         let visionRects = visionRaysToRects rays
         forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
+        -- Draw random noise as a rect in the lower left corner
+        let noiseRect = Rectangle 0 (int2Float screenHeight - 20) 20 20
+            noiseColor = scalarTimesColor playerAnt.aRandomNoise white
+        drawRectangleRec noiseRect noiseColor
 
     -- draw home compass in the lower right corner of the screen
     when w.wRenderHomeCompass $ do

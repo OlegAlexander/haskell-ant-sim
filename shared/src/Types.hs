@@ -58,7 +58,8 @@ data Ant = Ant
       aNestDistance :: Float, -- Normalized distance
       aHasFood :: Bool,
       aScore :: Float,
-      aRegeneratePheromoneCounter :: Int
+      aRegeneratePheromoneCounter :: Int,
+      aRandomNoise :: Float -- Range [0, 1]
     }
     deriving (Show) -- No Eq because of StdGen 1.1
 
@@ -98,8 +99,8 @@ data AntDecision
     | GoForward
     | GoForwardRight
     | GoRight
-    | GoBackwardRight
-    | GoBackward
-    | GoBackwardLeft
-    | GoNowhere
+      -- | GoBackwardRight
+      -- | GoBackward
+      -- | GoBackwardLeft
+      -- | GoNowhere
     deriving (Enum, Eq, Show)

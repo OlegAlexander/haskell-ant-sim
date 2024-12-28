@@ -69,7 +69,8 @@ isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
 mkAnt :: Vector2 -> Int -> Ant
 mkAnt pos seed =
     let (randomAngle, rng) = mkStdGen seed & randomR (0, 360)
-    in  Ant pos randomAngle 0 rng Stop Center LeftSprite Seq.empty 0 0 False 0 0
+        (randomNoise, rng') = rng & randomR (0, 1)
+    in  Ant pos randomAngle 0 rng' Stop Center LeftSprite Seq.empty 0 0 False 0 0 randomNoise
 
 
 data System w = System

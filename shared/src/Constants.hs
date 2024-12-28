@@ -17,7 +17,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 100
+numAnts = 50
 
 
 antScale :: Float
@@ -81,7 +81,7 @@ foodGrowthAmount = 1
 
 
 collisionRectSize :: Float
-collisionRectSize = 30
+collisionRectSize = 40
 
 
 nestSize :: Float
