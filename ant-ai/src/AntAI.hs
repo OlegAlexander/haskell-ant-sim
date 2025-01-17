@@ -7,6 +7,8 @@ module AntAI where
 
 import Control.Monad (forM_, replicateM, when)
 import Data.Function ((&))
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 -- import AI.HNN.FF.Network
 import AntMovement (antMovementSys, updateAntMovement)
@@ -18,17 +20,15 @@ import Constants (
     screenHeight,
     screenWidth,
  )
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import Debug.Trace (traceShowId)
 import DrawWalls (drawWallsSys)
 import FlatlandRenderer (flatlandRendererSys, updateAntFR)
 import Food (foodSys)
 import GHC.Float (int2Float)
-
--- import Numeric.LinearAlgebra (Vector (..), fromList)
-
-import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
+import NeuralNetwork
 import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
@@ -48,9 +48,9 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (darkBrown, lightGray)
+import Raylib.Util.Colors (black, brown, darkBrown, lightGray, red)
 import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt, rgbToLinear)
-import System.Random (randomIO)
+import System.Random (mkStdGen, randomIO)
 import Types (
     Ant (..),
     AntDecision (..),
@@ -61,6 +61,10 @@ import Types (
     WheelPos (Center, TurnLeft, TurnRight),
     World (..),
  )
+
+
+neuralNetwork :: [Layer]
+neuralNetwork = unflattenLayers (fst (initFlatLayers [100, 50, 5] 0.1 (mkStdGen 1)))
 
 
 initAntAIWorld :: IO World
@@ -81,19 +85,26 @@ handleAntAIInput :: World -> IO World
 handleAntAIInput w = return w
 
 
-antBrainForward :: Seq Float -> AntDecision
+antBrainForward :: Vector Float -> AntDecision
 antBrainForward inputVector = GoForward
 
 
-antBrainRandom :: Seq Float -> AntDecision
+antBrainRandom :: Vector Float -> AntDecision
 antBrainRandom inputVector =
-    let randomDecision = case Seq.lookup (Seq.length inputVector - 1) inputVector of
+    let randomDecision = case inputVector V.!? (V.length inputVector - 1) of
             Just value -> value & (* 4) & round & toEnum
             Nothing -> toEnum 0 -- This should never happen
     in  randomDecision
 
 
-mkInputVector :: Ant -> Seq Float
+antBrainNeuralNetwork :: Vector Float -> AntDecision
+antBrainNeuralNetwork inputVector =
+    let predictions = forwardAll sigmoid neuralNetwork inputVector
+        maxIndex = V.maxIndex predictions
+    in  toEnum maxIndex
+
+
+mkInputVector :: Ant -> Vector Float
 mkInputVector ant =
     -- Flatten vision rgb colors to a single list of normalized floats
     -- Compass direction and distance to nest, normalized
@@ -106,8 +117,9 @@ mkInputVector ant =
         antNestDistance = ant.aNestDistance
         antRandomNoise = ant.aRandomNoise
         hasFood = if ant.aHasFood then 1.0 else 0.0
-    in  -- _ = traceShowId [antNestAngle, antNestDistance, hasFood, antRandomNoise]
-        Seq.fromList $ visionRayColors ++ [antNestAngle, antNestDistance, hasFood, antRandomNoise]
+        inputVector = visionRayColors ++ [antNestAngle, antNestDistance, hasFood, antRandomNoise]
+    in  -- _ = traceShowId (length inputVector)
+        V.fromList inputVector
 
 
 applyAntDecision :: AntDecision -> Ant -> Ant
@@ -127,7 +139,7 @@ applyAntDecision decision ant = case decision of
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
     let ants = w.wAnts
-        antDecisions = ants & fmap (antBrainRandom . mkInputVector)
+        antDecisions = ants & fmap (antBrainNeuralNetwork . mkInputVector)
     in  w
             { wAnts =
                 ants
@@ -154,7 +166,7 @@ drawAnt color ant = do
 renderAntAIWorld :: World -> IO ()
 renderAntAIWorld w = do
     drawText (show (Seq.length w.wPheromones) ++ " pheromones") 10 50 20 darkBrown
-    forM_ w.wAnts (drawAnt darkBrown)
+    forM_ w.wAnts (drawAnt black)
 
 
 antAISys :: System World

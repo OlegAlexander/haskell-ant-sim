@@ -36,7 +36,7 @@ import Raylib.Types.Core (MouseButton (MouseButtonRight), MouseCursor (MouseCurs
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, lightGray)
 import Shared (System (..), calcCenteredRect, gameLoop, isPointInRect, mkAnt)
-import System.Random (Random (..))
+import System.Random (randomIO)
 import Types (
     Container (..),
     Nest (..),

@@ -17,7 +17,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 50
+numAnts = 10
 
 
 antScale :: Float
@@ -85,7 +85,7 @@ collisionRectSize = 40
 
 
 nestSize :: Float
-nestSize = 25
+nestSize = 5
 
 
 nestColor :: Color
