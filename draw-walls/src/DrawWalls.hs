@@ -120,7 +120,6 @@ renderWallsWorld w = do
     when (isJust wbd) $ do
         let (start, end) = fromJust wbd
             wall = calcBoundingBox start end
-        drawRectangleRec wall wallColor
         drawRectangleLinesEx wall 2 blue
 
 

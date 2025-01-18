@@ -64,7 +64,7 @@ import Types (
 
 
 neuralNetwork :: [Layer]
-neuralNetwork = unflattenLayers (fst (initFlatLayers [100, 50, 5] 0.1 (mkStdGen 1)))
+neuralNetwork = unflattenLayers (fst (initFlatLayers [100, 47, 5] 0.1 (mkStdGen 1)))
 
 
 initAntAIWorld :: IO World
