@@ -20,27 +20,19 @@ common options
 
 library
     import:           options
-    exposed-modules:  AntAI, NeuralNetwork
+    exposed-modules:  AntAI
     build-depends:    shared, 
                         ant-movement, 
                         food, 
                         flatland-renderer, 
                         draw-walls,
-                        pheromones
+                        pheromones,
+                        neural-network
     hs-source-dirs:   src
 
 executable ant-ai
     import:           options
     main-is:          Main.hs
-    build-depends:
-        ant-ai
+    build-depends:  ant-ai
+    hs-source-dirs: app
 
-    hs-source-dirs:   app
-
-
-test-suite spec
-  import: options
-  type: exitcode-stdio-1.0
-  hs-source-dirs: test
-  main-is: Spec.hs
-  build-depends: hspec, ant-ai

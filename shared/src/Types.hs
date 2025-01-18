@@ -6,6 +6,7 @@ module Types where
 import Data.Sequence (Seq)
 import Raylib.Types (Color, Rectangle, Vector2)
 import System.Random (StdGen)
+import NeuralNetwork (Layer)
 
 
 data Container = Container
@@ -59,9 +60,10 @@ data Ant = Ant
       aHasFood :: Bool,
       aScore :: Float,
       aRegeneratePheromoneCounter :: Int,
-      aRandomNoise :: Float -- Range [0, 1]
+      aRandomNoise :: Float, -- Range [0, 1]
+      aBrain :: [Layer]
     }
-    deriving (Show) -- No Eq because of StdGen 1.1
+    deriving (Eq, Show) 
 
 
 data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
@@ -91,6 +93,7 @@ data World = World
       wFoodBeingDrawn :: Maybe Food,
       wPheromones :: Seq Pheromone
     }
+    deriving (Eq, Show)
 
 
 data AntDecision

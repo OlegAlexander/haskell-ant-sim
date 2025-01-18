@@ -63,10 +63,6 @@ import Types (
  )
 
 
-neuralNetwork :: [Layer]
-neuralNetwork = unflattenLayers (fst (initFlatLayers [100, 47, 5] 0.1 (mkStdGen 1)))
-
-
 initAntAIWorld :: IO World
 initAntAIWorld = do
     playerAntSeed <- randomIO
@@ -97,8 +93,8 @@ antBrainRandom inputVector =
     in  randomDecision
 
 
-antBrainNeuralNetwork :: Vector Float -> AntDecision
-antBrainNeuralNetwork inputVector =
+antBrainNeuralNetwork :: [Layer] -> Vector Float -> AntDecision
+antBrainNeuralNetwork neuralNetwork inputVector =
     let predictions = forwardAll sigmoid neuralNetwork inputVector
         maxIndex = V.maxIndex predictions
     in  toEnum maxIndex
@@ -139,7 +135,8 @@ applyAntDecision decision ant = case decision of
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
     let ants = w.wAnts
-        antDecisions = ants & fmap (antBrainNeuralNetwork . mkInputVector)
+        antDecisions =
+            ants & fmap (\ant -> antBrainNeuralNetwork ant.aBrain (mkInputVector ant))
     in  w
             { wAnts =
                 ants

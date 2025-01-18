@@ -6,6 +6,7 @@ module Shared where
 import Control.Monad (unless, (>=>))
 import Data.Function ((&))
 import Data.Sequence qualified as Seq
+import NeuralNetwork (initFlatLayers, unflattenLayers)
 import Raylib.Types (Color (..), Rectangle (..), Vector2 (..))
 import Raylib.Util.Math (deg2Rad)
 import System.Random (mkStdGen, randomR)
@@ -69,8 +70,25 @@ isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
 mkAnt :: Vector2 -> Int -> Ant
 mkAnt pos seed =
     let (randomAngle, rng) = mkStdGen seed & randomR (0, 360)
-        (randomNoise, rng') = rng & randomR (0, 1)
-    in  Ant pos randomAngle 0 rng' Stop Center LeftSprite Seq.empty 0 0 False 0 0 randomNoise
+        (randomNoise, rng') = randomR (0, 1) rng
+        (flatNeuralNetwork, rng'') = initFlatLayers [100, 50, 5] 0.1 rng'
+    in  Ant
+            { aPos = pos,
+              aAngle = randomAngle,
+              aSpeed = 0,
+              aRng = rng'',
+              aGoDir = Stop,
+              aWheelPos = Center,
+              aSprite = LeftSprite,
+              aVisionRays = Seq.empty,
+              aNestAngle = 0,
+              aNestDistance = 0,
+              aHasFood = False,
+              aScore = 0,
+              aRegeneratePheromoneCounter = 0,
+              aRandomNoise = randomNoise,
+              aBrain = unflattenLayers flatNeuralNetwork
+            }
 
 
 data System w = System

@@ -120,7 +120,7 @@ renderWallsWorld w = do
     when (isJust wbd) $ do
         let (start, end) = fromJust wbd
             wall = calcBoundingBox start end
-        drawRectangleLinesEx wall 2 blue
+        drawRectangleLinesEx wall 3 blue
 
 
 drawWallsSys :: System World
