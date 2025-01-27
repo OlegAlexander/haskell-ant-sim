@@ -69,12 +69,6 @@ flattenLayers layers =
     in  (concat flatWeightsAndBiases, shapes)
 
 
-unflattenOneLayer :: ([Float], (Int, Int)) -> Layer
-unflattenOneLayer (flatWeightsAndBiases, (numRows, numCols)) =
-    let (weights, biases) = splitAt (numRows * numCols) flatWeightsAndBiases
-    in  (listOfListsToVecOfVecs (splitEvery numCols weights), V.fromList biases)
-
-
 splitEvery :: Int -> [a] -> [[a]]
 splitEvery n xs = case xs of
     [] -> []
