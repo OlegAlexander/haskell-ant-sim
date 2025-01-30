@@ -19,7 +19,7 @@
 # snapshot: ./custom-snapshot.yaml
 # snapshot: https://example.com/snapshots/2024-01-01.yaml
 snapshot:
-  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/23/5.yaml
+  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/22/43.yaml
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -52,8 +52,6 @@ packages:
 #
 extra-deps:
   - h-raylib-5.1.3.0
-#   - lens-5.2.3
-  # - lens-5.2.3@sha256:08f4e81aa3fa3f175f6932089d6bb8b17669e3d00aa2968b853287e5e8d7f024,15237
 
 # Override default flag values for project packages and extra-deps
 # flags: {}
