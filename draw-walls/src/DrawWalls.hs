@@ -85,14 +85,14 @@ handleWallInput w = do
         status = getWallDrawingState wPressed isMouseRightPressed wbd
     case status of
         Idle -> return w
-        Started -> do
+        Started ->
             return
                 w
                     { wWalls = walls,
                       wWallBeingDrawn =
                         Just (mousePos, mousePos)
                     }
-        InProgress -> do
+        InProgress ->
             return
                 w
                     { wWalls = walls,

@@ -95,9 +95,7 @@ antBrainRandom inputVector =
 
 antBrainNeuralNetwork :: [Layer] -> Vector Float -> AntDecision
 antBrainNeuralNetwork neuralNetwork inputVector =
-    let predictions = forwardAll sigmoid neuralNetwork inputVector
-        maxIndex = V.maxIndex predictions
-    in  toEnum maxIndex
+    inputVector & forwardAll sigmoid neuralNetwork & V.maxIndex & toEnum
 
 
 mkInputVector :: Ant -> Vector Float

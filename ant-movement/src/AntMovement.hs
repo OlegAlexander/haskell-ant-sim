@@ -126,38 +126,41 @@ handleAMInput w = do
             }
 
 
+getNextAngle :: Ant -> Float
+getNextAngle ant =
+    let angle = case ant.aWheelPos of
+            TurnRight -> ant.aAngle - antTurnAngle
+            TurnLeft -> ant.aAngle + antTurnAngle
+            Center -> ant.aAngle
+    in  angle `mod'` 360
+
+
+getNextSpeed :: Ant -> Float
+getNextSpeed ant =
+    case ant.aGoDir of
+        Forward -> min antMaxSpeed (ant.aSpeed + antAcceleration)
+        Backward -> max ((-antMaxSpeed) / 4) (ant.aSpeed - antAcceleration)
+        Stop -> case compare ant.aSpeed 0 of
+            LT -> min 0 (ant.aSpeed + antAcceleration)
+            GT -> max 0 (ant.aSpeed - antAcceleration)
+            EQ -> 0
+
+
 updateAntMovement :: World -> Ant -> Ant
 updateAntMovement w ant =
     let collisionRects = getCollisionRects w
-        nextAngle =
-            ant.aAngle
-                & \angle ->
-                    case ant.aWheelPos of
-                        TurnRight -> (angle - antTurnAngle) `mod'` 360
-                        TurnLeft -> (angle + antTurnAngle) `mod'` 360
-                        Center -> angle `mod'` 360
-        nextSpeed =
-            case ant.aGoDir of
-                Forward -> min antMaxSpeed (ant.aSpeed + antAcceleration)
-                Backward -> max ((-antMaxSpeed) / 4) (ant.aSpeed - antAcceleration)
-                Stop -> case compare ant.aSpeed 0 of
-                    LT -> min 0 (ant.aSpeed + antAcceleration)
-                    GT -> max 0 (ant.aSpeed - antAcceleration)
-                    EQ -> 0
+        nextAngle = getNextAngle ant
+        nextSpeed = getNextSpeed ant
         nextPos = getNextPos nextAngle nextSpeed ant.aPos
-
         nextPos' =
             if checkCollisions nextPos collisionRects /= []
                 then ant.aPos
                 else nextPos
-
-        ant' =
-            ant
-                { aPos = wrapAroundScreen nextPos',
-                  aAngle = nextAngle,
-                  aSpeed = nextSpeed
-                }
-    in  ant'
+    in  ant
+            { aPos = wrapAroundScreen nextPos',
+              aAngle = nextAngle,
+              aSpeed = nextSpeed
+            }
 
 
 updateAMWorld :: World -> World

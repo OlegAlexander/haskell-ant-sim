@@ -91,25 +91,21 @@ handleFoodInput w = do
     isMouseRightPressed <- isMouseButtonDown MouseButtonRight
     -- TODO Don't create food on top of walls or the nest
     case (isMouseLeftPressed, isMouseRightPressed, w.wFoodBeingDrawn) of
-        --
         -- Left click to add food objects
         (True, _, Nothing) ->
             let collisionRect = calcCenteredRect mousePos collisionRectSize
                 foodBeingDrawn = Food (Container foodGrowthAmount collisionRect)
             in  return $ w{wFoodBeingDrawn = Just foodBeingDrawn}
-        --
         -- Increment foodAmount while the mouse is held down
         (True, _, Just (Food (Container amount rect))) ->
             let foodBeingDrawn = Food (Container (amount + foodGrowthAmount) rect)
             in  return $ w{wFoodBeingDrawn = Just foodBeingDrawn}
         (False, _, Just food) ->
             return $ w{wFoodBeingDrawn = Nothing, wFood = food <| w.wFood}
-        --
         -- Right click to remove food objects
         (False, True, Nothing) ->
             let foodToKeep = w.wFood & Seq.filter (not . isPointInRect mousePos . (.fContainer.cRect))
             in  return w{wFood = foodToKeep}
-        --
         -- Otherwise, do nothing
         (False, False, Nothing) ->
             return w
@@ -120,9 +116,7 @@ antFoodNestInteraction :: (Nest, Seq Food) -> Ant -> ((Nest, Seq Food), Ant)
 antFoodNestInteraction (nest, foods) ant =
     -- Find the index of the first food object that the ant is in, if any
     let antInFoodIndex = foods & Seq.findIndexL (\food -> isPointInRect ant.aPos food.fContainer.cRect)
-
         antInNest = isPointInRect ant.aPos nest.nContainer.cRect
-
         (antHasFood', antScore', nestScore', foods') =
             case (ant.aHasFood, antInNest, antInFoodIndex) of
                 -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
@@ -139,7 +133,6 @@ antFoodNestInteraction (nest, foods) ant =
                 (True, True, _) -> (False, ant.aScore + 0.5, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
                 _ -> (ant.aHasFood, ant.aScore, nest.nContainer.cAmount, foods)
-
         -- Delete food when amount is 0
         !foods'' = foods' & Seq.filter (\food -> food.fContainer.cAmount > 0)
         !nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
