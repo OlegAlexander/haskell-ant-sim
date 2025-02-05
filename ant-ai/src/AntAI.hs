@@ -57,6 +57,7 @@ import Types (
     Container (..),
     GoDir (..),
     Nest (..),
+    TrainingMode (..),
     VisionRay (..),
     WheelPos (Center, TurnLeft, TurnRight),
     World (..),
@@ -74,7 +75,7 @@ initAntAIWorld = do
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return $ World playerAnt ants nest False False False True Seq.empty Nothing Seq.empty Nothing Seq.empty
+    return $ World playerAnt ants nest False False False True Seq.empty Nothing Seq.empty Nothing Seq.empty Off 0 0
 
 
 handleAntAIInput :: World -> IO World
@@ -158,9 +159,19 @@ drawAnt color ant = do
     drawLineEx antPos antDir 5 color
 
 
+trainingModeToString :: TrainingMode -> String
+trainingModeToString tm = case tm of
+    Off -> "Off"
+    Slow -> "Slow"
+    Fast -> "Fast"
+
+
 renderAntAIWorld :: World -> IO ()
 renderAntAIWorld w = do
-    drawText (show (Seq.length w.wPheromones) ++ " pheromones") 10 50 20 darkBrown
+    drawText ("Pheromones: " ++ show (Seq.length w.wPheromones)) 10 50 20 darkBrown
+    drawText ("Training: " ++ trainingModeToString w.wTrainingMode) 10 75 20 darkBrown
+    drawText ("Ticks: " ++ show w.wTicks) 10 100 20 darkBrown
+    drawText ("Generation: " ++ show w.wGeneration) 10 125 20 darkBrown
     forM_ w.wAnts (drawAnt black)
 
 

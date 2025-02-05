@@ -58,6 +58,7 @@ import Types (
     Food (..),
     Nest (..),
     Pheromone (..),
+    TrainingMode (..),
     World (..),
  )
 
@@ -79,7 +80,7 @@ initPheromoneWorld = do
     --             (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
     --         )
     --     ]
-    return $ World playerAnt Seq.empty nest True True False True Seq.empty Nothing Seq.empty Nothing Seq.empty
+    return $ World playerAnt Seq.empty nest True True False True Seq.empty Nothing Seq.empty Nothing Seq.empty Off 0 0
 
 
 handlePheromoneInput :: World -> IO World

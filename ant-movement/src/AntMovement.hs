@@ -59,6 +59,7 @@ import Types (
     Nest (..),
     WheelPos (..),
     World (..),
+    TrainingMode (..),
  )
 
 
@@ -101,7 +102,7 @@ initAMWorld = do
     let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         playerAnt = mkAnt antPos seed
         nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-    return $ World playerAnt Seq.empty nest True True False True walls Nothing Seq.empty Nothing Seq.empty
+    return $ World playerAnt Seq.empty nest True True False True walls Nothing Seq.empty Nothing Seq.empty Off 0 0
 
 
 handleAMInput :: World -> IO World

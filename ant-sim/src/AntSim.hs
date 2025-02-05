@@ -45,6 +45,7 @@ import Types (
     Container (..),
     Nest (..),
     World (..),
+    TrainingMode (..),
  )
 
 
@@ -57,7 +58,7 @@ initWorld = do
     _ <- initWindow screenWidth screenHeight "Haskell Ant Sim"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return $ World playerAnt Seq.empty nest True False False True Seq.empty Nothing Seq.empty Nothing Seq.empty
+    return $ World playerAnt Seq.empty nest True False False True Seq.empty Nothing Seq.empty Nothing Seq.empty Off 0 0
 
 
 antSimSys :: System World

@@ -81,6 +81,7 @@ import Types (
     Food (..),
     Nest (..),
     Pheromone (..),
+    TrainingMode (..),
     VisionRay (..),
     World (..),
  )
@@ -251,7 +252,7 @@ initFRWorld = do
                     )
                 ]
         food = Seq.fromList [Food (Container 10 (calcCenteredRect (antPos |+| Vector2 300 300) collisionRectSize))]
-    return $ World playerAnt Seq.empty nest True True False True walls Nothing food Nothing pheromones
+    return $ World playerAnt Seq.empty nest True True False True walls Nothing food Nothing pheromones Off 0 0
 
 
 handleFRInput :: World -> IO World

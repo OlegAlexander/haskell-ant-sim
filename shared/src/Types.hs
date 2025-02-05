@@ -79,6 +79,9 @@ data WallDrawingState = Idle | Started | InProgress | Finished | Deleted
     deriving (Eq, Show)
 
 
+data TrainingMode = Off | Slow | Fast deriving (Eq, Show)
+
+
 data World = World
     { wPlayerAnt :: Ant,
       wAnts :: Seq Ant,
@@ -91,7 +94,10 @@ data World = World
       wWallBeingDrawn :: Maybe (Vector2, Vector2),
       wFood :: Seq Food,
       wFoodBeingDrawn :: Maybe Food,
-      wPheromones :: Seq Pheromone
+      wPheromones :: Seq Pheromone,
+      wTrainingMode :: TrainingMode,
+      wTicks :: Int,
+      wGeneration :: Int
     }
     deriving (Eq, Show)
 

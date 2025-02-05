@@ -70,8 +70,10 @@ main = hspec $ do
                 predictionsRounded = map (map (printf "%.4f" :: Float -> String)) predictions
             predictionsRounded `shouldBe` testPredictions
 
-        it "unflattenLayers (flattenLayers layers) == layers" $ do
+        it "flatten/unflatten isomorphism" $ do
+            let flatLayers = flattenLayers layers
             unflattenLayers (flattenLayers layers) `shouldBe` layers
+            flattenLayers (unflattenLayers flatLayers) `shouldBe` flatLayers
 
         it "initFlatLayers" $ do
             let ((initFlat, initShapes), rng') = initFlatLayers [2, 4, 2] 0.1 (mkStdGen 0)
