@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 
+{-# HLINT ignore "Use <$>" #-}
+
 module DrawWalls where
 
 import Constants (
-    collisionRectSize,
     minWallSize,
-    screenHeight,
-    screenWidth,
     wallColor,
  )
 import Control.Monad (forM_, when)
@@ -14,7 +13,6 @@ import Data.Function ((&))
 import Data.Maybe (fromJust, isJust, isNothing)
 import Data.Sequence ((<|))
 import Data.Sequence qualified as Seq
-import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
     getMousePosition,
@@ -35,12 +33,9 @@ import Raylib.Types (
 import Raylib.Types.Core (MouseButton (MouseButtonRight), MouseCursor (MouseCursorCrosshair))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, lightGray)
-import Shared (System (..), calcCenteredRect, gameLoop, isPointInRect, mkAnt)
+import Shared (System (..), defaultWorld, gameLoop, isPointInRect)
 import System.Random (randomIO)
 import Types (
-    Container (..),
-    Nest (..),
-    TrainingMode (..),
     WallDrawingState (..),
     World (..),
  )
@@ -70,10 +65,7 @@ initWallsWorld = do
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos seed
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-    return $ World playerAnt Seq.empty nest True True False True Seq.empty Nothing Seq.empty Nothing Seq.empty Off 0 0
+    return (defaultWorld seed)
 
 
 handleWallInput :: World -> IO World

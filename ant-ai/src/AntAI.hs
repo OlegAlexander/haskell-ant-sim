@@ -13,14 +13,12 @@ import Data.Vector qualified as V
 -- import AI.HNN.FF.Network
 import AntMovement (antMovementSys, updateAntMovement)
 import Constants (
-    collisionRectSize,
     foodColor,
     fps,
     numAnts,
     screenHeight,
     screenWidth,
  )
-import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import Debug.Trace (traceShowId)
@@ -40,7 +38,7 @@ import Raylib.Core (
     windowShouldClose,
  )
 import Raylib.Core.Shapes (drawCircleV, drawLineEx)
-import Raylib.Core.Text (drawFPS, drawText)
+import Raylib.Core.Text (drawText)
 import Raylib.Types (
     Color,
     KeyboardKey (..),
@@ -48,15 +46,13 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, brown, darkBrown, lightGray, red)
-import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt, rgbToLinear)
-import System.Random (mkStdGen, randomIO)
+import Raylib.Util.Colors (black, darkBrown, lightGray)
+import Shared (System (..), defaultWorld, gameLoop, getNextPos, mkAnt, rgbToLinear)
+import System.Random (randomIO)
 import Types (
     Ant (..),
     AntDecision (..),
-    Container (..),
     GoDir (..),
-    Nest (..),
     TrainingMode (..),
     VisionRay (..),
     WheelPos (Center, TurnLeft, TurnRight),
@@ -68,14 +64,12 @@ initAntAIWorld :: IO World
 initAntAIWorld = do
     playerAntSeed <- randomIO
     antSeeds <- replicateM numAnts randomIO
-    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos playerAntSeed
-        ants = Seq.fromList (map (mkAnt antPos) antSeeds)
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
+    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        ants = Seq.fromList (map (mkAnt screenCenter) antSeeds)
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return $ World playerAnt ants nest False False False True Seq.empty Nothing Seq.empty Nothing Seq.empty Off 0 0
+    return (defaultWorld playerAntSeed){wAnts = ants}
 
 
 handleAntAIInput :: World -> IO World

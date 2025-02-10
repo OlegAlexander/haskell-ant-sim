@@ -3,6 +3,8 @@
 {-# HLINT ignore "Avoid lambda" #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
+{-# HLINT ignore "Use <$>" #-}
+
 module Pheromones where
 
 import AntMovement (antMovementSys)
@@ -40,16 +42,15 @@ import Raylib.Types (
     MouseCursor (MouseCursorCrosshair),
     TraceLogLevel (LogWarning),
  )
-import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (lightGray)
 import Shared (
     System (..),
     calcCenteredRect,
     calcRectCenter,
+    defaultWorld,
     gameLoop,
     isPointInRect,
-    mkAnt,
  )
 import System.Random (randomIO)
 import Types (
@@ -58,7 +59,6 @@ import Types (
     Food (..),
     Nest (..),
     Pheromone (..),
-    TrainingMode (..),
     World (..),
  )
 
@@ -70,17 +70,7 @@ initPheromoneWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos seed
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-    -- pheromones =
-    --     [ Pheromone
-    --         ( Container
-    --             initPheromoneAmount
-    --             (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
-    --         )
-    --     ]
-    return $ World playerAnt Seq.empty nest True True False True Seq.empty Nothing Seq.empty Nothing Seq.empty Off 0 0
+    return (defaultWorld seed)
 
 
 handlePheromoneInput :: World -> IO World

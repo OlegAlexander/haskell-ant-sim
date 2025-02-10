@@ -3,14 +3,25 @@
 
 module Shared where
 
+import Constants (collisionRectSize, screenHeight, screenWidth)
 import Control.Monad (unless, (>=>))
 import Data.Function ((&))
 import Data.Sequence qualified as Seq
+import GHC.Float (int2Float)
 import NeuralNetwork (initFlatLayers, unflattenLayers)
 import Raylib.Types (Color (..), Rectangle (..), Vector2 (..))
 import Raylib.Util.Math (deg2Rad)
 import System.Random (mkStdGen, randomR)
-import Types (Ant (..), GoDir (..), Sprite (..), WheelPos (..))
+import Types (
+    Ant (..),
+    Container (..),
+    GoDir (..),
+    Nest (..),
+    Sprite (..),
+    TrainingMode (..),
+    WheelPos (..),
+    World (..),
+ )
 
 
 (|||) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
@@ -88,6 +99,30 @@ mkAnt pos seed =
               aRegeneratePheromoneCounter = 0,
               aRandomNoise = randomNoise,
               aBrain = unflattenLayers flatNeuralNetwork
+            }
+
+
+defaultWorld :: Int -> World
+defaultWorld seed =
+    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        playerAnt = mkAnt screenCenter seed
+        nest = Nest (Container 0 (calcCenteredRect screenCenter collisionRectSize))
+    in  World
+            { wPlayerAnt = playerAnt,
+              wAnts = Seq.empty,
+              wNest = nest,
+              wRenderVisionRays = False,
+              wRenderVisionRects = False,
+              wRenderHomeVector = False,
+              wRenderHomeCompass = False,
+              wWalls = Seq.empty,
+              wWallBeingDrawn = Nothing,
+              wFood = Seq.empty,
+              wFoodBeingDrawn = Nothing,
+              wPheromones = Seq.empty,
+              wTrainingMode = Off,
+              wTicks = 0,
+              wGeneration = 0
             }
 
 

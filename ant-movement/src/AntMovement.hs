@@ -11,18 +11,17 @@ import Constants (
     antAcceleration,
     antMaxSpeed,
     antTurnAngle,
-    collisionRectSize,
     fps,
     screenHeight,
     screenWidth,
+    wallColor,
  )
-import Control.Monad (when)
+import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Foldable (Foldable (toList))
 import Data.Function ((&))
 import Data.Maybe (mapMaybe)
 import Data.Sequence qualified as Seq
-import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -31,35 +30,30 @@ import Raylib.Core (
     isKeyPressed,
     setMouseCursor,
     setTargetFPS,
-    setTraceLogLevel,
     toggleFullscreen,
     windowShouldClose,
  )
 import Raylib.Core.Shapes (
     drawCircleV,
     drawLineEx,
+    drawRectangleRec,
  )
-import Raylib.Core.Text (drawFPS)
 import Raylib.Types (
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
     Rectangle (Rectangle),
-    TraceLogLevel (LogWarning),
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, green, lightGray, red)
-import Shared (System (..), calcCenteredRect, gameLoop, getNextPos, mkAnt)
+import Raylib.Util.Colors (black, lightGray)
+import Shared (System (..), defaultWorld, gameLoop, getNextPos)
 import System.Random (randomIO)
 import Types (
     Ant (..),
-    Container (..),
     EntityType (..),
     GoDir (..),
-    Nest (..),
     WheelPos (..),
     World (..),
-    TrainingMode (..),
  )
 
 
@@ -96,13 +90,9 @@ initAMWorld = do
         walls = Seq.fromList [testWall1, testWall2, testWall3]
     _ <- initWindow screenWidth screenHeight "Ant Movement"
     setTargetFPS fps
-    setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos seed
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-    return $ World playerAnt Seq.empty nest True True False True walls Nothing Seq.empty Nothing Seq.empty Off 0 0
+    return (defaultWorld seed){wWalls = walls}
 
 
 handleAMInput :: World -> IO World
@@ -170,13 +160,12 @@ updateAMWorld w = w{wPlayerAnt = updateAntMovement w w.wPlayerAnt}
 
 renderAMWorld :: World -> IO ()
 renderAMWorld w = do
-    let walls = zip (w.wWalls & toList) [red, green, blue] -- TODO Temporary
+    let walls = w.wWalls & toList
         playerAnt = w.wPlayerAnt
         antPos = playerAnt.aPos
 
     -- draw walls
-    -- TODO Why are you drawing the walls here?
-    -- forM_ walls $ \(wall, color) -> drawRectangleRec wall color
+    forM_ walls $ \wall -> drawRectangleRec wall wallColor
 
     -- draw player ant as a circle
     drawCircleV antPos 5 black

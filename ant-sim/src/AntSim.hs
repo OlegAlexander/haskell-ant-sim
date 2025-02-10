@@ -6,13 +6,9 @@
 module AntSim where
 
 import Control.Monad (when)
-import Data.Function ((&))
-
-import Data.Sequence qualified as Seq
 
 import AntMovement (antMovementSys)
 import Constants (
-    collisionRectSize,
     fps,
     screenHeight,
     screenWidth,
@@ -20,7 +16,6 @@ import Constants (
 import DrawWalls (drawWallsSys)
 import FlatlandRenderer (flatlandRendererSys)
 import Food (foodSys)
-import GHC.Float (int2Float)
 import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
@@ -36,29 +31,22 @@ import Raylib.Types (
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
  )
-import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (lightGray)
-import Shared (System (..), calcCenteredRect, gameLoop, mkAnt)
+import Shared (System (..), defaultWorld, gameLoop)
 import System.Random (randomIO)
 import Types (
-    Container (..),
-    Nest (..),
     World (..),
-    TrainingMode (..),
  )
 
 
 initWorld :: IO World
 initWorld = do
-    seed <- randomIO
-    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos seed
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
     _ <- initWindow screenWidth screenHeight "Haskell Ant Sim"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return $ World playerAnt Seq.empty nest True False False True Seq.empty Nothing Seq.empty Nothing Seq.empty Off 0 0
+    seed <- randomIO
+    return (defaultWorld seed)
 
 
 antSimSys :: System World

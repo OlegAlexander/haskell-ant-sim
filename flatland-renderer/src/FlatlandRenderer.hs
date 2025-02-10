@@ -32,16 +32,15 @@ import Shared (
     System (..),
     calcCenteredRect,
     calcRectCenter,
+    defaultWorld,
     gameLoop,
     getNextPos,
     isPointInRect,
-    mkAnt,
     scalarTimesColor,
  )
 
 import AntMovement (antMovementSys)
 import Data.List (sortBy)
-import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -70,7 +69,7 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, gray, lightGray, white)
+import Raylib.Util.Colors (black, blue, brown, gray, lightGray, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
 import System.Random (randomIO, randomR)
 import Types (
@@ -81,7 +80,6 @@ import Types (
     Food (..),
     Nest (..),
     Pheromone (..),
-    TrainingMode (..),
     VisionRay (..),
     World (..),
  )
@@ -240,19 +238,22 @@ initFRWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos = Vector2 screenCenterW screenCenterH
-        playerAnt = mkAnt antPos seed
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
+    let screenCenter = Vector2 screenCenterW screenCenterH
         pheromones =
             Seq.fromList
                 [ Pheromone
                     ( Container
                         initPheromoneAmount
-                        (calcCenteredRect (antPos |+| Vector2 100 100) collisionRectSize)
+                        (calcCenteredRect (screenCenter |+| Vector2 100 100) collisionRectSize)
                     )
                 ]
-        food = Seq.fromList [Food (Container 10 (calcCenteredRect (antPos |+| Vector2 300 300) collisionRectSize))]
-    return $ World playerAnt Seq.empty nest True True False True walls Nothing food Nothing pheromones Off 0 0
+        food = Seq.fromList [Food (Container 10 (calcCenteredRect (screenCenter |+| Vector2 300 300) collisionRectSize))]
+    return
+        (defaultWorld seed)
+            { wWalls = walls,
+              wFood = food,
+              wPheromones = pheromones
+            }
 
 
 handleFRInput :: World -> IO World
@@ -304,13 +305,10 @@ renderFRWorld w = do
         rays = w.wPlayerAnt.aVisionRays
         playerAnt = w.wPlayerAnt
         antPos = playerAnt.aPos
+        nestPos = w.wNest.nContainer.cRect & calcRectCenter
 
-    -- TODO Drawing the walls is repeated in AntMovement.hs
     -- draw the nest
-    -- drawCircleV nestPos 10 brown
-
-    -- -- draw walls
-    -- forM_ walls $ \(wall, color) -> drawRectangleRec wall color
+    drawCircleV nestPos 10 brown
 
     -- draw vision rays with colors
     when renderVisionRays $ do

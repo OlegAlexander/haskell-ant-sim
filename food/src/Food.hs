@@ -3,6 +3,8 @@
 {-# HLINT ignore "Avoid lambda" #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
+{-# HLINT ignore "Use <$>" #-}
+
 module Food where
 
 import AntMovement (antMovementSys)
@@ -22,7 +24,6 @@ import Data.List (mapAccumL)
 import Data.Maybe (fromJust)
 import Data.Sequence (Seq, (!?), (<|))
 import Data.Sequence qualified as Seq
-import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -37,24 +38,23 @@ import Raylib.Core (
     windowShouldClose,
  )
 import Raylib.Core.Shapes (drawCircleV)
-import Raylib.Core.Text (drawFPS)
 import Raylib.Types (
     KeyboardKey (..),
     MouseButton (MouseButtonLeft),
     MouseCursor (MouseCursorCrosshair),
     TraceLogLevel (LogWarning),
  )
-import Raylib.Types.Core (MouseButton (MouseButtonRight), Vector2 (..))
+import Raylib.Types.Core (MouseButton (MouseButtonRight))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (brown, lightGray)
 import Shared (
     System (..),
     calcCenteredRect,
     calcRectCenter,
+    defaultWorld,
     gameLoop,
     getNextPos,
     isPointInRect,
-    mkAnt,
  )
 import System.Random (randomIO)
 import Types (
@@ -62,7 +62,6 @@ import Types (
     Container (..),
     Food (..),
     Nest (..),
-    TrainingMode (..),
     World (..),
  )
 
@@ -74,10 +73,7 @@ initFoodWorld = do
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
     seed <- randomIO
-    let antPos = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt antPos seed
-        nest = Nest (Container 0 (calcCenteredRect antPos collisionRectSize))
-    return $ World playerAnt Seq.empty nest True True False True Seq.empty Nothing Seq.empty Nothing Seq.empty Off 0 0
+    return (defaultWorld seed)
 
 
 -- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.
