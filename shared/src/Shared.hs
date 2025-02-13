@@ -4,12 +4,14 @@
 module Shared where
 
 import Constants (collisionRectSize, screenHeight, screenWidth)
-import Control.Monad (unless, (>=>))
+import Control.Monad (forM_, unless, (>=>))
 import Data.Function ((&))
 import Data.Sequence qualified as Seq
 import GHC.Float (int2Float)
 import NeuralNetwork (initFlatLayers, unflattenLayers)
+import Raylib.Core.Text (drawText)
 import Raylib.Types (Color (..), Rectangle (..), Vector2 (..))
+import Raylib.Util.Colors (darkBrown)
 import Raylib.Util.Math (deg2Rad)
 import System.Random (mkStdGen, randomR)
 import Types (
@@ -76,6 +78,16 @@ calcRectCenter (Rectangle x y w h) = Vector2 (x + w / 2) (y + h / 2)
 isPointInRect :: Vector2 -> Rectangle -> Bool
 isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
     x > rx && x < rx + rw && y > ry && y < ry + rh
+
+
+drawStats :: Int -> Int -> Int -> Int -> Color -> [(String, String)] -> IO ()
+drawStats x y verticalOffset fontSize color stats = do
+    forM_ (zip [0 ..] stats) $ \(i, (name, value)) ->
+        drawText (name ++ ": " ++ value) x (y + i * verticalOffset) fontSize color
+
+
+drawStats' :: [(String, String)] -> IO ()
+drawStats' = drawStats 10 10 40 30 darkBrown
 
 
 mkAnt :: Vector2 -> Int -> Ant

@@ -79,7 +79,7 @@ data WallDrawingState = Idle | Started | InProgress | Finished | Deleted
     deriving (Eq, Show)
 
 
-data TrainingMode = Off | Slow | Fast deriving (Eq, Show)
+data TrainingMode = Off | Slow | Fast | Done deriving (Eq, Show)
 
 
 data World = World

@@ -30,6 +30,7 @@ import NeuralNetwork
 import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
+    getFPS,
     initWindow,
     isKeyPressed,
     setMouseCursor,
@@ -47,7 +48,7 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, darkBrown, lightGray)
-import Shared (System (..), defaultWorld, gameLoop, getNextPos, mkAnt, rgbToLinear)
+import Shared (System (..), defaultWorld, drawStats', gameLoop, getNextPos, mkAnt, rgbToLinear)
 import System.Random (randomIO)
 import Types (
     Ant (..),
@@ -153,19 +154,17 @@ drawAnt color ant = do
     drawLineEx antPos antDir 5 color
 
 
-trainingModeToString :: TrainingMode -> String
-trainingModeToString tm = case tm of
-    Off -> "Off"
-    Slow -> "Slow"
-    Fast -> "Fast"
-
-
 renderAntAIWorld :: World -> IO ()
 renderAntAIWorld w = do
-    drawText ("Pheromones: " ++ show (Seq.length w.wPheromones)) 10 50 20 darkBrown
-    drawText ("Training: " ++ trainingModeToString w.wTrainingMode) 10 75 20 darkBrown
-    drawText ("Ticks: " ++ show w.wTicks) 10 100 20 darkBrown
-    drawText ("Generation: " ++ show w.wGeneration) 10 125 20 darkBrown
+    gameFps <- getFPS
+    drawStats'
+        [ ("FPS", show gameFps),
+          ("Pheromones", show $ Seq.length w.wPheromones),
+          ("Training", show w.wTrainingMode),
+          ("Ticks", show w.wTicks),
+          ("Generation", show w.wGeneration)
+        ]
+
     forM_ w.wAnts (drawAnt black)
 
 
