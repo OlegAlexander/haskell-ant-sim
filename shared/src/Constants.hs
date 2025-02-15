@@ -114,3 +114,11 @@ regeneratePheromoneDelay = 20
 
 maxPheromones :: Int
 maxPheromones = 50
+
+
+ticksPerGeneration :: Int
+ticksPerGeneration = fps * 10
+
+
+maxGenerations :: Int
+maxGenerations = 10

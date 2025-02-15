@@ -15,11 +15,14 @@ import AntMovement (antMovementSys, updateAntMovement)
 import Constants (
     foodColor,
     fps,
+    maxGenerations,
     numAnts,
     screenHeight,
     screenWidth,
+    ticksPerGeneration,
  )
 import Data.Sequence qualified as Seq
+import Data.Traversable (for)
 import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import Debug.Trace (traceShowId)
 import DrawWalls (drawWallsSys)
@@ -32,6 +35,7 @@ import Raylib.Core (
     clearBackground,
     getFPS,
     initWindow,
+    isKeyDown,
     isKeyPressed,
     setMouseCursor,
     setTargetFPS,
@@ -48,7 +52,15 @@ import Raylib.Types (
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, darkBrown, lightGray)
-import Shared (System (..), defaultWorld, drawStats', gameLoop, getNextPos, mkAnt, rgbToLinear)
+import Shared (
+    System (..),
+    defaultWorld,
+    drawStats',
+    gameLoop,
+    getNextPos,
+    mkAnt,
+    rgbToLinear,
+ )
 import System.Random (randomIO)
 import Types (
     Ant (..),
@@ -74,7 +86,17 @@ initAntAIWorld = do
 
 
 handleAntAIInput :: World -> IO World
-handleAntAIInput w = return w
+handleAntAIInput w = do
+    tKey <- isKeyPressed KeyT
+    leftShiftKey <- isKeyDown KeyLeftShift
+    rightShiftKey <- isKeyDown KeyRightShift
+    let shiftTPressed = tKey && (leftShiftKey || rightShiftKey)
+        trainingMode = case (tKey, shiftTPressed, w.wTrainingMode) of
+            (True, False, Off) -> Slow
+            (_, True, Slow) -> Fast
+            (_, True, Fast) -> Slow
+            _ -> w.wTrainingMode
+    return w{wTrainingMode = trainingMode}
 
 
 antBrainForward :: Vector Float -> AntDecision
@@ -126,16 +148,38 @@ applyAntDecision decision ant = case decision of
 -- GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
 -- GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
 
+-- If the training mode is Off or Done, return the current ticks and generation.
+-- If the training mode is Slow or Fast, increment ticks by 1.
+-- If ticks is equal to ticksPerGeneration, reset ticks to 0 and increment generation by 1.
+calcTicksAndGeneration :: World -> (Int, Int)
+calcTicksAndGeneration w =
+    let (ticks, generation) = case w.wTrainingMode of
+            Off -> (w.wTicks, w.wGeneration)
+            Slow -> (w.wTicks + 1, w.wGeneration)
+            Fast -> (w.wTicks + 1, w.wGeneration)
+            Done -> (w.wTicks, w.wGeneration)
+        (ticks', generation') =
+            if ticks == ticksPerGeneration
+                then (0, generation + 1)
+                else (ticks, generation)
+    in  (ticks', generation')
+
+
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
-    let ants = w.wAnts
-        antDecisions =
-            ants & fmap (\ant -> antBrainNeuralNetwork ant.aBrain (mkInputVector ant))
+    let antDecisions =
+            w.wAnts & fmap (\ant -> antBrainNeuralNetwork ant.aBrain (mkInputVector ant))
+        ants =
+            w.wAnts
+                & Seq.zipWith applyAntDecision antDecisions
+                & fmap (updateAntFR w . updateAntMovement w)
+        (ticks, generation) = calcTicksAndGeneration w
+        trainingMode = if generation == maxGenerations then Done else w.wTrainingMode
     in  w
-            { wAnts =
-                ants
-                    & Seq.zipWith applyAntDecision antDecisions
-                    & fmap (updateAntFR w . updateAntMovement w)
+            { wAnts = ants,
+              wTicks = ticks,
+              wGeneration = generation,
+              wTrainingMode = trainingMode
             }
 
 
@@ -161,10 +205,9 @@ renderAntAIWorld w = do
         [ ("FPS", show gameFps),
           ("Pheromones", show $ Seq.length w.wPheromones),
           ("Training", show w.wTrainingMode),
-          ("Ticks", show w.wTicks),
-          ("Generation", show w.wGeneration)
+          ("Generation", show w.wGeneration),
+          ("Ticks", show w.wTicks)
         ]
-
     forM_ w.wAnts (drawAnt black)
 
 
