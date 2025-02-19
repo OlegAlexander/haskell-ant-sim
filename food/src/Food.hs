@@ -56,7 +56,7 @@ import Shared (
     getNextPos,
     isPointInRect,
  )
-import System.Random (randomIO)
+import System.Random (newStdGen)
 import Types (
     Ant (..),
     Container (..),
@@ -72,8 +72,8 @@ initFoodWorld = do
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    seed <- randomIO
-    return (defaultWorld seed)
+    rng <- newStdGen
+    return (defaultWorld rng)
 
 
 -- When the mouse is clicked, add a Food object at that position to foodBeingDrawn.

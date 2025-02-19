@@ -13,7 +13,7 @@ import Raylib.Core.Text (drawText)
 import Raylib.Types (Color (..), Rectangle (..), Vector2 (..))
 import Raylib.Util.Colors (darkBrown)
 import Raylib.Util.Math (deg2Rad)
-import System.Random (mkStdGen, randomR)
+import System.Random (StdGen, mkStdGen, random, randomR)
 import Types (
     Ant (..),
     Container (..),
@@ -114,10 +114,11 @@ mkAnt pos seed =
             }
 
 
-defaultWorld :: Int -> World
-defaultWorld seed =
+defaultWorld :: StdGen -> World
+defaultWorld rng =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        playerAnt = mkAnt screenCenter seed
+        (playerAntSeed, rng') = random rng
+        playerAnt = mkAnt screenCenter playerAntSeed
         nest = Nest (Container 0 (calcCenteredRect screenCenter collisionRectSize))
     in  World
             { wPlayerAnt = playerAnt,
@@ -134,7 +135,8 @@ defaultWorld seed =
               wPheromones = Seq.empty,
               wTrainingMode = Off,
               wTicks = 0,
-              wGeneration = 0
+              wGeneration = 0,
+              wRng = rng'
             }
 
 

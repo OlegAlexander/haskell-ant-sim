@@ -52,7 +52,7 @@ import Shared (
     gameLoop,
     isPointInRect,
  )
-import System.Random (randomIO)
+import System.Random (newStdGen)
 import Types (
     Ant (..),
     Container (..),
@@ -69,8 +69,8 @@ initPheromoneWorld = do
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    seed <- randomIO
-    return (defaultWorld seed)
+    rng <- newStdGen
+    return (defaultWorld rng)
 
 
 handlePheromoneInput :: World -> IO World

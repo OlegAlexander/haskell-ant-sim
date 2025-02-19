@@ -34,7 +34,7 @@ import Raylib.Types (
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (lightGray)
 import Shared (System (..), defaultWorld, gameLoop)
-import System.Random (randomIO)
+import System.Random (randomIO, newStdGen)
 import Types (
     World (..),
  )
@@ -45,8 +45,8 @@ initWorld = do
     _ <- initWindow screenWidth screenHeight "Haskell Ant Sim"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    seed <- randomIO
-    return (defaultWorld seed)
+    gen <- newStdGen
+    return (defaultWorld gen)
 
 
 antSimSys :: System World

@@ -34,7 +34,7 @@ import Raylib.Types.Core (MouseButton (MouseButtonRight), MouseCursor (MouseCurs
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (blue, lightGray)
 import Shared (System (..), defaultWorld, gameLoop, isPointInRect)
-import System.Random (randomIO)
+import System.Random (newStdGen, randomIO)
 import Types (
     WallDrawingState (..),
     World (..),
@@ -64,8 +64,8 @@ initWallsWorld = do
     _ <- initWindow 1000 800 "Draw Walls"
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
-    seed <- randomIO
-    return (defaultWorld seed)
+    rng <- newStdGen
+    return (defaultWorld rng)
 
 
 handleWallInput :: World -> IO World

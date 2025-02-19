@@ -47,7 +47,7 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, lightGray)
 import Shared (System (..), defaultWorld, gameLoop, getNextPos)
-import System.Random (randomIO)
+import System.Random (newStdGen)
 import Types (
     Ant (..),
     EntityType (..),
@@ -91,8 +91,8 @@ initAMWorld = do
     _ <- initWindow screenWidth screenHeight "Ant Movement"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    seed <- randomIO
-    return (defaultWorld seed){wWalls = walls}
+    rng <- newStdGen
+    return (defaultWorld rng){wWalls = walls}
 
 
 handleAMInput :: World -> IO World

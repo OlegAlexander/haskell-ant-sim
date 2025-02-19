@@ -71,7 +71,7 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, lightGray, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import System.Random (randomIO, randomR)
+import System.Random (newStdGen, randomR)
 import Types (
     Ant (..),
     Container (..),
@@ -237,7 +237,7 @@ initFRWorld = do
     setTargetFPS fps
     setTraceLogLevel LogWarning
     setMouseCursor MouseCursorCrosshair
-    seed <- randomIO
+    rng <- newStdGen
     let screenCenter = Vector2 screenCenterW screenCenterH
         pheromones =
             Seq.fromList
@@ -249,7 +249,7 @@ initFRWorld = do
                 ]
         food = Seq.fromList [Food (Container 10 (calcCenteredRect (screenCenter |+| Vector2 300 300) collisionRectSize))]
     return
-        (defaultWorld seed)
+        (defaultWorld rng)
             { wWalls = walls,
               wFood = food,
               wPheromones = pheromones

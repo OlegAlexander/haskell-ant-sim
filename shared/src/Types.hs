@@ -97,7 +97,8 @@ data World = World
       wPheromones :: Seq Pheromone,
       wTrainingMode :: TrainingMode,
       wTicks :: Int,
-      wGeneration :: Int
+      wGeneration :: Int,
+      wRng :: StdGen
     }
     deriving (Eq, Show)
 

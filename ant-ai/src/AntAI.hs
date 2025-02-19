@@ -16,13 +16,16 @@ import Constants (
     foodColor,
     fps,
     maxGenerations,
+    minWallSize,
     numAnts,
     screenHeight,
     screenWidth,
     ticksPerGeneration,
  )
+import Data.List (mapAccumL)
 import Data.Sequence qualified as Seq
 import Data.Traversable (for)
+import Data.Tuple (swap)
 import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import Debug.Trace (traceShowId)
 import DrawWalls (drawWallsSys)
@@ -48,6 +51,7 @@ import Raylib.Types (
     Color,
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
+    Rectangle,
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
@@ -58,14 +62,17 @@ import Shared (
     drawStats',
     gameLoop,
     getNextPos,
+    isPointInRect,
     mkAnt,
     rgbToLinear,
  )
-import System.Random (randomIO)
+import System.Random (StdGen, newStdGen, random, randomIO)
 import Types (
     Ant (..),
     AntDecision (..),
+    Food,
     GoDir (..),
+    Nest (..),
     TrainingMode (..),
     VisionRay (..),
     WheelPos (Center, TurnLeft, TurnRight),
@@ -73,16 +80,35 @@ import Types (
  )
 
 
+-- Generate n random walls with random positions and sizes.
+-- The walls should be within the screen bounds.
+-- The walls should not be smaller than minWallSize.
+-- The walls should not overlap the nest.
+generateRandomWalls :: StdGen -> Nest -> Int -> ([Rectangle], StdGen)
+generateRandomWalls rng nest n = undefined
+
+
+-- Generate n random food objects with random positions and food amounts.
+-- Foods should be within the screen bounds.
+-- Foods should not overlap the nest.
+generateRandomFoods :: StdGen -> Int -> ([Food], StdGen)
+generateRandomFoods rng n = undefined
+
+
+generateRandomSeed :: StdGen -> Int -> (StdGen, Int)
+generateRandomSeed rng _ = swap (random rng)
+
+
 initAntAIWorld :: IO World
 initAntAIWorld = do
-    playerAntSeed <- randomIO
-    antSeeds <- replicateM numAnts randomIO
-    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+    rng <- newStdGen
+    let (rng', antSeeds) = mapAccumL generateRandomSeed rng [1 .. numAnts]
+        screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         ants = Seq.fromList (map (mkAnt screenCenter) antSeeds)
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return (defaultWorld playerAntSeed){wAnts = ants}
+    return (defaultWorld rng'){wAnts = ants}
 
 
 handleAntAIInput :: World -> IO World
