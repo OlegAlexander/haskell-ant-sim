@@ -6,7 +6,9 @@ module Shared where
 import Constants (collisionRectSize, screenHeight, screenWidth)
 import Control.Monad (forM_, unless, (>=>))
 import Data.Function ((&))
+import Data.List (mapAccumL)
 import Data.Sequence qualified as Seq
+import Data.Tuple (swap)
 import GHC.Float (int2Float)
 import NeuralNetwork (initFlatLayers, unflattenLayers)
 import Raylib.Core.Text (drawText)
@@ -32,6 +34,12 @@ import Types (
 
 (&&&) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
 (&&&) p q x = p x && q x
+
+
+-- A version of mapAccumL that takes a function with the return tuple values swapped
+-- and returns a tuple with the values swapped.
+mapAccumL' :: (Traversable t) => (acc -> a -> (b, acc)) -> acc -> t a -> (t b, acc)
+mapAccumL' f acc xs = swap (mapAccumL (\a x -> swap (f a x)) acc xs)
 
 
 rgbToLinear :: Color -> (Float, Float, Float, Float)
@@ -80,26 +88,25 @@ isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
     x > rx && x < rx + rw && y > ry && y < ry + rh
 
 
-drawStats :: Int -> Int -> Int -> Int -> Color -> [(String, String)] -> IO ()
-drawStats x y verticalOffset fontSize color stats = do
-    forM_ (zip [0 ..] stats) $ \(i, (name, value)) ->
-        drawText (name ++ ": " ++ value) x (y + i * verticalOffset) fontSize color
+drawTextLines :: Int -> Int -> Int -> Int -> Color -> [String] -> IO ()
+drawTextLines x y verticalOffset fontSize color stats = do
+    forM_ (zip [0 ..] stats) $ \(i, line) ->
+        drawText line x (y + i * verticalOffset) fontSize color
 
 
-drawStats' :: [(String, String)] -> IO ()
-drawStats' = drawStats 10 10 40 30 darkBrown
+drawTextLines' :: [String] -> IO ()
+drawTextLines' = drawTextLines 10 10 40 30 darkBrown
 
 
-mkAnt :: Vector2 -> Int -> Ant
-mkAnt pos seed =
-    let (randomAngle, rng) = mkStdGen seed & randomR (0, 360)
-        (randomNoise, rng') = randomR (0, 1) rng
-        (flatNeuralNetwork, rng'') = initFlatLayers [100, 50, 5] 0.1 rng'
-    in  Ant
+mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
+mkAnt rng pos =
+    let (randomAngle, rng') = rng & randomR (0, 360)
+        (randomNoise, rng'') = randomR (0, 1) rng'
+        (flatNeuralNetwork, rng''') = initFlatLayers [100, 50, 5] 0.1 rng''
+    in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
               aSpeed = 0,
-              aRng = rng'',
               aGoDir = Stop,
               aWheelPos = Center,
               aSprite = LeftSprite,
@@ -111,14 +118,15 @@ mkAnt pos seed =
               aRegeneratePheromoneCounter = 0,
               aRandomNoise = randomNoise,
               aBrain = unflattenLayers flatNeuralNetwork
-            }
+            },
+          rng'''
+        )
 
 
 defaultWorld :: StdGen -> World
 defaultWorld rng =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        (playerAntSeed, rng') = random rng
-        playerAnt = mkAnt screenCenter playerAntSeed
+        (playerAnt, rng') = mkAnt rng screenCenter
         nest = Nest (Container 0 (calcCenteredRect screenCenter collisionRectSize))
     in  World
             { wPlayerAnt = playerAnt,

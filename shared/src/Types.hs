@@ -50,7 +50,6 @@ data Ant = Ant
     { aPos :: Vector2,
       aAngle :: Degrees,
       aSpeed :: Float,
-      aRng :: StdGen,
       aGoDir :: GoDir,
       aWheelPos :: WheelPos,
       aSprite :: Sprite,

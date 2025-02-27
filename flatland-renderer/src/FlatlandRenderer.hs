@@ -71,7 +71,7 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, blue, brown, gray, lightGray, white)
 import Raylib.Util.Math (Vector (..), deg2Rad, rad2Deg)
-import System.Random (newStdGen, randomR)
+import System.Random (StdGen, newStdGen, randomR)
 import Types (
     Ant (..),
     Container (..),
@@ -199,10 +199,10 @@ updateVisionRays rects ant =
         }
 
 
-updateRandomNoise :: Ant -> Ant
-updateRandomNoise ant =
-    let (noise, rng') = ant.aRng & randomR (0, 1)
-    in  ant{aRandomNoise = noise, aRng = rng'}
+updateRandomNoise :: StdGen -> Ant -> (Ant, StdGen)
+updateRandomNoise rng ant =
+    let (noise, rng') = rng & randomR (0, 1)
+    in  (ant{aRandomNoise = noise}, rng')
 
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
@@ -284,18 +284,21 @@ collectVisibleRects w =
     in  wallsRects ++ pheromoneRects ++ foodRects ++ [nestRect]
 
 
-updateAntFR :: World -> Ant -> Ant
+updateAntFR :: World -> Ant -> (Ant, World)
 updateAntFR w ant =
     let visibleRects = w & collectVisibleRects
         nestPos = w.wNest.nContainer.cRect & calcRectCenter
         (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
-    in  ant{aNestAngle = nestAngle, aNestDistance = nestDistance}
+        rng = w.wRng
+        (ant', rng') = ant{aNestAngle = nestAngle, aNestDistance = nestDistance}
             & updateVisionRays visibleRects
-            & updateRandomNoise
+            & updateRandomNoise rng
+    in  (ant', w{wRng = rng'})
 
 
 updateFRWorld :: World -> World
-updateFRWorld w = w{wPlayerAnt = updateAntFR w w.wPlayerAnt}
+updateFRWorld w = 
+    let (ant, w') = updateAntFR w w.wPlayerAnt in w'{wPlayerAnt=ant}
 
 
 renderFRWorld :: World -> IO ()

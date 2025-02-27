@@ -21,7 +21,6 @@ import Constants (
  )
 import Control.Monad (forM_, when)
 import Data.Function ((&))
-import Data.List (mapAccumL)
 import Data.Sequence (Seq, (<|))
 import Data.Sequence qualified as Seq
 import Food (foodSys)
@@ -51,6 +50,7 @@ import Shared (
     defaultWorld,
     gameLoop,
     isPointInRect,
+    mapAccumL'
  )
 import System.Random (newStdGen)
 import Types (
@@ -77,8 +77,8 @@ handlePheromoneInput :: World -> IO World
 handlePheromoneInput w = return w
 
 
--- This function is meant to be with mapAccumL
-antDropsPheromone :: Nest -> Seq Food -> Seq Pheromone -> Ant -> (Seq Pheromone, Ant)
+-- This function is meant to be with mapAccumL'
+antDropsPheromone :: Nest -> Seq Food -> Seq Pheromone -> Ant -> (Ant, Seq Pheromone)
 antDropsPheromone nest foods pheromones ant =
     -- Drop a pheromone if the ant has food,
     -- and it's not on top of a food,
@@ -100,7 +100,7 @@ antDropsPheromone nest foods pheromones ant =
         regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
         underMaxPheromones = length pheromones < maxPheromones
         -- Force pheromones' because mapAccumL is lazy in the accumulator
-        (!pheromones', ant') =
+        (ant', !pheromones') =
             if hasFood
                 && notOnFood
                 && notOnPheromone
@@ -110,9 +110,9 @@ antDropsPheromone nest foods pheromones ant =
                 then
                     let pheromoneRect = calcCenteredRect antPos collisionRectSize
                         pheromone = Pheromone (Container initPheromoneAmount pheromoneRect)
-                    in  (pheromone <| pheromones, ant{aRegeneratePheromoneCounter = 0})
-                else (pheromones, ant{aRegeneratePheromoneCounter = regenerationCounter + 1})
-    in  (pheromones', ant')
+                    in  (ant{aRegeneratePheromoneCounter = 0}, pheromone <| pheromones)
+                else (ant{aRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
+    in  (ant', pheromones')
 
 
 decrementPheromoneAmount :: Pheromone -> Pheromone
@@ -128,8 +128,8 @@ updatePheromoneWorld w =
                 -- TODO Fuse this map and filter
                 & fmap decrementPheromoneAmount
                 & Seq.filter (\pheromone -> pheromone.pContainer.cAmount > 0)
-        (pheromones'', playerAnt') = w.wPlayerAnt & antDropsPheromone w.wNest w.wFood pheromones'
-        (pheromones''', ants') = w.wAnts & mapAccumL (antDropsPheromone w.wNest w.wFood) pheromones''
+        (playerAnt', pheromones'') = w.wPlayerAnt & antDropsPheromone w.wNest w.wFood pheromones'
+        (ants', pheromones''') = w.wAnts & mapAccumL' (antDropsPheromone w.wNest w.wFood) pheromones''
     in  w{wPlayerAnt = playerAnt', wAnts = ants', wPheromones = pheromones'''}
 
 

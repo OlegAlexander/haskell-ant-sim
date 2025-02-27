@@ -22,7 +22,6 @@ import Constants (
     screenWidth,
     ticksPerGeneration,
  )
-import Data.List (mapAccumL)
 import Data.Sequence qualified as Seq
 import Data.Traversable (for)
 import Data.Tuple (swap)
@@ -59,10 +58,11 @@ import Raylib.Util.Colors (black, darkBrown, lightGray)
 import Shared (
     System (..),
     defaultWorld,
-    drawStats',
+    drawTextLines',
     gameLoop,
     getNextPos,
     isPointInRect,
+    mapAccumL',
     mkAnt,
     rgbToLinear,
  )
@@ -102,13 +102,12 @@ generateRandomSeed rng _ = swap (random rng)
 initAntAIWorld :: IO World
 initAntAIWorld = do
     rng <- newStdGen
-    let (rng', antSeeds) = mapAccumL generateRandomSeed rng [1 .. numAnts]
-        screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        ants = Seq.fromList (map (mkAnt screenCenter) antSeeds)
+    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        (ants, rng') = mapAccumL' mkAnt rng (replicate numAnts screenCenter)
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
-    return (defaultWorld rng'){wAnts = ants}
+    return (defaultWorld rng'){wAnts = Seq.fromList ants}
 
 
 handleAntAIInput :: World -> IO World
@@ -195,13 +194,14 @@ updateAntAIWorld :: World -> World
 updateAntAIWorld w =
     let antDecisions =
             w.wAnts & fmap (\ant -> antBrainNeuralNetwork ant.aBrain (mkInputVector ant))
-        ants =
+        (ants, w') =
             w.wAnts
                 & Seq.zipWith applyAntDecision antDecisions
-                & fmap (updateAntFR w . updateAntMovement w)
-        (ticks, generation) = calcTicksAndGeneration w
-        trainingMode = if generation == maxGenerations then Done else w.wTrainingMode
-    in  w
+                & fmap (updateAntMovement w)
+                & mapAccumL' updateAntFR w
+        (ticks, generation) = calcTicksAndGeneration w'
+        trainingMode = if generation == maxGenerations then Done else w'.wTrainingMode
+    in  w'
             { wAnts = ants,
               wTicks = ticks,
               wGeneration = generation,
@@ -227,12 +227,12 @@ drawAnt color ant = do
 renderAntAIWorld :: World -> IO ()
 renderAntAIWorld w = do
     gameFps <- getFPS
-    drawStats'
-        [ ("FPS", show gameFps),
-          ("Pheromones", show $ Seq.length w.wPheromones),
-          ("Training", show w.wTrainingMode),
-          ("Generation", show w.wGeneration),
-          ("Ticks", show w.wTicks)
+    drawTextLines'
+        [ "FPS: " ++ show gameFps,
+          "Pheromones: " ++ show (Seq.length w.wPheromones),
+          "Training: " ++ show w.wTrainingMode,
+          "Generation: " ++ show w.wGeneration,
+          "Ticks: " ++ show w.wTicks
         ]
     forM_ w.wAnts (drawAnt black)
 

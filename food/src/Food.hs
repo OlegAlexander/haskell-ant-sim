@@ -20,7 +20,6 @@ import Constants (
  )
 import Control.Monad (forM_, when)
 import Data.Function ((&))
-import Data.List (mapAccumL)
 import Data.Maybe (fromJust)
 import Data.Sequence (Seq, (!?), (<|))
 import Data.Sequence qualified as Seq
@@ -55,6 +54,7 @@ import Shared (
     gameLoop,
     getNextPos,
     isPointInRect,
+    mapAccumL'
  )
 import System.Random (newStdGen)
 import Types (
@@ -108,8 +108,8 @@ handleFoodInput w = do
             return w
 
 
--- This function is meant to be used with mapAccumL
-antFoodNestInteraction :: (Nest, Seq Food) -> Ant -> ((Nest, Seq Food), Ant)
+-- This function is meant to be used with mapAccumL'
+antFoodNestInteraction :: (Nest, Seq Food) -> Ant -> (Ant, (Nest, Seq Food))
 antFoodNestInteraction (nest, foods) ant =
     -- Find the index of the first food object that the ant is in, if any
     let antInFoodIndex = foods & Seq.findIndexL (\food -> isPointInRect ant.aPos food.fContainer.cRect)
@@ -134,13 +134,13 @@ antFoodNestInteraction (nest, foods) ant =
         !foods'' = foods' & Seq.filter (\food -> food.fContainer.cAmount > 0)
         !nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
         ant' = ant{aHasFood = antHasFood', aScore = antScore'}
-    in  ((nest', foods''), ant')
+    in  (ant', (nest', foods''))
 
 
 updateFoodWorld :: World -> World
 updateFoodWorld w =
-    let ((nest', foods'), playerAnt') = w.wPlayerAnt & antFoodNestInteraction (w.wNest, w.wFood)
-        ((nest'', foods''), ants') = w.wAnts & mapAccumL antFoodNestInteraction (nest', foods')
+    let (playerAnt', (nest', foods')) = w.wPlayerAnt & antFoodNestInteraction (w.wNest, w.wFood)
+        (ants', (nest'', foods'')) = w.wAnts & mapAccumL' antFoodNestInteraction (nest', foods')
     in  w{wPlayerAnt = playerAnt', wNest = nest'', wFood = foods'', wAnts = ants'}
 
 
