@@ -13,6 +13,7 @@ import Data.Vector qualified as V
 -- import AI.HNN.FF.Network
 import AntMovement (antMovementSys, updateAntMovement)
 import Constants (
+    collisionRectSize,
     foodColor,
     fps,
     maxGenerations,
@@ -22,6 +23,7 @@ import Constants (
     screenWidth,
     ticksPerGeneration,
  )
+import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Traversable (for)
 import Data.Tuple (swap)
@@ -50,7 +52,7 @@ import Raylib.Types (
     Color,
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
-    Rectangle,
+    Rectangle (Rectangle),
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
@@ -66,11 +68,12 @@ import Shared (
     mkAnt,
     rgbToLinear,
  )
-import System.Random (StdGen, newStdGen, random, randomIO)
+import System.Random (StdGen, newStdGen, random, randomIO, randomR)
 import Types (
     Ant (..),
     AntDecision (..),
-    Food,
+    Container (..),
+    Food (..),
     GoDir (..),
     Nest (..),
     TrainingMode (..),
@@ -80,23 +83,49 @@ import Types (
  )
 
 
--- Generate n random walls with random positions and sizes.
--- The walls should be within the screen bounds.
--- The walls should not be smaller than minWallSize.
--- The walls should not overlap the nest.
-generateRandomWalls :: StdGen -> Nest -> Int -> ([Rectangle], StdGen)
-generateRandomWalls rng nest n = undefined
+-- Generate 1 random wall with a random size and position.
+-- The wall should be within the screen bounds.
+-- The wall should not be smaller than minWallSize.
+-- The wall should not overlap the nest.
+generateRandomWall :: StdGen -> Nest -> (Rectangle, StdGen)
+generateRandomWall rng nest =
+    let (x, rng') = randomR (0, int2Float screenWidth) rng
+        (y, rng'') = randomR (0, int2Float screenHeight) rng'
+        (w, rng''') = randomR (minWallSize, int2Float screenWidth - x) rng''
+        (h, rng'''') = randomR (minWallSize, int2Float screenHeight - y) rng'''
+        wall = Rectangle x y w h
+        (Rectangle nx ny nw nh) = nest.nContainer.cRect
+    in  if isPointInRect (Vector2 nx ny) wall || isPointInRect (Vector2 (nx + nw) (ny + nh)) wall
+            then generateRandomWall rng'''' nest
+            else (wall, rng'''')
 
 
--- Generate n random food objects with random positions and food amounts.
--- Foods should be within the screen bounds.
--- Foods should not overlap the nest.
-generateRandomFoods :: StdGen -> Int -> ([Food], StdGen)
-generateRandomFoods rng n = undefined
+generateRandomWalls :: StdGen -> Nest -> Int -> (Seq Rectangle, StdGen)
+generateRandomWalls rng nest numWalls =
+    let (walls, rng') = mapAccumL' (\rgen _ -> generateRandomWall rgen nest) rng [1 .. numWalls]
+    in  (Seq.fromList walls, rng')
 
 
-generateRandomSeed :: StdGen -> Int -> (StdGen, Int)
-generateRandomSeed rng _ = swap (random rng)
+-- Generate 1 random food object with a random position and food amount.
+-- Food should be within the screen bounds.
+-- Food should not overlap the nest or the walls.
+generateRandomFood :: StdGen -> Nest -> Seq Rectangle -> (Food, StdGen)
+generateRandomFood rng nest walls =
+    let (x, rng') = randomR (0, int2Float screenWidth) rng
+        (y, rng'') = randomR (0, int2Float screenHeight) rng'
+        (amount, rng''') = randomR (10, 25) rng''
+        food = Food (Container amount (Rectangle x y collisionRectSize collisionRectSize))
+        foodOverlapsNest = isPointInRect (Vector2 x y) nest.nContainer.cRect
+        foodOverlapsWalls = any (isPointInRect (Vector2 x y)) walls
+    in  if foodOverlapsNest || foodOverlapsWalls
+            then generateRandomFood rng''' nest walls
+            else (food, rng''')
+
+
+generateRandomFoods :: StdGen -> Nest -> Seq Rectangle -> Int -> (Seq Food, StdGen)
+generateRandomFoods rng nest walls numFoods =
+    let (foods, rng') = mapAccumL' (\rgen _ -> generateRandomFood rgen nest walls) rng [1 .. numFoods]
+    in  (Seq.fromList foods, rng')
 
 
 initAntAIWorld :: IO World
@@ -199,13 +228,20 @@ updateAntAIWorld w =
                 & Seq.zipWith applyAntDecision antDecisions
                 & fmap (updateAntMovement w)
                 & mapAccumL' updateAntFR w
+        (walls, rng) = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomWalls w'.wRng w'.wNest 3 else (w'.wWalls, w'.wRng)
+        (foods, rng') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomFoods rng w'.wNest walls 3 else (w'.wFood, rng)
+        pheromones = if w'.wTrainingMode == Slow && w'.wTicks == 0 then Seq.empty else w'.wPheromones
         (ticks, generation) = calcTicksAndGeneration w'
         trainingMode = if generation == maxGenerations then Done else w'.wTrainingMode
     in  w'
             { wAnts = ants,
               wTicks = ticks,
               wGeneration = generation,
-              wTrainingMode = trainingMode
+              wTrainingMode = trainingMode,
+              wWalls = walls,
+              wFood = foods,
+              wPheromones = pheromones,
+              wRng = rng'
             }
 
 
