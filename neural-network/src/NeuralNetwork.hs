@@ -104,3 +104,21 @@ initFlatLayers layerSizes range gen =
         totalLength = sum (map (\(m, n) -> m * n + m) shapes)
         (weightsAndBiases, gen') = uniformListR totalLength (-range, range) gen
     in  ((weightsAndBiases, shapes), gen')
+
+
+-- Genetic Algorithm --
+
+-- Crossover two flat layers with a probability of 50% that a gene will come from either parent.
+crossover :: FlatLayers -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
+crossover (parent1, shapes1) (parent2, shapes2) gen =
+    let (probs, gen') = uniformListR (length parent1) (0, 1) gen :: ([Float], StdGen)
+        child = zipWith3 (\p x y -> if p < 0.5 then x else y) probs parent1 parent2
+    in  ((child, shapes1), gen')
+
+
+mutate :: Float -> Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
+mutate mutationRate range (flatLayers, shapes) gen =
+    let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
+        (offsets, gen'') = uniformListR (length flatLayers) (-range, range) gen'
+        mutated = zipWith3 (\p x y -> if p < mutationRate then y + x else y) probs offsets flatLayers
+    in  ((mutated, shapes), gen'')
