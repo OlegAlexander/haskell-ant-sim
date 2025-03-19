@@ -33,7 +33,15 @@ import DrawWalls (drawWallsSys)
 import FlatlandRenderer (flatlandRendererSys, updateAntFR)
 import Food (foodSys)
 import GHC.Float (int2Float)
-import NeuralNetwork
+import NeuralNetwork (
+    Layer,
+    crossover,
+    flattenLayers,
+    forwardAll,
+    mutate,
+    sigmoid,
+    unflattenLayers,
+ )
 import Pheromones (pheromoneSys)
 import Raylib.Core (
     clearBackground,
@@ -126,6 +134,39 @@ generateRandomFoods :: StdGen -> Nest -> Seq Rectangle -> Int -> (Seq Food, StdG
 generateRandomFoods rng nest walls numFoods =
     let (foods, rng') = mapAccumL' (\rgen _ -> generateRandomFood rgen nest walls) rng [1 .. numFoods]
     in  (Seq.fromList foods, rng')
+
+
+getParents :: StdGen -> Seq Ant -> (Ant, Ant, StdGen)
+getParents rng ants =
+    let (parent1Index, rng') = randomR (0, Seq.length ants - 1) rng
+        (parent2Index, rng'') = randomR (0, Seq.length ants - 1) rng'
+        parent1 = ants `Seq.index` parent1Index
+        parent2 = ants `Seq.index` parent2Index
+    in  (parent1, parent2, rng'')
+
+
+generateNewAnt :: StdGen -> Seq Ant -> (Ant, StdGen)
+generateNewAnt rng ants =
+    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        (parent1, parent2, rng') = getParents rng ants
+        (crossedBrain, rng'') = crossover (flattenLayers parent1.aBrain) (flattenLayers parent2.aBrain) rng'
+        (mutatedBrain, rng''') = mutate 0.1 0.1 crossedBrain rng''
+        (newAnt, rng'''') = mkAnt rng''' screenCenter
+    in  (newAnt{aBrain = unflattenLayers mutatedBrain}, rng'''')
+
+
+-- Sort the ants by score from best to worst and keep the top 50%.
+-- For each ant in numAnts, generate a new ant brain by crossing over
+-- the brains of 2 random ants and then mutate it.
+-- Keep the best ant from the previous generation unmodified (maybe).
+-- Return the new generation of ants.
+generateNextGeneration :: StdGen -> Seq Ant -> (Seq Ant, StdGen)
+generateNextGeneration rng ants =
+    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+        sortedAnts = Seq.sortBy (\a b -> compare a.aScore b.aScore) ants
+        topAnts = Seq.take (Seq.length ants `div` 2) sortedAnts
+        (newAnts, rng') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng (replicate numAnts screenCenter)
+    in  (Seq.fromList newAnts, rng')
 
 
 initAntAIWorld :: IO World
@@ -230,18 +271,19 @@ updateAntAIWorld w =
                 & mapAccumL' updateAntFR w
         (walls, rng) = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomWalls w'.wRng w'.wNest 3 else (w'.wWalls, w'.wRng)
         (foods, rng') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomFoods rng w'.wNest walls 3 else (w'.wFood, rng)
+        (newAnts, rng'') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateNextGeneration rng' w'.wAnts else (ants, rng')
         pheromones = if w'.wTrainingMode == Slow && w'.wTicks == 0 then Seq.empty else w'.wPheromones
         (ticks, generation) = calcTicksAndGeneration w'
         trainingMode = if generation == maxGenerations then Done else w'.wTrainingMode
     in  w'
-            { wAnts = ants,
+            { wAnts = newAnts,
               wTicks = ticks,
               wGeneration = generation,
               wTrainingMode = trainingMode,
               wWalls = walls,
               wFood = foods,
               wPheromones = pheromones,
-              wRng = rng'
+              wRng = rng''
             }
 
 

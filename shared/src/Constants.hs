@@ -117,8 +117,8 @@ maxPheromones = 50
 
 
 ticksPerGeneration :: Int
-ticksPerGeneration = fps * 10
+ticksPerGeneration = fps * 30
 
 
 maxGenerations :: Int
-maxGenerations = 10
+maxGenerations = 50
