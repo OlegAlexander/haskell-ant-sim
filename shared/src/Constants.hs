@@ -1,7 +1,7 @@
 module Constants where
 
 import Raylib.Types (Color)
-import Raylib.Util.Colors (blue, brown, white, yellow)
+import Raylib.Util.Colors (blue, brown, maroon, red, white, yellow)
 
 
 screenWidth :: Int
@@ -37,7 +37,7 @@ antTurnAngle = 5
 
 
 antJitterAngle :: Float
-antJitterAngle = 5
+antJitterAngle = 3
 
 
 antVisionAngle :: Float
@@ -45,7 +45,7 @@ antVisionAngle = 135
 
 
 antVisionMaxDistance :: Float
-antVisionMaxDistance = 1000
+antVisionMaxDistance = 500
 
 
 antVisionResolution :: Int
@@ -81,15 +81,15 @@ foodGrowthAmount = 1
 
 
 collisionRectSize :: Float
-collisionRectSize = 40
+collisionRectSize = 50
 
 
 nestSize :: Float
-nestSize = 5
+nestSize = 20
 
 
 nestColor :: Color
-nestColor = brown
+nestColor = maroon
 
 
 pheromoneColor :: Color
@@ -101,11 +101,11 @@ pheromoneSize = 10
 
 
 pheromoneScale :: Float
-pheromoneScale = 0.01
+pheromoneScale = 0.05
 
 
 initPheromoneAmount :: Int
-initPheromoneAmount = 1000
+initPheromoneAmount = 200
 
 
 regeneratePheromoneDelay :: Int

@@ -121,7 +121,7 @@ generateRandomFood :: StdGen -> Nest -> Seq Rectangle -> (Food, StdGen)
 generateRandomFood rng nest walls =
     let (x, rng') = randomR (0, int2Float screenWidth) rng
         (y, rng'') = randomR (0, int2Float screenHeight) rng'
-        (amount, rng''') = randomR (10, 25) rng''
+        (amount, rng''') = randomR (20, 40) rng''
         food = Food (Container amount (Rectangle x y collisionRectSize collisionRectSize))
         foodOverlapsNest = isPointInRect (Vector2 x y) nest.nContainer.cRect
         foodOverlapsWalls = any (isPointInRect (Vector2 x y)) walls
@@ -150,7 +150,7 @@ generateNewAnt rng ants =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         (parent1, parent2, rng') = getParents rng ants
         (crossedBrain, rng'') = crossover (flattenLayers parent1.aBrain) (flattenLayers parent2.aBrain) rng'
-        (mutatedBrain, rng''') = mutate 0.1 0.1 crossedBrain rng''
+        (mutatedBrain, rng''') = mutate 0.05 0.1 crossedBrain rng''
         (newAnt, rng'''') = mkAnt rng''' screenCenter
     in  (newAnt{aBrain = unflattenLayers mutatedBrain}, rng'''')
 
@@ -169,7 +169,7 @@ generateNextGeneration rng ants =
         bestAnt = topAnts `Seq.index` 0
         (newBestAnt, rng') = mkAnt rng screenCenter
         (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - 1)]
-    in  (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'')
+    in  if bestAnt.aScore >= 1 then (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'') else (ants, rng)
 
 
 initAntAIWorld :: IO World
@@ -219,13 +219,11 @@ mkInputVector ant =
     -- Flatten vision rgb colors to a single list of normalized floats
     -- Compass direction and distance to nest, normalized
     -- Has food? 1.0 or 0.0
-    -- Add a random number to add jitter
     let visionRayColors =
             ant.aVisionRays
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
         antNestAngle = ant.aNestAngle
         antNestDistance = ant.aNestDistance
-        -- antRandomNoise = ant.aRandomNoise
         hasFood = if ant.aHasFood then 1.0 else 0.0
         inputVector = visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
     in  -- _ = traceShowId (length inputVector)
@@ -270,15 +268,15 @@ updateAntAIWorld w =
         decidedAnts = w.wAnts & Seq.zipWith applyAntDecision antDecisions
         collisionRects = getCollisionRects w
         (movedAnts, rng) = mapAccumL' (updateAntMovement collisionRects) w.wRng decidedAnts
-        (seeingAnts, w') = mapAccumL' updateAntFR w movedAnts
-        (walls, rng') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomWalls rng w'.wNest 3 else (w'.wWalls, w'.wRng)
-        (foods, rng'') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomFoods rng' w'.wNest walls 3 else (w'.wFood, rng')
-        bestAntScore = if w'.wTrainingMode == Slow && w'.wTicks == 0 then let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) seeingAnts in (sortedAnts `Seq.index` 0).aScore else w'.wBestAntScore
-        (newAnts, rng''') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateNextGeneration rng'' w'.wAnts else (seeingAnts, rng'')
-        pheromones = if w'.wTrainingMode == Slow && w'.wTicks == 0 then Seq.empty else w'.wPheromones
-        (ticks, generation) = calcTicksAndGeneration w'
-        trainingMode = if generation == maxGenerations then Done else w'.wTrainingMode
-    in  w'
+        seeingAnts = fmap (updateAntFR w) movedAnts
+        (walls, rng') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomWalls rng w.wNest 3 else (w.wWalls, w.wRng)
+        (foods, rng'') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 3 else (w.wFood, rng')
+        bestAntScore = if w.wTrainingMode == Slow && w.wTicks == 0 then let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) seeingAnts in (sortedAnts `Seq.index` 0).aScore else w.wBestAntScore
+        (newAnts, rng''') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateNextGeneration rng'' w.wAnts else (seeingAnts, rng'')
+        pheromones = if w.wTrainingMode == Slow && w.wTicks == 0 then Seq.empty else w.wPheromones
+        (ticks, generation) = calcTicksAndGeneration w
+        trainingMode = if generation == maxGenerations then Done else w.wTrainingMode
+    in  w
             { wAnts = newAnts,
               wTicks = ticks,
               wGeneration = generation,
@@ -327,11 +325,11 @@ antAISys = System handleAntAIInput updateAntAIWorld renderAntAIWorld
 antAISysWrapped :: System World
 antAISysWrapped =
     let allSystems =
-            antAISys
-                <> drawWallsSys
+            drawWallsSys
                 <> pheromoneSys
                 <> foodSys
                 <> antMovementSys
+                <> antAISys
                 <> flatlandRendererSys
     in  allSystems
             { render = \w -> drawing $ do

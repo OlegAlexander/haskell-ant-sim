@@ -101,8 +101,7 @@ drawTextLines' = drawTextLines 10 10 40 30 darkBrown
 mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
     let (randomAngle, rng') = rng & randomR (0, 360)
-        (randomNoise, rng'') = randomR (0, 1) rng'
-        (flatNeuralNetwork, rng''') = initFlatLayers [99, 99, 99, 5] 0.1 rng''
+        (flatNeuralNetwork, rng''') = initFlatLayers [99, 100, 100, 5] 0.1 rng'
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
@@ -116,7 +115,6 @@ mkAnt rng pos =
               aHasFood = False,
               aScore = 0,
               aRegeneratePheromoneCounter = 0,
-              aRandomNoise = randomNoise,
               aBrain = unflattenLayers flatNeuralNetwork
             },
           rng'''

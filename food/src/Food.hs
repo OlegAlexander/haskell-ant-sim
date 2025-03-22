@@ -14,6 +14,7 @@ import Constants (
     foodGrowthAmount,
     foodScale,
     fps,
+    nestColor,
     nestSize,
     screenHeight,
     screenWidth,
@@ -54,7 +55,7 @@ import Shared (
     gameLoop,
     getNextPos,
     isPointInRect,
-    mapAccumL'
+    mapAccumL',
  )
 import System.Random (newStdGen)
 import Types (
@@ -164,7 +165,7 @@ renderFoodWorld w = do
         playerAnt = w.wPlayerAnt
 
     -- draw the nest
-    drawCircleV nestPos nestSize brown
+    drawCircleV nestPos nestSize nestColor
 
     -- draw nest rect
     -- drawRectangleLinesEx (nestCollisionRect nest) 2 black

@@ -17,6 +17,7 @@ import Constants (
     fps,
     initPheromoneAmount,
     nestColor,
+    nestSize,
     pheromoneColor,
     screenHeight,
     screenWidth,
@@ -199,12 +200,6 @@ updateVisionRays rects ant =
         }
 
 
-updateRandomNoise :: StdGen -> Ant -> (Ant, StdGen)
-updateRandomNoise rng ant =
-    let (noise, rng') = rng & randomR (0, 1)
-    in  (ant{aRandomNoise = noise}, rng')
-
-
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
 visionRayToLine (VisionRay p1 angle rayLength _ _) =
     (p1, getNextPos angle rayLength p1)
@@ -284,21 +279,18 @@ collectVisibleRects w =
     in  wallsRects ++ pheromoneRects ++ foodRects ++ [nestRect]
 
 
-updateAntFR :: World -> Ant -> (Ant, World)
+updateAntFR :: World -> Ant -> Ant
 updateAntFR w ant =
     let visibleRects = w & collectVisibleRects
         nestPos = w.wNest.nContainer.cRect & calcRectCenter
         (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
-        rng = w.wRng
-        (ant', rng') = ant{aNestAngle = nestAngle, aNestDistance = nestDistance}
-            & updateVisionRays visibleRects
-            & updateRandomNoise rng
-    in  (ant', w{wRng = rng'})
+        ant' = ant{aNestAngle = nestAngle, aNestDistance = nestDistance} & updateVisionRays visibleRects
+    in  ant'
 
 
 updateFRWorld :: World -> World
-updateFRWorld w = 
-    let (ant, w') = updateAntFR w w.wPlayerAnt in w'{wPlayerAnt=ant}
+updateFRWorld w =
+    let ant = updateAntFR w w.wPlayerAnt in w{wPlayerAnt = ant}
 
 
 renderFRWorld :: World -> IO ()
@@ -311,7 +303,7 @@ renderFRWorld w = do
         nestPos = w.wNest.nContainer.cRect & calcRectCenter
 
     -- draw the nest
-    drawCircleV nestPos 10 brown
+    -- drawCircleV nestPos nestSize nestColor
 
     -- draw vision rays with colors
     when renderVisionRays $ do
@@ -341,10 +333,6 @@ renderFRWorld w = do
     when renderVisionRects $ do
         let visionRects = visionRaysToRects rays
         forM_ visionRects $ \(rect, color) -> drawRectangleRec rect color
-        -- Draw random noise as a rect in the lower left corner
-        let noiseRect = Rectangle 0 (int2Float screenHeight - 20) 20 20
-            noiseColor = scalarTimesColor playerAnt.aRandomNoise white
-        drawRectangleRec noiseRect noiseColor
 
     -- draw home compass in the lower right corner of the screen
     when w.wRenderHomeCompass $ do

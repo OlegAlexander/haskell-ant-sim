@@ -59,7 +59,6 @@ data Ant = Ant
       aHasFood :: Bool,
       aScore :: Float,
       aRegeneratePheromoneCounter :: Int,
-      aRandomNoise :: Float, -- Range [0, 1]
       aBrain :: [Layer]
     }
     deriving (Eq, Show) 
