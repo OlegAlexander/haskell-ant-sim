@@ -102,7 +102,7 @@ mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
     let (randomAngle, rng') = rng & randomR (0, 360)
         (randomNoise, rng'') = randomR (0, 1) rng'
-        (flatNeuralNetwork, rng''') = initFlatLayers [100, 50, 5] 0.1 rng''
+        (flatNeuralNetwork, rng''') = initFlatLayers [99, 99, 99, 5] 0.1 rng''
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
@@ -144,6 +144,7 @@ defaultWorld rng =
               wTrainingMode = Off,
               wTicks = 0,
               wGeneration = 0,
+              wBestAntScore = 0,
               wRng = rng'
             }
 

@@ -9,6 +9,7 @@ module AntMovement where
 
 import Constants (
     antAcceleration,
+    antJitterAngle,
     antMaxSpeed,
     antTurnAngle,
     fps,
@@ -47,7 +48,7 @@ import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
 import Raylib.Util.Colors (black, lightGray)
 import Shared (System (..), defaultWorld, gameLoop, getNextPos)
-import System.Random (newStdGen)
+import System.Random (StdGen, newStdGen, randomR)
 import Types (
     Ant (..),
     EntityType (..),
@@ -117,13 +118,14 @@ handleAMInput w = do
             }
 
 
-getNextAngle :: Ant -> Float
-getNextAngle ant =
-    let angle = case ant.aWheelPos of
-            TurnRight -> ant.aAngle - antTurnAngle
-            TurnLeft -> ant.aAngle + antTurnAngle
-            Center -> ant.aAngle
-    in  angle `mod'` 360
+getNextAngle :: StdGen -> Ant -> (Float, StdGen)
+getNextAngle rng ant =
+    let (jitter, rng') = rng & randomR (-antJitterAngle, antJitterAngle)
+        angle = case ant.aWheelPos of
+            TurnRight -> ant.aAngle - antTurnAngle + jitter
+            TurnLeft -> ant.aAngle + antTurnAngle + jitter
+            Center -> ant.aAngle + jitter
+    in  (angle `mod'` 360, rng')
 
 
 getNextSpeed :: Ant -> Float
@@ -137,25 +139,29 @@ getNextSpeed ant =
             EQ -> 0
 
 
-updateAntMovement :: World -> Ant -> Ant
-updateAntMovement w ant =
-    let collisionRects = getCollisionRects w
-        nextAngle = getNextAngle ant
+updateAntMovement :: [(Rectangle, EntityType)] -> StdGen -> Ant -> (Ant, StdGen)
+updateAntMovement collisionRects rng ant =
+    let (nextAngle, rng') = getNextAngle rng ant
         nextSpeed = getNextSpeed ant
         nextPos = getNextPos nextAngle nextSpeed ant.aPos
         nextPos' =
             if checkCollisions nextPos collisionRects /= []
                 then ant.aPos
                 else nextPos
-    in  ant
+    in  ( ant
             { aPos = wrapAroundScreen nextPos',
               aAngle = nextAngle,
               aSpeed = nextSpeed
-            }
+            },
+          rng'
+        )
 
 
 updateAMWorld :: World -> World
-updateAMWorld w = w{wPlayerAnt = updateAntMovement w w.wPlayerAnt}
+updateAMWorld w =
+    let collisionRects = getCollisionRects w
+        (wPlayerAnt, rng) = updateAntMovement collisionRects w.wRng w.wPlayerAnt
+    in  w{wPlayerAnt = wPlayerAnt, wRng = rng}
 
 
 renderAMWorld :: World -> IO ()

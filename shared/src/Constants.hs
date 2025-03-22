@@ -17,7 +17,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 50
+numAnts = 20
 
 
 antScale :: Float
@@ -37,7 +37,7 @@ antTurnAngle = 5
 
 
 antJitterAngle :: Float
-antJitterAngle = 1
+antJitterAngle = 5
 
 
 antVisionAngle :: Float
@@ -45,7 +45,7 @@ antVisionAngle = 135
 
 
 antVisionMaxDistance :: Float
-antVisionMaxDistance = 500
+antVisionMaxDistance = 1000
 
 
 antVisionResolution :: Int
@@ -121,4 +121,4 @@ ticksPerGeneration = fps * 30
 
 
 maxGenerations :: Int
-maxGenerations = 50
+maxGenerations = 10000

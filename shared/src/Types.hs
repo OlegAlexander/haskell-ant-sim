@@ -97,6 +97,7 @@ data World = World
       wTrainingMode :: TrainingMode,
       wTicks :: Int,
       wGeneration :: Int,
+      wBestAntScore :: Float,
       wRng :: StdGen
     }
     deriving (Eq, Show)

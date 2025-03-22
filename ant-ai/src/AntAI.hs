@@ -11,7 +11,7 @@ import Data.Vector (Vector)
 import Data.Vector qualified as V
 
 -- import AI.HNN.FF.Network
-import AntMovement (antMovementSys, updateAntMovement)
+import AntMovement (antMovementSys, getCollisionRects, updateAntMovement)
 import Constants (
     collisionRectSize,
     foodColor,
@@ -155,18 +155,21 @@ generateNewAnt rng ants =
     in  (newAnt{aBrain = unflattenLayers mutatedBrain}, rng'''')
 
 
--- Sort the ants by score from best to worst and keep the top 50%.
+-- Sort the ants by score from best to worst and keep the top n%.
 -- For each ant in numAnts, generate a new ant brain by crossing over
 -- the brains of 2 random ants and then mutate it.
--- Keep the best ant from the previous generation unmodified (maybe).
+-- Keep the best ant brain from the previous generation.
 -- Return the new generation of ants.
 generateNextGeneration :: StdGen -> Seq Ant -> (Seq Ant, StdGen)
 generateNextGeneration rng ants =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        sortedAnts = Seq.sortBy (\a b -> compare a.aScore b.aScore) ants
+        sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) ants
+        _ = traceShowId (fmap (.aScore) sortedAnts)
         topAnts = Seq.take (Seq.length ants `div` 2) sortedAnts
-        (newAnts, rng') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng (replicate numAnts screenCenter)
-    in  (Seq.fromList newAnts, rng')
+        bestAnt = topAnts `Seq.index` 0
+        (newBestAnt, rng') = mkAnt rng screenCenter
+        (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - 1)]
+    in  (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'')
 
 
 initAntAIWorld :: IO World
@@ -222,9 +225,9 @@ mkInputVector ant =
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
         antNestAngle = ant.aNestAngle
         antNestDistance = ant.aNestDistance
-        antRandomNoise = ant.aRandomNoise
+        -- antRandomNoise = ant.aRandomNoise
         hasFood = if ant.aHasFood then 1.0 else 0.0
-        inputVector = visionRayColors ++ [antNestAngle, antNestDistance, hasFood, antRandomNoise]
+        inputVector = visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
     in  -- _ = traceShowId (length inputVector)
         V.fromList inputVector
 
@@ -260,18 +263,18 @@ calcTicksAndGeneration w =
     in  (ticks', generation')
 
 
+-- TODO Clean up this function!
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
-    let antDecisions =
-            w.wAnts & fmap (\ant -> antBrainNeuralNetwork ant.aBrain (mkInputVector ant))
-        (ants, w') =
-            w.wAnts
-                & Seq.zipWith applyAntDecision antDecisions
-                & fmap (updateAntMovement w)
-                & mapAccumL' updateAntFR w
-        (walls, rng) = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomWalls w'.wRng w'.wNest 3 else (w'.wWalls, w'.wRng)
-        (foods, rng') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomFoods rng w'.wNest walls 3 else (w'.wFood, rng)
-        (newAnts, rng'') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateNextGeneration rng' w'.wAnts else (ants, rng')
+    let antDecisions = w.wAnts & fmap (\ant -> antBrainNeuralNetwork ant.aBrain (mkInputVector ant))
+        decidedAnts = w.wAnts & Seq.zipWith applyAntDecision antDecisions
+        collisionRects = getCollisionRects w
+        (movedAnts, rng) = mapAccumL' (updateAntMovement collisionRects) w.wRng decidedAnts
+        (seeingAnts, w') = mapAccumL' updateAntFR w movedAnts
+        (walls, rng') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomWalls rng w'.wNest 3 else (w'.wWalls, w'.wRng)
+        (foods, rng'') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateRandomFoods rng' w'.wNest walls 3 else (w'.wFood, rng')
+        bestAntScore = if w'.wTrainingMode == Slow && w'.wTicks == 0 then let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) seeingAnts in (sortedAnts `Seq.index` 0).aScore else w'.wBestAntScore
+        (newAnts, rng''') = if w'.wTrainingMode == Slow && w'.wTicks == 0 then generateNextGeneration rng'' w'.wAnts else (seeingAnts, rng'')
         pheromones = if w'.wTrainingMode == Slow && w'.wTicks == 0 then Seq.empty else w'.wPheromones
         (ticks, generation) = calcTicksAndGeneration w'
         trainingMode = if generation == maxGenerations then Done else w'.wTrainingMode
@@ -280,10 +283,11 @@ updateAntAIWorld w =
               wTicks = ticks,
               wGeneration = generation,
               wTrainingMode = trainingMode,
+              wBestAntScore = bestAntScore,
               wWalls = walls,
               wFood = foods,
               wPheromones = pheromones,
-              wRng = rng''
+              wRng = rng'''
             }
 
 
@@ -310,7 +314,8 @@ renderAntAIWorld w = do
           "Pheromones: " ++ show (Seq.length w.wPheromones),
           "Training: " ++ show w.wTrainingMode,
           "Generation: " ++ show w.wGeneration,
-          "Ticks: " ++ show w.wTicks
+          "Ticks: " ++ show w.wTicks,
+          "Best Ant Score: " ++ show w.wBestAntScore
         ]
     forM_ w.wAnts (drawAnt black)
 
