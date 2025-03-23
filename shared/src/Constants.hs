@@ -1,7 +1,7 @@
 module Constants where
 
 import Raylib.Types (Color)
-import Raylib.Util.Colors (blue, brown, maroon, red, white, yellow)
+import Raylib.Util.Colors (black, blue, brown, gray, lightGray, maroon, orange, red, white, yellow)
 
 
 screenWidth :: Int
@@ -10,6 +10,10 @@ screenWidth = 1920
 
 screenHeight :: Int
 screenHeight = 1080
+
+
+bgColor :: Color
+bgColor = gray
 
 
 fps :: Int
@@ -93,7 +97,7 @@ nestColor = maroon
 
 
 pheromoneColor :: Color
-pheromoneColor = blue
+pheromoneColor = orange
 
 
 pheromoneSize :: Float

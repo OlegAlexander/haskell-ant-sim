@@ -8,17 +8,7 @@
 module Pheromones where
 
 import AntMovement (antMovementSys)
-import Constants (
-    collisionRectSize,
-    fps,
-    initPheromoneAmount,
-    maxPheromones,
-    pheromoneColor,
-    pheromoneScale,
-    regeneratePheromoneDelay,
-    screenHeight,
-    screenWidth,
- )
+import Constants (bgColor, collisionRectSize, fps, initPheromoneAmount, maxPheromones, pheromoneColor, pheromoneScale, regeneratePheromoneDelay, screenHeight, screenWidth)
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Sequence (Seq, (<|))
@@ -50,7 +40,7 @@ import Shared (
     defaultWorld,
     gameLoop,
     isPointInRect,
-    mapAccumL'
+    mapAccumL',
  )
 import System.Random (newStdGen)
 import Types (
@@ -137,7 +127,7 @@ updatePheromoneWorld w =
 drawPheromone :: Pheromone -> IO ()
 drawPheromone (Pheromone (Container amount rect)) = do
     -- Draw pheromone as a circle
-    let radius = int2Float amount * pheromoneScale + 3
+    let radius = int2Float amount * pheromoneScale
         pos = calcRectCenter rect
     drawCircleV pos radius pheromoneColor
 
@@ -161,7 +151,7 @@ pheromoneSysWrapped =
             { render = \w -> drawing $ do
                 f11Pressed <- isKeyPressed KeyF11
                 when f11Pressed toggleFullscreen
-                clearBackground lightGray
+                clearBackground bgColor
                 allSystems.render w
                 -- drawFPS 10 10
             }

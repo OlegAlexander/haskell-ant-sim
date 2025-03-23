@@ -60,6 +60,7 @@ import Raylib.Core.Shapes (
     drawRectangleRec,
  )
 
+import Constants (bgColor)
 import Data.Foldable (Foldable (toList))
 import Raylib.Types (
     Color (..),
@@ -369,7 +370,7 @@ flatlandRendererSysWrapped =
             { render = \w -> drawing $ do
                 f11Pressed <- isKeyPressed KeyF11
                 when f11Pressed toggleFullscreen
-                clearBackground lightGray
+                clearBackground bgColor
                 allSystems.render w
                 -- drawFPS 10 10
             }

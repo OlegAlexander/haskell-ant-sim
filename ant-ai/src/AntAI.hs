@@ -12,17 +12,7 @@ import Data.Vector qualified as V
 
 -- import AI.HNN.FF.Network
 import AntMovement (antMovementSys, getCollisionRects, updateAntMovement)
-import Constants (
-    collisionRectSize,
-    foodColor,
-    fps,
-    maxGenerations,
-    minWallSize,
-    numAnts,
-    screenHeight,
-    screenWidth,
-    ticksPerGeneration,
- )
+import Constants (antVisionResolution, bgColor, collisionRectSize, foodColor, fps, maxGenerations, minWallSize, numAnts, screenHeight, screenWidth, ticksPerGeneration)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Traversable (for)
@@ -76,6 +66,7 @@ import Shared (
     mkAnt,
     rgbToLinear,
  )
+import System.Mem (performGC)
 import System.Random (StdGen, newStdGen, random, randomIO, randomR)
 import Types (
     Ant (..),
@@ -121,7 +112,7 @@ generateRandomFood :: StdGen -> Nest -> Seq Rectangle -> (Food, StdGen)
 generateRandomFood rng nest walls =
     let (x, rng') = randomR (0, int2Float screenWidth) rng
         (y, rng'') = randomR (0, int2Float screenHeight) rng'
-        (amount, rng''') = randomR (20, 40) rng''
+        (amount, rng''') = randomR (50, 100) rng''
         food = Food (Container amount (Rectangle x y collisionRectSize collisionRectSize))
         foodOverlapsNest = isPointInRect (Vector2 x y) nest.nContainer.cRect
         foodOverlapsWalls = any (isPointInRect (Vector2 x y)) walls
@@ -169,7 +160,7 @@ generateNextGeneration rng ants =
         bestAnt = topAnts `Seq.index` 0
         (newBestAnt, rng') = mkAnt rng screenCenter
         (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - 1)]
-    in  if bestAnt.aScore >= 1 then (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'') else (ants, rng)
+    in  if bestAnt.aScore >= 0.5 then (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'') else (ants, rng)
 
 
 initAntAIWorld :: IO World
@@ -222,11 +213,12 @@ mkInputVector ant =
     let visionRayColors =
             ant.aVisionRays
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
-        antNestAngle = ant.aNestAngle
-        antNestDistance = ant.aNestDistance
-        hasFood = if ant.aHasFood then 1.0 else 0.0
-        inputVector = visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
-    in  -- _ = traceShowId (length inputVector)
+        antNestAngle = replicate antVisionResolution ant.aNestAngle
+        antNestDistance = replicate antVisionResolution ant.aNestDistance
+        hasFood = replicate antVisionResolution (if ant.aHasFood then 1.0 else 0.0)
+        inputVector = visionRayColors ++ antNestAngle ++ antNestDistance ++ hasFood
+    in  -- 32 * 6 = 192 inputs
+        -- _ = traceShowId (length inputVector)
         V.fromList inputVector
 
 
@@ -316,6 +308,7 @@ renderAntAIWorld w = do
           "Best Ant Score: " ++ show w.wBestAntScore
         ]
     forM_ w.wAnts (drawAnt black)
+    when (w.wTrainingMode == Slow && w.wTicks == 0) performGC
 
 
 antAISys :: System World
@@ -335,7 +328,7 @@ antAISysWrapped =
             { render = \w -> drawing $ do
                 f11Pressed <- isKeyPressed KeyF11
                 when f11Pressed toggleFullscreen
-                clearBackground lightGray
+                clearBackground bgColor
                 allSystems.render w
                 -- drawFPS 10 10
             }

@@ -7,16 +7,7 @@
 
 module AntMovement where
 
-import Constants (
-    antAcceleration,
-    antJitterAngle,
-    antMaxSpeed,
-    antTurnAngle,
-    fps,
-    screenHeight,
-    screenWidth,
-    wallColor,
- )
+import Constants (antAcceleration, antJitterAngle, antMaxSpeed, antTurnAngle, bgColor, fps, screenHeight, screenWidth, wallColor)
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Foldable (Foldable (toList))
@@ -191,7 +182,7 @@ antMovementSysWrapped =
         { render = \w -> drawing $ do
             f11Pressed <- isKeyPressed KeyF11
             when f11Pressed toggleFullscreen
-            clearBackground lightGray
+            clearBackground bgColor
             renderAMWorld w
             -- drawFPS 10 10
         }

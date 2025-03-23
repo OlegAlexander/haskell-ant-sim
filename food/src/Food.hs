@@ -8,17 +8,7 @@
 module Food where
 
 import AntMovement (antMovementSys)
-import Constants (
-    collisionRectSize,
-    foodColor,
-    foodGrowthAmount,
-    foodScale,
-    fps,
-    nestColor,
-    nestSize,
-    screenHeight,
-    screenWidth,
- )
+import Constants (bgColor, collisionRectSize, foodColor, foodGrowthAmount, foodScale, fps, nestColor, nestSize, screenHeight, screenWidth)
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Maybe (fromJust)
@@ -195,7 +185,7 @@ foodSysWrapped =
             { render = \w -> drawing $ do
                 f11Pressed <- isKeyPressed KeyF11
                 when f11Pressed toggleFullscreen
-                clearBackground lightGray
+                clearBackground bgColor
                 allSystems.render w
                 -- drawFPS 10 10
             }
