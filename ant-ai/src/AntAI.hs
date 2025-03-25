@@ -169,7 +169,7 @@ initAntAIWorld = do
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         (ants, rng') = mapAccumL' mkAnt rng (replicate numAnts screenCenter)
     _ <- initWindow screenWidth screenHeight "Ant AI"
-    setTargetFPS fps
+    setTargetFPS (fps * 10)
     setMouseCursor MouseCursorCrosshair
     return (defaultWorld rng'){wAnts = Seq.fromList ants}
 
@@ -213,11 +213,11 @@ mkInputVector ant =
     let visionRayColors =
             ant.aVisionRays
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
-        antNestAngle = replicate antVisionResolution ant.aNestAngle
-        antNestDistance = replicate antVisionResolution ant.aNestDistance
-        hasFood = replicate antVisionResolution (if ant.aHasFood then 1.0 else 0.0)
-        inputVector = visionRayColors ++ antNestAngle ++ antNestDistance ++ hasFood
-    in  -- 32 * 6 = 192 inputs
+        antNestAngle = ant.aNestAngle * 2
+        antNestDistance = ant.aNestDistance * 2
+        hasFood = (if ant.aHasFood then 1.0 else 0.0) * 4
+        inputVector = visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
+    in  -- 32 * 3 + 3 = 99 inputs
         -- _ = traceShowId (length inputVector)
         V.fromList inputVector
 

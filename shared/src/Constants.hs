@@ -1,7 +1,7 @@
 module Constants where
 
 import Raylib.Types (Color)
-import Raylib.Util.Colors (black, blue, brown, gray, lightGray, maroon, orange, red, white, yellow)
+import Raylib.Util.Colors (gray, maroon, orange, white, yellow)
 
 
 screenWidth :: Int
@@ -21,7 +21,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 20
+numAnts = 40
 
 
 antScale :: Float
