@@ -213,9 +213,9 @@ mkInputVector ant =
     let visionRayColors =
             ant.aVisionRays
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
-        antNestAngle = ant.aNestAngle * 2
-        antNestDistance = ant.aNestDistance * 2
-        hasFood = (if ant.aHasFood then 1.0 else 0.0) * 4
+        antNestAngle = ant.aNestAngle
+        antNestDistance = ant.aNestDistance
+        hasFood = (if ant.aHasFood then 1.0 else 0.0)
         inputVector = visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
     in  -- 32 * 3 + 3 = 99 inputs
         -- _ = traceShowId (length inputVector)

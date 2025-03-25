@@ -27,6 +27,7 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
+import Debug.Trace (traceShowId)
 import Raylib.Core.Shapes (drawCircleV)
 import Raylib.Types (
     KeyboardKey (..),
@@ -54,7 +55,9 @@ import Types (
     Food (..),
     Nest (..),
     World (..),
+    Degrees,
  )
+import Data.Fixed (mod')
 
 
 initFoodWorld :: IO World
@@ -99,32 +102,37 @@ handleFoodInput w = do
             return w
 
 
+turnAround :: Degrees -> Degrees
+turnAround angle = (angle + 180) `mod'` 360
+
+
 -- This function is meant to be used with mapAccumL'
 antFoodNestInteraction :: (Nest, Seq Food) -> Ant -> (Ant, (Nest, Seq Food))
 antFoodNestInteraction (nest, foods) ant =
     -- Find the index of the first food object that the ant is in, if any
     let antInFoodIndex = foods & Seq.findIndexL (\food -> isPointInRect ant.aPos food.fContainer.cRect)
         antInNest = isPointInRect ant.aPos nest.nContainer.cRect
-        (antHasFood', antScore', nestScore', foods') =
+        (antHasFood', antScore', antAngle', nestScore', foods') =
             case (ant.aHasFood, antInNest, antInFoodIndex) of
                 -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
                 -- If the ant finds food, it gets 0.5 points and one food unit is removed from the food object
                 (False, _, Just i) ->
                     ( True,
                       ant.aScore + 0.5,
+                      turnAround ant.aAngle,
                       nest.nContainer.cAmount,
                       let Food (Container amount rect) = fromJust (foods !? i)
                           foodObj' = Food (Container (amount - 1) rect)
                       in  Seq.update i foodObj' foods
                     )
                 -- If the ant brings the food back to the nest, it gets 0.5 points and the nest gets a point
-                (True, True, _) -> (False, ant.aScore + 0.5, nest.nContainer.cAmount + 1, foods)
+                (True, True, _) -> (False, ant.aScore + 0.5, turnAround ant.aAngle, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
-                _ -> (ant.aHasFood, ant.aScore, nest.nContainer.cAmount, foods)
+                _ -> (ant.aHasFood, ant.aScore, ant.aAngle, nest.nContainer.cAmount, foods)
         -- Delete food when amount is 0
         !foods'' = foods' & Seq.filter (\food -> food.fContainer.cAmount > 0)
         !nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
-        ant' = ant{aHasFood = antHasFood', aScore = antScore'}
+        ant' = ant{aHasFood = antHasFood', aScore = antScore', aAngle = antAngle'}
     in  (ant', (nest', foods''))
 
 
