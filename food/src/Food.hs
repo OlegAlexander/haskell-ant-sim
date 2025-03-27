@@ -119,14 +119,14 @@ antFoodNestInteraction (nest, foods) ant =
                 (False, _, Just i) ->
                     ( True,
                       ant.aScore + 0.5,
-                      turnAround ant.aAngle,
+                      ant.aAngle,
                       nest.nContainer.cAmount,
                       let Food (Container amount rect) = fromJust (foods !? i)
                           foodObj' = Food (Container (amount - 1) rect)
                       in  Seq.update i foodObj' foods
                     )
                 -- If the ant brings the food back to the nest, it gets 0.5 points and the nest gets a point
-                (True, True, _) -> (False, ant.aScore + 0.5, turnAround ant.aAngle, nest.nContainer.cAmount + 1, foods)
+                (True, True, _) -> (False, ant.aScore + 0.5, ant.aAngle, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
                 _ -> (ant.aHasFood, ant.aScore, ant.aAngle, nest.nContainer.cAmount, foods)
         -- Delete food when amount is 0

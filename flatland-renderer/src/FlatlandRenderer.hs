@@ -85,6 +85,7 @@ import Types (
     VisionRay (..),
     World (..),
  )
+import Debug.Trace (traceShowId)
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
@@ -285,7 +286,10 @@ updateAntFR w ant =
     let visibleRects = w & collectVisibleRects
         nestPos = w.wNest.nContainer.cRect & calcRectCenter
         (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
-        ant' = ant{aNestAngle = nestAngle, aNestDistance = nestDistance} & updateVisionRays visibleRects
+        nestAntAngleDelta = nestAngle - (ant.aAngle / 360)
+        ant' = ant{ aNestAngle = nestAngle, 
+                    aNestDistance = nestDistance, 
+                    aNestAntAngleDelta = nestAntAngleDelta} & updateVisionRays visibleRects
     in  ant'
 
 
@@ -318,7 +322,7 @@ renderFRWorld w = do
                     (playerAnt.aNestAngle * 360)
                     (playerAnt.aNestDistance * compassMaxDistance * 0.2)
                     antPos
-        drawLineEx antPos homeVectorEnd 5 gray
+        drawLineEx antPos homeVectorEnd 5 lightGray
 
     -- TODO Drawing the ant is repeated in AntMovement.hs
     -- but I'm not sure how to avoid this duplication because I want the ant
@@ -354,8 +358,8 @@ renderFRWorld w = do
         when playerAnt.aHasFood $ do
             drawCircleV antDirEnd 30 foodColor
 
-        drawCircleV compassCenter 20 gray
-        drawLineEx compassCenter antDirEnd 20 gray
+        drawCircleV compassCenter 20 lightGray
+        drawLineEx compassCenter antDirEnd 20 lightGray
         drawLineEx compassCenter compassEnd 10 white
 
 

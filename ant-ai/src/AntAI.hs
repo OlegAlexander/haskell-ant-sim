@@ -5,18 +5,16 @@
 
 module AntAI where
 
-import Control.Monad (forM_, replicateM, when)
-import Data.Function ((&))
-import Data.Vector (Vector)
-import Data.Vector qualified as V
-
--- import AI.HNN.FF.Network
 import AntMovement (antMovementSys, getCollisionRects, updateAntMovement)
 import Constants (antVisionResolution, bgColor, collisionRectSize, foodColor, fps, maxGenerations, minWallSize, numAnts, screenHeight, screenWidth, ticksPerGeneration)
+import Control.Monad (forM_, replicateM, when)
+import Data.Function ((&))
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Traversable (for)
 import Data.Tuple (swap)
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 import Debug.Pretty.Simple (pTraceShowId, pTraceShowM)
 import Debug.Trace (traceShowId)
 import DrawWalls (drawWallsSys)
@@ -68,6 +66,7 @@ import Shared (
  )
 import System.Mem (performGC)
 import System.Random (StdGen, newStdGen, random, randomIO, randomR)
+import Text.Printf (printf)
 import Types (
     Ant (..),
     AntDecision (..),
@@ -146,6 +145,17 @@ generateNewAnt rng ants =
     in  (newAnt{aBrain = unflattenLayers mutatedBrain}, rng'''')
 
 
+average :: (Fractional a) => [a] -> a
+average xs = sum xs / fromIntegral (length xs)
+
+
+stdDev :: (Floating a) => [a] -> a
+stdDev xs =
+    let avg = average xs
+        variance = sum (fmap (\x -> (x - avg) ** 2) xs) / fromIntegral (length xs)
+    in  sqrt variance
+
+
 -- Sort the ants by score from best to worst and keep the top n%.
 -- For each ant in numAnts, generate a new ant brain by crossing over
 -- the brains of 2 random ants and then mutate it.
@@ -158,6 +168,8 @@ generateNextGeneration rng ants =
         _ = traceShowId (fmap (.aScore) sortedAnts)
         topAnts = Seq.take (Seq.length ants `div` 2) sortedAnts
         bestAnt = topAnts `Seq.index` 0
+        (bestAntFlatBrain, bestAntBrainShapes) = flattenLayers bestAnt.aBrain
+        _ = traceShowId ((printf "%.4f" :: Float -> String) (average bestAntFlatBrain), (printf "%.4f" :: Float -> String) (stdDev bestAntFlatBrain))
         (newBestAnt, rng') = mkAnt rng screenCenter
         (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - 1)]
     in  if bestAnt.aScore >= 0.5 then (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'') else (ants, rng)
@@ -213,10 +225,10 @@ mkInputVector ant =
     let visionRayColors =
             ant.aVisionRays
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
-        antNestAngle = ant.aNestAngle
+        nestAntAngleDelta = ant.aNestAntAngleDelta
         antNestDistance = ant.aNestDistance
-        hasFood = (if ant.aHasFood then 1.0 else 0.0)
-        inputVector = visionRayColors ++ [antNestAngle, antNestDistance, hasFood]
+        hasFood = (if ant.aHasFood then 1.0 else -1.0)
+        inputVector = visionRayColors ++ [nestAntAngleDelta, antNestDistance, hasFood]
     in  -- 32 * 3 + 3 = 99 inputs
         -- _ = traceShowId (length inputVector)
         V.fromList inputVector

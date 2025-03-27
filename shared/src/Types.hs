@@ -56,6 +56,7 @@ data Ant = Ant
       aVisionRays :: Seq VisionRay,
       aNestAngle :: Float, -- Normalized degrees
       aNestDistance :: Float, -- Normalized distance
+      aNestAntAngleDelta :: Float, -- -0.5 to 0.5
       aHasFood :: Bool,
       aScore :: Float,
       aRegeneratePheromoneCounter :: Int,

@@ -41,7 +41,7 @@ antTurnAngle = 5
 
 
 antJitterAngle :: Float
-antJitterAngle = 3
+antJitterAngle = 0
 
 
 antVisionAngle :: Float
@@ -57,7 +57,7 @@ antVisionResolution = 32
 
 
 compassMaxDistance :: Float
-compassMaxDistance = 1000
+compassMaxDistance = sqrt (fromIntegral screenWidth ** 2 + fromIntegral screenHeight ** 2) / 2
 
 
 wallColor :: Color
