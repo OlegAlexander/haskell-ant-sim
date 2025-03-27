@@ -286,7 +286,7 @@ updateAntFR w ant =
     let visibleRects = w & collectVisibleRects
         nestPos = w.wNest.nContainer.cRect & calcRectCenter
         (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
-        nestAntAngleDelta = nestAngle - (ant.aAngle / 360)
+        nestAntAngleDelta = 2 * (nestAngle - (ant.aAngle / 360))
         ant' = ant{ aNestAngle = nestAngle, 
                     aNestDistance = nestDistance, 
                     aNestAntAngleDelta = nestAntAngleDelta} & updateVisionRays visibleRects

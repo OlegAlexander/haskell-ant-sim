@@ -41,7 +41,7 @@ antTurnAngle = 5
 
 
 antJitterAngle :: Float
-antJitterAngle = 0
+antJitterAngle = 3
 
 
 antVisionAngle :: Float
