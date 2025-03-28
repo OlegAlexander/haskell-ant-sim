@@ -88,6 +88,11 @@ isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
     x > rx && x < rx + rw && y > ry && y < ry + rh
 
 
+-- Normalize a value to the range [0, 1]
+normalize :: Float -> Float -> Float
+normalize x maxVal = min 1.0 (x / maxVal)
+
+
 drawTextLines :: Int -> Int -> Int -> Int -> Color -> [String] -> IO ()
 drawTextLines x y verticalOffset fontSize color stats = do
     forM_ (zip [0 ..] stats) $ \(i, line) ->
@@ -101,7 +106,7 @@ drawTextLines' = drawTextLines 10 10 40 30 darkBrown
 mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
     let (randomAngle, rng') = rng & randomR (0, 360)
-        (flatNeuralNetwork, rng''') = initFlatLayers [99, 66, 33, 5] 0.1 rng'
+        (flatNeuralNetwork, rng''') = initFlatLayers [99, 66, 33, 5] 1.0 rng'
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
@@ -113,6 +118,7 @@ mkAnt rng pos =
               aNestAngle = 0,
               aNestAntAngleDelta = 0,
               aNestDistance = 0,
+              aNestDistanceWhenFoodPickedUp = 0,
               aHasFood = False,
               aScore = 0,
               aRegeneratePheromoneCounter = 0,

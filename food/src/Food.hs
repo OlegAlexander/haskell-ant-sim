@@ -8,7 +8,8 @@
 module Food where
 
 import AntMovement (antMovementSys)
-import Constants (bgColor, collisionRectSize, foodColor, foodGrowthAmount, foodScale, fps, nestColor, nestSize, screenHeight, screenWidth)
+import Constants (bgColor, 
+                    collisionRectSize, foodColor, foodGrowthAmount, foodScale, fps, nestColor, nestSize, screenHeight, screenWidth, compassMaxDistance)
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Maybe (fromJust)
@@ -30,6 +31,7 @@ import Raylib.Core (
 import Debug.Trace (traceShowId)
 import Raylib.Core.Shapes (drawCircleV)
 import Raylib.Types (
+    Vector2 (..),
     KeyboardKey (..),
     MouseButton (MouseButtonLeft),
     MouseCursor (MouseCursorCrosshair),
@@ -47,6 +49,7 @@ import Shared (
     getNextPos,
     isPointInRect,
     mapAccumL',
+    normalize
  )
 import System.Random (newStdGen)
 import Types (
@@ -112,33 +115,41 @@ antFoodNestInteraction (nest, foods) ant =
     -- Find the index of the first food object that the ant is in, if any
     let antInFoodIndex = foods & Seq.findIndexL (\food -> isPointInRect ant.aPos food.fContainer.cRect)
         antInNest = isPointInRect ant.aPos nest.nContainer.cRect
-        (antHasFood', antScore', antAngle', nestScore', foods') =
+        (Vector2 nestX nestY) = nest.nContainer.cRect & calcRectCenter
+        (Vector2 antX antY) = ant.aPos
+        dx = nestX - antX
+        dy = nestY - antY
+        distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
+        (antHasFood', antScore', nestDistanceWhenFoodPickedUp', antAngle', nestScore', foods') =
             case (ant.aHasFood, antInNest, antInFoodIndex) of
                 -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
-                -- If the ant finds food, it gets 0.5 points and one food unit is removed from the food object
+                -- If the ant finds food, it gets aNestDistance points and one food unit is removed from the food object
+                -- Store aNestDistance in aNestDistanceWhenFoodPickedUp
                 (False, _, Just i) ->
                     ( True,
-                      ant.aScore + 0.5,
+                      ant.aScore + 1 + distance,
+                      distance,
                       ant.aAngle,
                       nest.nContainer.cAmount,
                       let Food (Container amount rect) = fromJust (foods !? i)
                           foodObj' = Food (Container (amount - 1) rect)
                       in  Seq.update i foodObj' foods
                     )
-                -- If the ant brings the food back to the nest, it gets 0.5 points and the nest gets a point
-                (True, True, _) -> (False, ant.aScore + 0.5, ant.aAngle, nest.nContainer.cAmount + 1, foods)
+                -- If the ant brings the food back to the nest, it gets aNestDistanceWhenFoodPickedUp points and the nest gets a point
+                (True, True, _) -> (False, ant.aScore + 10 + ant.aNestDistanceWhenFoodPickedUp, ant.aNestDistanceWhenFoodPickedUp, ant.aAngle, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
-                _ -> (ant.aHasFood, ant.aScore, ant.aAngle, nest.nContainer.cAmount, foods)
+                _ -> (ant.aHasFood, ant.aScore, ant.aNestDistanceWhenFoodPickedUp, ant.aAngle, nest.nContainer.cAmount, foods)
         -- Delete food when amount is 0
         !foods'' = foods' & Seq.filter (\food -> food.fContainer.cAmount > 0)
         !nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
-        ant' = ant{aHasFood = antHasFood', aScore = antScore', aAngle = antAngle'}
+        ant' = ant{aHasFood = antHasFood', aScore = antScore', aNestDistanceWhenFoodPickedUp = nestDistanceWhenFoodPickedUp', aAngle = antAngle'}
     in  (ant', (nest', foods''))
 
 
 updateFoodWorld :: World -> World
 updateFoodWorld w =
     let (playerAnt', (nest', foods')) = w.wPlayerAnt & antFoodNestInteraction (w.wNest, w.wFood)
+        -- _ = traceShowId (playerAnt'.aScore, playerAnt'.aNestDistanceWhenFoodPickedUp)
         (ants', (nest'', foods'')) = w.wAnts & mapAccumL' antFoodNestInteraction (nest', foods')
     in  w{wPlayerAnt = playerAnt', wNest = nest'', wFood = foods'', wAnts = ants'}
 

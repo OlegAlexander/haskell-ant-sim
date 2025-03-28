@@ -38,6 +38,7 @@ import Shared (
     getNextPos,
     isPointInRect,
     scalarTimesColor,
+    normalize
  )
 
 import AntMovement (antMovementSys)
@@ -207,11 +208,6 @@ visionRayToLine (VisionRay p1 angle rayLength _ _) =
     (p1, getNextPos angle rayLength p1)
 
 
--- Normalize a value to the range [0, 1]
-normalize :: Float -> Float -> Float
-normalize x maxVal = min 1.0 (x / maxVal)
-
-
 calcNestDirectionAndDistance :: Vector2 -> Vector2 -> (Degrees, Float)
 calcNestDirectionAndDistance (Vector2 nestX nestY) (Vector2 antX antY) =
     let dx = nestX - antX
@@ -286,7 +282,7 @@ updateAntFR w ant =
     let visibleRects = w & collectVisibleRects
         nestPos = w.wNest.nContainer.cRect & calcRectCenter
         (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
-        nestAntAngleDelta = 2 * (nestAngle - (ant.aAngle / 360))
+        nestAntAngleDelta = (nestAngle - (ant.aAngle / 360)) + 0.5
         ant' = ant{ aNestAngle = nestAngle, 
                     aNestDistance = nestDistance, 
                     aNestAntAngleDelta = nestAntAngleDelta} & updateVisionRays visibleRects

@@ -109,7 +109,7 @@ pheromoneScale = 0.05
 
 
 initPheromoneAmount :: Int
-initPheromoneAmount = 200
+initPheromoneAmount = 300
 
 
 regeneratePheromoneDelay :: Int
@@ -126,3 +126,7 @@ ticksPerGeneration = fps * 30
 
 maxGenerations :: Int
 maxGenerations = 10000
+
+
+mutationRate :: Float
+mutationRate = 0.01

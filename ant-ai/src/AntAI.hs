@@ -6,7 +6,20 @@
 module AntAI where
 
 import AntMovement (antMovementSys, getCollisionRects, updateAntMovement)
-import Constants (antVisionResolution, bgColor, collisionRectSize, foodColor, fps, maxGenerations, minWallSize, numAnts, screenHeight, screenWidth, ticksPerGeneration)
+import Constants (
+    antVisionResolution,
+    bgColor,
+    collisionRectSize,
+    foodColor,
+    fps,
+    maxGenerations,
+    minWallSize,
+    mutationRate,
+    numAnts,
+    screenHeight,
+    screenWidth,
+    ticksPerGeneration,
+ )
 import Control.Monad (forM_, replicateM, when)
 import Data.Function ((&))
 import Data.Sequence (Seq)
@@ -27,6 +40,7 @@ import NeuralNetwork (
     flattenLayers,
     forwardAll,
     mutate,
+    mutate',
     sigmoid,
     unflattenLayers,
  )
@@ -135,12 +149,12 @@ getParents rng ants =
     in  (parent1, parent2, rng'')
 
 
-generateNewAnt :: StdGen -> Seq Ant -> (Ant, StdGen)
-generateNewAnt rng ants =
+generateNewAnt :: StdGen -> Float -> Seq Ant -> (Ant, StdGen)
+generateNewAnt rng bestStdDev ants =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         (parent1, parent2, rng') = getParents rng ants
         (crossedBrain, rng'') = crossover (flattenLayers parent1.aBrain) (flattenLayers parent2.aBrain) rng'
-        (mutatedBrain, rng''') = mutate 0.05 0.1 crossedBrain rng''
+        (mutatedBrain, rng''') = mutate' mutationRate 1.0 crossedBrain rng''
         (newAnt, rng'''') = mkAnt rng''' screenCenter
     in  (newAnt{aBrain = unflattenLayers mutatedBrain}, rng'''')
 
@@ -169,10 +183,12 @@ generateNextGeneration rng ants =
         topAnts = Seq.take (Seq.length ants `div` 2) sortedAnts
         bestAnt = topAnts `Seq.index` 0
         (bestAntFlatBrain, bestAntBrainShapes) = flattenLayers bestAnt.aBrain
-        _ = traceShowId ((printf "%.4f" :: Float -> String) (average bestAntFlatBrain), (printf "%.4f" :: Float -> String) (stdDev bestAntFlatBrain))
+        bestAvg = average bestAntFlatBrain
+        bestStdDev = stdDev bestAntFlatBrain
+        _ = traceShowId ((printf "%.4f" :: Float -> String) bestAvg, (printf "%.4f" :: Float -> String) bestStdDev)
         (newBestAnt, rng') = mkAnt rng screenCenter
-        (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - 1)]
-    in  if bestAnt.aScore >= 0.5 then (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'') else (ants, rng)
+        (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen bestStdDev topAnts) rng' [1 .. (numAnts - 1)]
+    in  if bestAnt.aScore > 0 then (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'') else (ants, rng)
 
 
 initAntAIWorld :: IO World
@@ -227,7 +243,7 @@ mkInputVector ant =
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
         nestAntAngleDelta = ant.aNestAntAngleDelta
         antNestDistance = ant.aNestDistance
-        hasFood = (if ant.aHasFood then 1.0 else -1.0)
+        hasFood = (if ant.aHasFood then 1.0 else 0)
         inputVector = visionRayColors ++ [nestAntAngleDelta, antNestDistance, hasFood]
     in  -- 32 * 3 + 3 = 99 inputs
         -- _ = traceShowId (length inputVector)
