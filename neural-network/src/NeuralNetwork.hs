@@ -127,5 +127,5 @@ mutate' :: Float -> Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
 mutate' mutationRate range (flatLayers, shapes) gen =
     let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
         (randVals, gen'') = uniformListR (length flatLayers) (-range, range) gen'
-        mutated = zipWith3 (\p x y -> if p < mutationRate then x else y) probs randVals flatLayers
+        mutated = zipWith3 (\p x y -> if p < mutationRate then ((x + y) / 2) else y) probs randVals flatLayers
     in  ((mutated, shapes), gen'')

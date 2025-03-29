@@ -3,7 +3,7 @@
 
 module Shared where
 
-import Constants (collisionRectSize, screenHeight, screenWidth)
+import Constants (collisionRectSize, nnParameterRange, screenHeight, screenWidth)
 import Control.Monad (forM_, unless, (>=>))
 import Data.Function ((&))
 import Data.List (mapAccumL)
@@ -106,7 +106,7 @@ drawTextLines' = drawTextLines 10 10 40 30 darkBrown
 mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
     let (randomAngle, rng') = rng & randomR (0, 360)
-        (flatNeuralNetwork, rng''') = initFlatLayers [99, 66, 33, 5] 1.0 rng'
+        (flatNeuralNetwork, rng''') = initFlatLayers [99, 66, 33, 5] nnParameterRange rng'
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
