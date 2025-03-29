@@ -106,7 +106,7 @@ drawTextLines' = drawTextLines 10 10 40 30 darkBrown
 mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
     let (randomAngle, rng') = rng & randomR (0, 360)
-        (flatNeuralNetwork, rng''') = initFlatLayers [99, 66, 33, 5] nnParameterRange rng'
+        (flatNeuralNetwork, rng''') = initFlatLayers [99, 99, 5] 0.1 rng'
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
@@ -149,6 +149,7 @@ defaultWorld rng =
               wTrainingMode = Off,
               wTicks = 0,
               wGeneration = 0,
+              wCourse = 0,
               wBestAntScore = 0,
               wRng = rng'
             }

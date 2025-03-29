@@ -128,6 +128,10 @@ maxGenerations :: Int
 maxGenerations = 10000
 
 
+numCourses :: Int
+numCourses = 5
+
+
 mutationRate :: Float
 mutationRate = 0.01
 

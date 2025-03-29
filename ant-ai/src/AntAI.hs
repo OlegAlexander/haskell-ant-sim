@@ -41,7 +41,7 @@ import NeuralNetwork (
     flattenLayers,
     forwardAll,
     mutate,
-    mutate',
+    invert,
     sigmoid,
     unflattenLayers,
  )
@@ -155,9 +155,11 @@ generateNewAnt rng bestStdDev ants =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         (parent1, parent2, rng') = getParents rng ants
         (crossedBrain, rng'') = crossover (flattenLayers parent1.aBrain) (flattenLayers parent2.aBrain) rng'
-        (mutatedBrain, rng''') = mutate' mutationRate nnParameterRange crossedBrain rng''
-        (newAnt, rng'''') = mkAnt rng''' screenCenter
-    in  (newAnt{aBrain = unflattenLayers mutatedBrain}, rng'''')
+        (mutatedBrain, rng''') = mutate mutationRate 0.1 crossedBrain rng''
+        lengthOfMutatedBrain = int2Float (length mutatedBrain)
+        (invertedBrain, rng'''') = invert (mutationRate * 0.001) mutatedBrain rng'''
+        (newAnt, rng''''') = mkAnt rng'''' screenCenter
+    in  (newAnt{aBrain = unflattenLayers invertedBrain}, rng''''')
 
 
 average :: (Fractional a) => [a] -> a

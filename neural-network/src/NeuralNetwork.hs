@@ -7,6 +7,7 @@ import Data.List (foldl')
 import Data.Vector (Vector)
 import Data.Vector qualified as V
 import System.Random (Random, StdGen, randomR)
+import Debug.Trace (traceShowId)    
 
 
 type Layer = (Vector (Vector Float), Vector Float)
@@ -123,9 +124,20 @@ mutate mutationRate range (flatLayers, shapes) gen =
         mutated = zipWith3 (\p x y -> if p < mutationRate then y + x else y) probs offsets flatLayers
     in  ((mutated, shapes), gen'')
 
-mutate' :: Float -> Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
-mutate' mutationRate range (flatLayers, shapes) gen =
+
+invert :: Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
+invert mutationRate (flatLayers, shapes) gen =
     let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
-        (randVals, gen'') = uniformListR (length flatLayers) (-range, range) gen'
-        mutated = zipWith3 (\p x y -> if p < mutationRate then ((x + y) / 2) else y) probs randVals flatLayers
+        inverted = zipWith (\p x -> if p < mutationRate then let val = x * (-1) in traceShowId val else x) probs flatLayers
+    in  ((inverted, shapes), gen')
+
+clamp :: Float -> Float -> Float -> Float
+clamp minVal maxVal x = max minVal (min maxVal x)
+
+
+mutate' :: Float -> Float -> Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
+mutate' mutationRate range weight (flatLayers, shapes) gen =
+    let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
+        (randVals, gen'') = uniformListR (length flatLayers) (-range * weight, range * weight) gen'
+        mutated = zipWith3 (\p x y -> if p < mutationRate then clamp (-range) range (x + y) else y) probs randVals flatLayers
     in  ((mutated, shapes), gen'')

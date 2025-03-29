@@ -98,6 +98,7 @@ data World = World
       wTrainingMode :: TrainingMode,
       wTicks :: Int,
       wGeneration :: Int,
+      wCourse :: Int,
       wBestAntScore :: Float,
       wRng :: StdGen
     }
