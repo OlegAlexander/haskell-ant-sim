@@ -8,13 +8,26 @@
 module Food where
 
 import AntMovement (antMovementSys)
-import Constants (bgColor, 
-                    collisionRectSize, foodColor, foodGrowthAmount, foodScale, fps, nestColor, nestSize, screenHeight, screenWidth, compassMaxDistance)
+import Constants (
+    bgColor,
+    collisionRectSize,
+    compassMaxDistance,
+    foodColor,
+    foodGrowthAmount,
+    foodScale,
+    fps,
+    nestColor,
+    nestSize,
+    screenHeight,
+    screenWidth,
+ )
 import Control.Monad (forM_, when)
+import Data.Fixed (mod')
 import Data.Function ((&))
 import Data.Maybe (fromJust)
 import Data.Sequence (Seq, (!?), (<|))
 import Data.Sequence qualified as Seq
+import Debug.Trace (traceShowId)
 import GHC.Float (int2Float)
 import Raylib.Core (
     clearBackground,
@@ -28,14 +41,13 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Debug.Trace (traceShowId)
 import Raylib.Core.Shapes (drawCircleV)
 import Raylib.Types (
-    Vector2 (..),
     KeyboardKey (..),
     MouseButton (MouseButtonLeft),
     MouseCursor (MouseCursorCrosshair),
     TraceLogLevel (LogWarning),
+    Vector2 (..),
  )
 import Raylib.Types.Core (MouseButton (MouseButtonRight))
 import Raylib.Util (drawing)
@@ -49,18 +61,17 @@ import Shared (
     getNextPos,
     isPointInRect,
     mapAccumL',
-    normalize
+    normalize,
  )
 import System.Random (newStdGen)
 import Types (
     Ant (..),
     Container (..),
+    Degrees,
     Food (..),
     Nest (..),
     World (..),
-    Degrees,
  )
-import Data.Fixed (mod')
 
 
 initFoodWorld :: IO World
@@ -136,7 +147,7 @@ antFoodNestInteraction (nest, foods) ant =
                       in  Seq.update i foodObj' foods
                     )
                 -- If the ant brings the food back to the nest, it gets aNestDistanceWhenFoodPickedUp points and the nest gets a point
-                (True, True, _) -> (False, ant.aScore + 0.5, ant.aNestDistanceWhenFoodPickedUp, ant.aAngle, nest.nContainer.cAmount + 1, foods)
+                (True, True, _) -> (False, ant.aScore + 0.5, 0, ant.aAngle, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
                 _ -> (ant.aHasFood, ant.aScore, ant.aNestDistanceWhenFoodPickedUp, ant.aAngle, nest.nContainer.cAmount, foods)
         -- Delete food when amount is 0

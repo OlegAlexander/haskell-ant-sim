@@ -21,7 +21,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 40
+numAnts = 50
 
 
 antScale :: Float
@@ -120,16 +120,16 @@ maxPheromones :: Int
 maxPheromones = 50
 
 
-ticksPerGeneration :: Int
-ticksPerGeneration = fps * 30
+ticksPerCourse :: Int
+ticksPerCourse = fps * 30
+
+
+coursesPerGeneration :: Int
+coursesPerGeneration = 1
 
 
 maxGenerations :: Int
 maxGenerations = 10000
-
-
-numCourses :: Int
-numCourses = 5
 
 
 mutationRate :: Float

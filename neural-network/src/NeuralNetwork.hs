@@ -6,8 +6,8 @@ import Data.Function ((&))
 import Data.List (foldl')
 import Data.Vector (Vector)
 import Data.Vector qualified as V
+import Debug.Trace (traceShowId)
 import System.Random (Random, StdGen, randomR)
-import Debug.Trace (traceShowId)    
 
 
 type Layer = (Vector (Vector Float), Vector Float)
@@ -129,7 +129,8 @@ invert :: Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
 invert mutationRate (flatLayers, shapes) gen =
     let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
         inverted = zipWith (\p x -> if p < mutationRate then let val = x * (-1) in traceShowId val else x) probs flatLayers
-    in  ((inverted, shapes), gen')
+    in  inverted `seq` ((inverted, shapes), gen')
+
 
 clamp :: Float -> Float -> Float -> Float
 clamp minVal maxVal x = max minVal (min maxVal x)
