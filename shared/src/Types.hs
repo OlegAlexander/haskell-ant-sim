@@ -61,7 +61,8 @@ data Ant = Ant
       aHasFood :: Bool,
       aScore :: Float,
       aRegeneratePheromoneCounter :: Int,
-      aBrain :: [Layer]
+      aForagingBrain :: [Layer],
+      aReturningBrain :: [Layer]
     }
     deriving (Eq, Show) 
 

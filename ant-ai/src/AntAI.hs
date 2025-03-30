@@ -40,8 +40,8 @@ import NeuralNetwork (
     crossover,
     flattenLayers,
     forwardAll,
-    mutate,
     invert,
+    mutate,
     sigmoid,
     unflattenLayers,
  )
@@ -150,16 +150,22 @@ getParents rng ants =
     in  (parent1, parent2, rng'')
 
 
-generateNewAnt :: StdGen -> Float -> Seq Ant -> (Ant, StdGen)
-generateNewAnt rng bestStdDev ants =
+generateNewBrain :: StdGen -> [Layer] -> [Layer] -> ([Layer], StdGen)
+generateNewBrain rng p1Brain p2Brain =
+    let (crossedBrain, rng') = crossover (flattenLayers p1Brain) (flattenLayers p2Brain) rng
+        (mutatedBrain, rng'') = mutate mutationRate 0.2 crossedBrain rng'
+        (invertedBrain, rng''') = invert (mutationRate * 0.002) mutatedBrain rng''
+    in  (unflattenLayers invertedBrain, rng''')
+
+
+generateNewAnt :: StdGen -> Seq Ant -> (Ant, StdGen)
+generateNewAnt rng ants =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        (parent1, parent2, rng') = getParents rng ants
-        (crossedBrain, rng'') = crossover (flattenLayers parent1.aBrain) (flattenLayers parent2.aBrain) rng'
-        (mutatedBrain, rng''') = mutate mutationRate 0.1 crossedBrain rng''
-        lengthOfMutatedBrain = int2Float (length mutatedBrain)
-        (invertedBrain, rng'''') = invert (mutationRate * 0.001) mutatedBrain rng'''
-        (newAnt, rng''''') = mkAnt rng'''' screenCenter
-    in  (newAnt{aBrain = unflattenLayers invertedBrain}, rng''''')
+        (p1, p2, rng') = getParents rng ants
+        (foragingBrain, rng'') = generateNewBrain rng' p1.aForagingBrain p2.aForagingBrain
+        (returningBrain, rng''') = generateNewBrain rng'' p1.aReturningBrain p2.aReturningBrain
+        (newAnt, rng'''') = mkAnt rng''' screenCenter
+    in  (newAnt{aForagingBrain = foragingBrain, aReturningBrain = returningBrain}, rng'''')
 
 
 average :: (Fractional a) => [a] -> a
@@ -185,13 +191,13 @@ generateNextGeneration rng ants =
         _ = traceShowId (fmap (.aScore) sortedAnts)
         topAnts = Seq.take (Seq.length ants `div` 2) sortedAnts
         bestAnt = topAnts `Seq.index` 0
-        (bestAntFlatBrain, bestAntBrainShapes) = flattenLayers bestAnt.aBrain
-        bestAvg = average bestAntFlatBrain
-        bestStdDev = stdDev bestAntFlatBrain
-        _ = traceShowId (length bestAntFlatBrain, (printf "%.4f" :: Float -> String) bestAvg, (printf "%.4f" :: Float -> String) bestStdDev)
+        (bestAntFlatForagingBrain, bestAntBrainShapes) = flattenLayers bestAnt.aForagingBrain
+        bestAvg = average bestAntFlatForagingBrain
+        bestStdDev = stdDev bestAntFlatForagingBrain
+        _ = traceShowId (length bestAntFlatForagingBrain, (printf "%.4f" :: Float -> String) bestAvg, (printf "%.4f" :: Float -> String) bestStdDev)
         (newBestAnt, rng') = mkAnt rng screenCenter
-        (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen bestStdDev topAnts) rng' [1 .. (numAnts - 1)]
-    in  if bestAnt.aScore > 0 then (Seq.singleton newBestAnt{aBrain = bestAnt.aBrain} <> Seq.fromList newAnts, rng'') else (ants, rng)
+        (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - 1)]
+    in  if bestAnt.aScore > 0 then (Seq.singleton newBestAnt{aForagingBrain = bestAnt.aForagingBrain} <> Seq.fromList newAnts, rng'') else (ants, rng)
 
 
 initAntAIWorld :: IO World
@@ -244,10 +250,11 @@ mkInputVector ant =
     let visionRayColors =
             ant.aVisionRays
                 & concatMap (\ray -> let (r, g, b, a) = rgbToLinear ray.rColor in [r, g, b])
+        nestAngle = ant.aNestAngle
         nestAntAngleDelta = ant.aNestAntAngleDelta
         antNestDistance = ant.aNestDistance
-        hasFood = (if ant.aHasFood then 1.0 else 0)
-        inputVector = visionRayColors ++ [nestAntAngleDelta, antNestDistance, hasFood]
+        -- hasFood = (if ant.aHasFood then 1.0 else 0)
+        inputVector = visionRayColors ++ [nestAngle, nestAntAngleDelta, antNestDistance]
     in  -- 32 * 3 + 3 = 99 inputs
         V.fromList inputVector
 
@@ -283,10 +290,16 @@ calcTicksAndGeneration w =
     in  (ticks', generation')
 
 
+getAntDecision :: Ant -> AntDecision
+getAntDecision ant =
+    let brain = if ant.aHasFood then ant.aReturningBrain else ant.aForagingBrain
+    in  antBrainNeuralNetwork brain (mkInputVector ant)
+
+
 -- TODO Clean up this function!
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
-    let antDecisions = w.wAnts & fmap (\ant -> antBrainNeuralNetwork ant.aBrain (mkInputVector ant))
+    let antDecisions = w.wAnts & fmap getAntDecision
         decidedAnts = w.wAnts & Seq.zipWith applyAntDecision antDecisions
         collisionRects = getCollisionRects w
         (movedAnts, rng) = mapAccumL' (updateAntMovement collisionRects) w.wRng decidedAnts
