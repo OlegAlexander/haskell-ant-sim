@@ -21,7 +21,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 50
+numAnts = 40
 
 
 antScale :: Float

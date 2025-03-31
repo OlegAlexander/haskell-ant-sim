@@ -71,7 +71,7 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, darkBrown, lightGray)
+import Raylib.Util.Colors (black, blue, darkBrown, green, lightGray)
 import Shared (
     System (..),
     calcRectCenter,
@@ -166,8 +166,19 @@ resetAnt rng ant =
     in  (ant'', rng')
 
 
+-- Same as resetAnt but also reset the score to 0
+hardResetAnt :: StdGen -> Ant -> (Ant, StdGen)
+hardResetAnt gen ant =
+    let (ant', rng') = resetAnt gen ant
+    in  (ant'{aScore = 0}, rng')
+
+
 resetAllAnts :: StdGen -> Seq Ant -> (Seq Ant, StdGen)
-resetAllAnts rng ants = let _ = traceShowId "resetting ants" in mapAccumL' resetAnt rng ants
+resetAllAnts rng ants = mapAccumL' resetAnt rng ants
+
+
+hardResetAllAnts :: StdGen -> Seq Ant -> (Seq Ant, StdGen)
+hardResetAllAnts rng ants = mapAccumL' hardResetAnt rng ants
 
 
 getParents :: StdGen -> Seq Ant -> (Ant, Ant, StdGen)
@@ -224,10 +235,10 @@ generateNextGeneration rng ants =
         bestAvg = average bestAntFlatForagingBrain
         bestStdDev = stdDev bestAntFlatForagingBrain
         !debug2 = traceShowId (length bestAntFlatForagingBrain, (printf "%.4f" :: Float -> String) bestAvg, (printf "%.4f" :: Float -> String) bestStdDev)
-        (newBestAnt, rng') = resetAnt rng bestAnt
+        (newBestAnt, rng') = hardResetAnt rng bestAnt
         (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - 1)]
         !debug3 = traceShowId "next generation"
-    in  (Seq.singleton newBestAnt{aScore = 0} <> Seq.fromList newAnts, rng'')
+    in  (Seq.singleton newBestAnt <> Seq.fromList newAnts, rng'')
 
 
 initAntAIWorld :: IO World
@@ -338,16 +349,18 @@ updateAntAIWorld w =
         collisionRects = getCollisionRects w
         (movedAnts, rng) = mapAccumL' (updateAntMovement collisionRects) w.wRng decidedAnts
         seeingAnts = fmap (updateAntFR w) movedAnts
-        (walls, rng') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomWalls rng w.wNest 3 else (w.wWalls, w.wRng)
+        (walls, rng') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomWalls rng w.wNest 3 else (w.wWalls, rng)
         (foods, rng'') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 3 else (w.wFood, rng')
         (resetAnts, rng''') = if w.wTrainingMode == Slow && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
         bestAntScore = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 then let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) resetAnts in (sortedAnts `Seq.index` 0).aScore else w.wBestAntScore
-        (newAnts, rng'''') = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 && bestAntScore > w.wBestAntScore then generateNextGeneration rng''' resetAnts else (resetAnts, rng''')
+        (newAnts, rng'''') = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
+        (newAnts', rng''''') = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 && bestAntScore > w.wBestAntScore then generateNextGeneration rng'''' newAnts else (newAnts, rng'''')
+        -- _ = traceShowId ("new ants high score", let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) newAnts in (sortedAnts `Seq.index` 0).aScore)
         pheromones = if w.wTrainingMode == Slow && w.wTicks == 0 then Seq.empty else w.wPheromones
         (ticks, course, generation) = calcTicksCourseGeneration w
         trainingMode = if generation == maxGenerations then Done else w.wTrainingMode
     in  w
-            { wAnts = newAnts,
+            { wAnts = newAnts',
               wTicks = ticks,
               wCourse = course,
               wGeneration = generation,
@@ -356,7 +369,7 @@ updateAntAIWorld w =
               wWalls = walls,
               wFood = foods,
               wPheromones = pheromones,
-              wRng = rng''''
+              wRng = rng'''''
             }
 
 
@@ -386,8 +399,16 @@ renderAntAIWorld w = do
           "Course: " ++ show (w.wCourse + 1),
           "Ticks: " ++ show (w.wTicks + 1),
           "Best Ant Score: " ++ show w.wBestAntScore
+          --   "Best Score Now: " ++ show (let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) w.wAnts in (sortedAnts `Seq.index` 0).aScore)
         ]
     forM_ w.wAnts (drawAnt black)
+    -- Draw the score above the ants
+    -- forM_ w.wAnts $ \ant -> do
+    --     let (Vector2 x y) = ant.aPos
+    --         antScore = ant.aScore
+    --         scoreText = printf "%.1f" antScore
+    --         (Vector2 tx ty) = Vector2 (x - 20) (y - 40)
+    --     when (ant.aScore > 0) $ drawText scoreText (floor tx) (floor ty) 30 blue
     when (w.wTrainingMode == Slow && w.wTicks == 0) performGC
 
 
