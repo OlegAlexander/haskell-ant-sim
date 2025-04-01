@@ -138,7 +138,7 @@ antFoodNestInteraction (nest, foods) ant =
                 -- Store aNestDistance in aNestDistanceWhenFoodPickedUp
                 (False, _, Just i) ->
                     ( True,
-                      ant.aScore + 0.5,
+                      ant.aScore + (distance ** 3),
                       distance,
                       ant.aAngle,
                       nest.nContainer.cAmount,
@@ -147,7 +147,7 @@ antFoodNestInteraction (nest, foods) ant =
                       in  Seq.update i foodObj' foods
                     )
                 -- If the ant brings the food back to the nest, it gets aNestDistanceWhenFoodPickedUp points and the nest gets a point
-                (True, True, _) -> (False, ant.aScore + 0.5, 0, ant.aAngle, nest.nContainer.cAmount + 1, foods)
+                (True, True, _) -> (False, ant.aScore + (distance ** 3) * 10, 0, ant.aAngle, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
                 _ -> (ant.aHasFood, ant.aScore, ant.aNestDistanceWhenFoodPickedUp, ant.aAngle, nest.nContainer.cAmount, foods)
         -- Delete food when amount is 0

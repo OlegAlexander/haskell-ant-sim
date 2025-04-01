@@ -26,6 +26,7 @@ import Constants (
     ticksPerCourse,
  )
 import Control.Monad (forM_, replicateM, when)
+import Data.Foldable (toList)
 import Data.Function ((&))
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -194,7 +195,7 @@ generateNewBrain :: StdGen -> [Layer] -> [Layer] -> ([Layer], StdGen)
 generateNewBrain rng p1Brain p2Brain =
     let (crossedBrain, rng') = crossover (flattenLayers p1Brain) (flattenLayers p2Brain) rng
         (mutatedBrain, rng'') = mutate mutationRate 0.2 crossedBrain rng'
-    in  -- (!invertedBrain, rng''') = invert (mutationRate * 0.002) mutatedBrain rng''
+    in  -- (invertedBrain, rng''') = invert (mutationRate * 0.002) mutatedBrain rng''
         (unflattenLayers mutatedBrain, rng'')
 
 
@@ -224,8 +225,8 @@ stdDev xs =
 -- the brains of 2 random ants and then mutate it.
 -- Keep the best ant brain from the previous generation.
 -- Return the new generation of ants.
-generateNextGeneration :: StdGen -> Seq Ant -> (Seq Ant, StdGen)
-generateNextGeneration rng ants =
+generateNextGeneration :: Int -> StdGen -> Seq Ant -> (Seq Ant, Int, StdGen)
+generateNextGeneration generation rng ants =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) ants
         !debug1 = traceShowId (fmap (.aScore) sortedAnts)
@@ -236,9 +237,9 @@ generateNextGeneration rng ants =
         bestStdDev = stdDev bestAntFlatForagingBrain
         !debug2 = traceShowId (length bestAntFlatForagingBrain, (printf "%.4f" :: Float -> String) bestAvg, (printf "%.4f" :: Float -> String) bestStdDev)
         (newBestAnt, rng') = hardResetAnt rng bestAnt
-        (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - 1)]
+        (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - Seq.length topAnts)]
         !debug3 = traceShowId "next generation"
-    in  (Seq.singleton newBestAnt <> Seq.fromList newAnts, rng'')
+    in  (topAnts <> Seq.fromList newAnts, generation + 1, rng'')
 
 
 initAntAIWorld :: IO World
@@ -350,22 +351,22 @@ updateAntAIWorld w =
         (movedAnts, rng) = mapAccumL' (updateAntMovement collisionRects) w.wRng decidedAnts
         seeingAnts = fmap (updateAntFR w) movedAnts
         (walls, rng') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomWalls rng w.wNest 3 else (w.wWalls, rng)
-        (foods, rng'') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 3 else (w.wFood, rng')
+        (foods, rng'') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 10 else (w.wFood, rng')
         (resetAnts, rng''') = if w.wTrainingMode == Slow && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
-        bestAntScore = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 then let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) resetAnts in (sortedAnts `Seq.index` 0).aScore else w.wBestAntScore
+        bestAvgScore = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
         (newAnts, rng'''') = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
-        (newAnts', rng''''') = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 && bestAntScore > w.wBestAntScore then generateNextGeneration rng'''' newAnts else (newAnts, rng'''')
+        (newAnts', generation', rng''''') = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 && bestAvgScore > (w.wBestAvgScore * 0.95) then generateNextGeneration w.wGeneration rng'''' newAnts else (newAnts, w.wGeneration, rng'''')
         -- _ = traceShowId ("new ants high score", let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) newAnts in (sortedAnts `Seq.index` 0).aScore)
         pheromones = if w.wTrainingMode == Slow && w.wTicks == 0 then Seq.empty else w.wPheromones
         (ticks, course, generation) = calcTicksCourseGeneration w
-        trainingMode = if generation == maxGenerations then Done else w.wTrainingMode
+        trainingMode = if generation' == maxGenerations then Done else w.wTrainingMode
     in  w
             { wAnts = newAnts',
               wTicks = ticks,
               wCourse = course,
-              wGeneration = generation,
+              wGeneration = generation',
               wTrainingMode = trainingMode,
-              wBestAntScore = max bestAntScore w.wBestAntScore,
+              wBestAvgScore = max bestAvgScore w.wBestAvgScore,
               wWalls = walls,
               wFood = foods,
               wPheromones = pheromones,
@@ -394,11 +395,12 @@ renderAntAIWorld w = do
     drawTextLines'
         [ "FPS: " ++ show gameFps,
           "Pheromones: " ++ show (Seq.length w.wPheromones),
+          "Ants: " ++ show (Seq.length w.wAnts),
           "Training: " ++ show w.wTrainingMode,
           "Generation: " ++ show (w.wGeneration + 1),
           "Course: " ++ show (w.wCourse + 1),
           "Ticks: " ++ show (w.wTicks + 1),
-          "Best Ant Score: " ++ show w.wBestAntScore
+          "Best Avg Score: " ++ show w.wBestAvgScore
           --   "Best Score Now: " ++ show (let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) w.wAnts in (sortedAnts `Seq.index` 0).aScore)
         ]
     forM_ w.wAnts (drawAnt black)
@@ -406,7 +408,7 @@ renderAntAIWorld w = do
     -- forM_ w.wAnts $ \ant -> do
     --     let (Vector2 x y) = ant.aPos
     --         antScore = ant.aScore
-    --         scoreText = printf "%.1f" antScore
+    --         scoreText = printf "%.2f" antScore
     --         (Vector2 tx ty) = Vector2 (x - 20) (y - 40)
     --     when (ant.aScore > 0) $ drawText scoreText (floor tx) (floor ty) 30 blue
     when (w.wTrainingMode == Slow && w.wTicks == 0) performGC

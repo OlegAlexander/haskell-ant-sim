@@ -21,7 +21,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 40
+numAnts = 50
 
 
 antScale :: Float
@@ -125,7 +125,7 @@ ticksPerCourse = fps * 30
 
 
 coursesPerGeneration :: Int
-coursesPerGeneration = 1
+coursesPerGeneration = 3
 
 
 maxGenerations :: Int

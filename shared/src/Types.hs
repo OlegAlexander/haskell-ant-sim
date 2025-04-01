@@ -100,7 +100,7 @@ data World = World
       wTicks :: Int,
       wGeneration :: Int,
       wCourse :: Int,
-      wBestAntScore :: Float,
+      wBestAvgScore :: Float,
       wRng :: StdGen
     }
     deriving (Eq, Show)

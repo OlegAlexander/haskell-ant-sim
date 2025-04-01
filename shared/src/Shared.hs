@@ -152,7 +152,7 @@ defaultWorld rng =
               wTicks = 0,
               wGeneration = 0,
               wCourse = 0,
-              wBestAntScore = 0,
+              wBestAvgScore = 0,
               wRng = rng'
             }
 
