@@ -133,7 +133,7 @@ maxGenerations = 10000
 
 
 mutationRate :: Float
-mutationRate = 0.01
+mutationRate = 0.05
 
 
 nnParameterRange :: Float
