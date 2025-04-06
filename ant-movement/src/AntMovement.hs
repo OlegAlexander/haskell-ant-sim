@@ -7,7 +7,7 @@
 
 module AntMovement where
 
-import Constants (antAcceleration, antJitterAngle, antMaxSpeed, antTurnAngle, bgColor, fps, screenHeight, screenWidth, wallColor)
+import Constants (antAcceleration, antJitterAngle, antTurnAngle, bgColor, fps, screenHeight, screenWidth, wallColor)
 import Control.Monad (forM_, when)
 import Data.Fixed (mod')
 import Data.Foldable (Foldable (toList))
@@ -112,18 +112,19 @@ handleAMInput w = do
 getNextAngle :: StdGen -> Ant -> (Float, StdGen)
 getNextAngle rng ant =
     let (jitter, rng') = rng & randomR (-antJitterAngle, antJitterAngle)
+        jitterAmount = jitter * min (abs ant.aSpeed) 1
         angle = case ant.aWheelPos of
-            TurnRight -> ant.aAngle - antTurnAngle + jitter
-            TurnLeft -> ant.aAngle + antTurnAngle + jitter
-            Center -> ant.aAngle + jitter
+            TurnRight -> ant.aAngle - antTurnAngle + jitterAmount
+            TurnLeft -> ant.aAngle + antTurnAngle + jitterAmount
+            Center -> ant.aAngle + jitterAmount
     in  (angle `mod'` 360, rng')
 
 
 getNextSpeed :: Ant -> Float
 getNextSpeed ant =
     case ant.aGoDir of
-        Forward -> min antMaxSpeed (ant.aSpeed + antAcceleration)
-        Backward -> max ((-antMaxSpeed) / 4) (ant.aSpeed - antAcceleration)
+        Forward -> min ant.aMaxSpeed (ant.aSpeed + antAcceleration)
+        Backward -> max ((-ant.aMaxSpeed) * 0.33) (ant.aSpeed - antAcceleration)
         Stop -> case compare ant.aSpeed 0 of
             LT -> min 0 (ant.aSpeed + antAcceleration)
             GT -> max 0 (ant.aSpeed - antAcceleration)

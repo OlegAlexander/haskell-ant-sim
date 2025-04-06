@@ -3,7 +3,7 @@
 
 module Shared where
 
-import Constants (collisionRectSize, nnParameterRange, screenHeight, screenWidth)
+import Constants (antMaxSpeed, hitboxSize, nnParameterRange, screenHeight, screenWidth)
 import Control.Monad (forM_, unless, (>=>))
 import Data.Function ((&))
 import Data.List (mapAccumL)
@@ -106,12 +106,14 @@ drawTextLines' = drawTextLines 10 10 40 30 darkBrown
 mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
     let (randomAngle, rng') = rng & randomR (0, 360)
-        (flatNeuralNetworkForaging, rng'') = initFlatLayers [99, 99, 5] 0.1 rng'
-        (flatNeuralNetworkReturning, rng''') = initFlatLayers [99, 99, 5] 0.1 rng''
+        (randomMaxSpeedOffset, rng'') = rng' & randomR (-2, 2)
+        (flatNeuralNetworkForaging, rng''') = initFlatLayers [99, 99, 9] 0.1 rng''
+        (flatNeuralNetworkReturning, rng'''') = initFlatLayers [99, 99, 9] 0.1 rng'''
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
               aSpeed = 0,
+              aMaxSpeed = antMaxSpeed + randomMaxSpeedOffset,
               aGoDir = Stop,
               aWheelPos = Center,
               aSprite = LeftSprite,
@@ -126,7 +128,7 @@ mkAnt rng pos =
               aForagingBrain = unflattenLayers flatNeuralNetworkForaging,
               aReturningBrain = unflattenLayers flatNeuralNetworkReturning
             },
-          rng'''
+          rng''''
         )
 
 
@@ -134,7 +136,7 @@ defaultWorld :: StdGen -> World
 defaultWorld rng =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         (playerAnt, rng') = mkAnt rng screenCenter
-        nest = Nest (Container 0 (calcCenteredRect screenCenter collisionRectSize))
+        nest = Nest (Container 0 (calcCenteredRect screenCenter hitboxSize))
     in  World
             { wPlayerAnt = playerAnt,
               wAnts = Seq.empty,

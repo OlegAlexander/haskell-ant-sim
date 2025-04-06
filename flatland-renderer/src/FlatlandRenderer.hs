@@ -11,10 +11,10 @@ import Constants (
     antVisionAngle,
     antVisionMaxDistance,
     antVisionResolution,
-    collisionRectSize,
     compassMaxDistance,
     foodColor,
     fps,
+    hitboxSize,
     initPheromoneAmount,
     nestColor,
     nestSize,
@@ -37,8 +37,8 @@ import Shared (
     gameLoop,
     getNextPos,
     isPointInRect,
+    normalize,
     scalarTimesColor,
-    normalize
  )
 
 import AntMovement (antMovementSys)
@@ -63,6 +63,7 @@ import Raylib.Core.Shapes (
 
 import Constants (bgColor)
 import Data.Foldable (Foldable (toList))
+import Debug.Trace (traceShowId)
 import Raylib.Types (
     Color (..),
     KeyboardKey (..),
@@ -86,7 +87,6 @@ import Types (
     VisionRay (..),
     World (..),
  )
-import Debug.Trace (traceShowId)
 
 
 -- Intersect a ray with a rectangle and return the distance to the intersection
@@ -237,10 +237,10 @@ initFRWorld = do
                 [ Pheromone
                     ( Container
                         initPheromoneAmount
-                        (calcCenteredRect (screenCenter |+| Vector2 100 100) collisionRectSize)
+                        (calcCenteredRect (screenCenter |+| Vector2 100 100) hitboxSize)
                     )
                 ]
-        food = Seq.fromList [Food (Container 10 (calcCenteredRect (screenCenter |+| Vector2 300 300) collisionRectSize))]
+        food = Seq.fromList [Food (Container 10 (calcCenteredRect (screenCenter |+| Vector2 300 300) hitboxSize))]
     return
         (defaultWorld rng)
             { wWalls = walls,
@@ -283,9 +283,13 @@ updateAntFR w ant =
         nestPos = w.wNest.nContainer.cRect & calcRectCenter
         (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
         nestAntAngleDelta = (nestAngle - (ant.aAngle / 360)) + 0.5
-        ant' = ant{ aNestAngle = nestAngle, 
-                    aNestDistance = nestDistance, 
-                    aNestAntAngleDelta = nestAntAngleDelta} & updateVisionRays visibleRects
+        ant' =
+            ant
+                { aNestAngle = nestAngle,
+                  aNestDistance = nestDistance,
+                  aNestAntAngleDelta = nestAntAngleDelta
+                }
+                & updateVisionRays visibleRects
     in  ant'
 
 

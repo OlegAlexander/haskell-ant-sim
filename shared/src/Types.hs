@@ -4,9 +4,9 @@
 module Types where
 
 import Data.Sequence (Seq)
+import NeuralNetwork (Layer)
 import Raylib.Types (Color, Rectangle, Vector2)
 import System.Random (StdGen)
-import NeuralNetwork (Layer)
 
 
 data Container = Container
@@ -50,6 +50,7 @@ data Ant = Ant
     { aPos :: Vector2,
       aAngle :: Degrees,
       aSpeed :: Float,
+      aMaxSpeed :: Float,
       aGoDir :: GoDir,
       aWheelPos :: WheelPos,
       aSprite :: Sprite,
@@ -64,7 +65,7 @@ data Ant = Ant
       aForagingBrain :: [Layer],
       aReturningBrain :: [Layer]
     }
-    deriving (Eq, Show) 
+    deriving (Eq, Show)
 
 
 data WheelPos = TurnLeft | Center | TurnRight deriving (Eq, Show)
@@ -112,8 +113,8 @@ data AntDecision
     | GoForward
     | GoForwardRight
     | GoRight
-      -- | GoBackwardRight
-      -- | GoBackward
-      -- | GoBackwardLeft
-      -- | GoNowhere
+    | GoBackwardRight
+    | GoBackward
+    | GoBackwardLeft
+    | GoNowhere
     deriving (Enum, Eq, Show)

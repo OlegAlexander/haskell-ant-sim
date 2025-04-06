@@ -10,12 +10,12 @@ module Food where
 import AntMovement (antMovementSys)
 import Constants (
     bgColor,
-    collisionRectSize,
     compassMaxDistance,
     foodColor,
     foodGrowthAmount,
     foodScale,
     fps,
+    hitboxSize,
     nestColor,
     nestSize,
     screenHeight,
@@ -41,7 +41,7 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (drawCircleV)
+import Raylib.Core.Shapes (drawCircleV, drawRectangleLinesEx)
 import Raylib.Types (
     KeyboardKey (..),
     MouseButton (MouseButtonLeft),
@@ -51,7 +51,7 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (MouseButton (MouseButtonRight))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (brown, lightGray)
+import Raylib.Util.Colors (blue, brown, lightGray)
 import Shared (
     System (..),
     calcCenteredRect,
@@ -98,7 +98,7 @@ handleFoodInput w = do
     case (isMouseLeftPressed, isMouseRightPressed, w.wFoodBeingDrawn) of
         -- Left click to add food objects
         (True, _, Nothing) ->
-            let collisionRect = calcCenteredRect mousePos collisionRectSize
+            let collisionRect = calcCenteredRect mousePos hitboxSize
                 foodBeingDrawn = Food (Container foodGrowthAmount collisionRect)
             in  return $ w{wFoodBeingDrawn = Just foodBeingDrawn}
         -- Increment foodAmount while the mouse is held down
@@ -174,7 +174,7 @@ drawFood (Food (Container amount rect)) = do
     drawCircleV pos radius foodColor
 
     -- Draw the collision rectangle
-    -- drawRectangleLinesEx rect 2 black
+    -- drawRectangleLinesEx rect 2 blue
     return () -- Deal with the formatter :(
 
 
@@ -188,7 +188,7 @@ renderFoodWorld w = do
     drawCircleV nestPos nestSize nestColor
 
     -- draw nest rect
-    -- drawRectangleLinesEx (nestCollisionRect nest) 2 black
+    -- drawRectangleLinesEx nest.nContainer.cRect 2 blue
 
     -- Draw all food
     forM_ w.wFood drawFood

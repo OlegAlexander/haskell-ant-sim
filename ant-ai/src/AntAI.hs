@@ -11,11 +11,11 @@ import AntMovement (antMovementSys, getCollisionRects, updateAntMovement)
 import Constants (
     antVisionResolution,
     bgColor,
-    collisionRectSize,
     compassMaxDistance,
     coursesPerGeneration,
     foodColor,
     fps,
+    hitboxSize,
     maxGenerations,
     minWallSize,
     mutationRate,
@@ -57,18 +57,21 @@ import Raylib.Core (
     initWindow,
     isKeyDown,
     isKeyPressed,
+    setExitKey,
     setMouseCursor,
     setTargetFPS,
+    setTraceLogLevel,
     toggleFullscreen,
     windowShouldClose,
  )
 import Raylib.Core.Shapes (drawCircleV, drawLineEx)
-import Raylib.Core.Text (drawText)
+import Raylib.Core.Text (drawFPS, drawText)
 import Raylib.Types (
     Color,
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
     Rectangle (Rectangle),
+    TraceLogLevel (LogWarning),
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
@@ -115,8 +118,8 @@ generateRandomWall rng nest =
         (w, rng''') = randomR (minWallSize, int2Float screenWidth - x) rng''
         (h, rng'''') = randomR (minWallSize, int2Float screenHeight - y) rng'''
         wall = Rectangle x y w h
-        (Rectangle nx ny nw nh) = nest.nContainer.cRect
-    in  if isPointInRect (Vector2 nx ny) wall || isPointInRect (Vector2 (nx + nw) (ny + nh)) wall
+        nestCenter = calcRectCenter nest.nContainer.cRect
+    in  if isPointInRect nestCenter wall
             then generateRandomWall rng'''' nest
             else (wall, rng'''')
 
@@ -139,7 +142,7 @@ generateRandomFood rng nest walls =
         dy = nestY - y
         distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
         amount = ceiling (100 * (distance ** 3))
-        food = Food (Container amount (Rectangle x y collisionRectSize collisionRectSize))
+        food = Food (Container amount (Rectangle x y hitboxSize hitboxSize))
         foodOverlapsNest = isPointInRect (Vector2 x y) nest.nContainer.cRect
         foodOverlapsWalls = any (isPointInRect (Vector2 x y)) walls
     in  if foodOverlapsNest || foodOverlapsWalls
@@ -195,7 +198,7 @@ generateNewBrain :: StdGen -> [Layer] -> [Layer] -> ([Layer], StdGen)
 generateNewBrain rng p1Brain p2Brain =
     let (crossedBrain, rng') = crossover (flattenLayers p1Brain) (flattenLayers p2Brain) rng
         (mutatedBrain, rng'') = mutate mutationRate 0.5 crossedBrain rng'
-        (invertedBrain, rng''') = invert (mutationRate * 0.002) mutatedBrain rng''
+        (invertedBrain, rng''') = invert (mutationRate * 0.001) mutatedBrain rng''
     in  (unflattenLayers invertedBrain, rng''')
 
 
@@ -247,8 +250,10 @@ initAntAIWorld = do
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         (ants, rng') = mapAccumL' mkAnt rng (replicate numAnts screenCenter)
     _ <- initWindow screenWidth screenHeight "Ant AI"
-    setTargetFPS (fps * 10)
-    setMouseCursor MouseCursorCrosshair
+    setTargetFPS fps
+    setTraceLogLevel LogWarning
+    -- setMouseCursor MouseCursorCrosshair
+    setExitKey KeyNull -- Pressing ESC should not exit the game
     return (defaultWorld rng'){wAnts = Seq.fromList ants}
 
 
@@ -259,9 +264,9 @@ handleAntAIInput w = do
     rightShiftKey <- isKeyDown KeyRightShift
     let shiftTPressed = tKey && (leftShiftKey || rightShiftKey)
         trainingMode = case (tKey, shiftTPressed, w.wTrainingMode) of
-            (True, False, Off) -> Slow
-            (_, True, Slow) -> Fast
+            (True, False, Off) -> Fast
             (_, True, Fast) -> Slow
+            (_, True, Slow) -> Fast
             _ -> w.wTrainingMode
     return w{wTrainingMode = trainingMode}
 
@@ -307,12 +312,11 @@ applyAntDecision decision ant = case decision of
     GoForward -> ant{aWheelPos = Center, aGoDir = Forward}
     GoForwardRight -> ant{aWheelPos = TurnRight, aGoDir = Forward}
     GoRight -> ant{aWheelPos = TurnRight, aGoDir = Stop}
+    GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
+    GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
+    GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
+    GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
 
-
--- GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
--- GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
--- GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
--- GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
 
 -- If the training mode is Off or Done, return the current ticks, courses, and generation.
 -- If the training mode is Slow or Fast, increment ticks by 1.
@@ -349,14 +353,14 @@ updateAntAIWorld w =
         collisionRects = getCollisionRects w
         (movedAnts, rng) = mapAccumL' (updateAntMovement collisionRects) w.wRng decidedAnts
         seeingAnts = fmap (updateAntFR w) movedAnts
-        (walls, rng') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomWalls rng w.wNest 3 else (w.wWalls, rng)
-        (foods, rng'') = if w.wTrainingMode == Slow && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 10 else (w.wFood, rng')
-        (resetAnts, rng''') = if w.wTrainingMode == Slow && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
-        bestAvgScore = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
-        (newAnts, rng'''') = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
-        (newAnts', generation', rng''''') = if w.wTrainingMode == Slow && w.wTicks == 0 && w.wCourse == 0 && bestAvgScore > (w.wBestAvgScore * 0.5) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
+        (walls, rng') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then generateRandomWalls rng w.wNest 3 else (w.wWalls, rng)
+        (foods, rng'') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 10 else (w.wFood, rng')
+        (resetAnts, rng''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
+        bestAvgScore = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
+        (newAnts, rng'''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
+        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 && bestAvgScore > (w.wBestAvgScore * 0.5) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
         -- _ = traceShowId ("new ants high score", let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) newAnts in (sortedAnts `Seq.index` 0).aScore)
-        pheromones = if w.wTrainingMode == Slow && w.wTicks == 0 then Seq.empty else w.wPheromones
+        pheromones = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then Seq.empty else w.wPheromones
         (ticks, course, generation) = calcTicksCourseGeneration w
         trainingMode = if generation' == maxGenerations then Done else w.wTrainingMode
     in  w
@@ -381,7 +385,7 @@ drawAnt color ant = do
     -- If the ant has food, draw a piece of food in its mouth
     when ant.aHasFood $ do
         let foodPiecePos = getNextPos ant.aAngle 20 antPos
-        drawCircleV foodPiecePos 10 foodColor
+        drawCircleV foodPiecePos 8 foodColor
     -- Draw the ant
     drawCircleV antPos 5 color
     let antDir = antPos & getNextPos ant.aAngle 20
@@ -390,6 +394,9 @@ drawAnt color ant = do
 
 renderAntAIWorld :: World -> IO ()
 renderAntAIWorld w = do
+    if w.wTrainingMode == Fast
+        then do setTargetFPS 1000
+        else setTargetFPS fps
     gameFps <- getFPS
     drawTextLines'
         [ "FPS: " ++ show gameFps,
@@ -432,7 +439,6 @@ antAISysWrapped =
                 when f11Pressed toggleFullscreen
                 clearBackground bgColor
                 allSystems.render w
-                -- drawFPS 10 10
             }
 
 

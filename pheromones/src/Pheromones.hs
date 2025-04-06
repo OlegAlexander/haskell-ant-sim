@@ -8,7 +8,7 @@
 module Pheromones where
 
 import AntMovement (antMovementSys)
-import Constants (bgColor, collisionRectSize, fps, initPheromoneAmount, maxPheromones, pheromoneColor, pheromoneScale, regeneratePheromoneDelay, screenHeight, screenWidth)
+import Constants (bgColor, hitboxSize, fps, initPheromoneAmount, maxPheromones, pheromoneColor, pheromoneScale, regeneratePheromoneDelay, screenHeight, screenWidth)
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Sequence (Seq, (<|))
@@ -25,14 +25,14 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (drawCircleV)
+import Raylib.Core.Shapes (drawCircleV, drawRectangleLinesEx)
 import Raylib.Types (
     KeyboardKey (..),
     MouseCursor (MouseCursorCrosshair),
     TraceLogLevel (LogWarning),
  )
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (lightGray)
+import Raylib.Util.Colors (lightGray, blue)
 import Shared (
     System (..),
     calcCenteredRect,
@@ -82,23 +82,24 @@ antDropsPheromone nest foods pheromones ant =
         hasFood = ant.aHasFood
         notOnFood =
             not (any (\food -> isPointInRect antPos food.fContainer.cRect) foods)
-        notOnPheromone =
-            not (any (\pheromone -> isPointInRect antPos pheromone.pContainer.cRect) pheromones)
+        -- notOnPheromone =
+        --     not (any (\pheromone -> isPointInRect antPos pheromone.pContainer.cRect) pheromones)
         notOnNest =
             not (isPointInRect antPos nest.nContainer.cRect)
         regenerationCounter = ant.aRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
-        underMaxPheromones = length pheromones < maxPheromones
+        -- underMaxPheromones = length pheromones < maxPheromones
         -- Force pheromones' because mapAccumL is lazy in the accumulator
         (ant', !pheromones') =
             if hasFood
                 && notOnFood
-                && notOnPheromone
+                -- && notOnPheromone
                 && notOnNest
                 && regenCounterGreaterThanDelay
-                && underMaxPheromones
+                -- && underMaxPheromones
                 then
-                    let pheromoneRect = calcCenteredRect antPos collisionRectSize
+                    let pheremoneRectSize = hitboxSize * 0.5 -- Make it smaller than the nest and food
+                        pheromoneRect = calcCenteredRect antPos pheremoneRectSize
                         pheromone = Pheromone (Container initPheromoneAmount pheromoneRect)
                     in  (ant{aRegeneratePheromoneCounter = 0}, pheromone <| pheromones)
                 else (ant{aRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
@@ -132,7 +133,7 @@ drawPheromone (Pheromone (Container amount rect)) = do
     drawCircleV pos radius pheromoneColor
 
     -- Draw the collision rectangle
-    -- drawRectangleLinesEx rect 2 black
+    -- drawRectangleLinesEx rect 2 blue
     return () -- Deal with the formatter :(
 
 

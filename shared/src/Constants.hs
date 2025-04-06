@@ -29,11 +29,11 @@ antScale = 0.3
 
 
 antMaxSpeed :: Float
-antMaxSpeed = 8
+antMaxSpeed = 10
 
 
 antAcceleration :: Float
-antAcceleration = 0.5
+antAcceleration = 0.3
 
 
 antTurnAngle :: Float
@@ -41,7 +41,7 @@ antTurnAngle = 5
 
 
 antJitterAngle :: Float
-antJitterAngle = 3
+antJitterAngle = 5
 
 
 antVisionAngle :: Float
@@ -84,12 +84,12 @@ foodGrowthAmount :: Int
 foodGrowthAmount = 1
 
 
-collisionRectSize :: Float
-collisionRectSize = 50
+hitboxSize :: Float
+hitboxSize = 60
 
 
 nestSize :: Float
-nestSize = 20
+nestSize = hitboxSize / 2
 
 
 nestColor :: Color
@@ -100,20 +100,16 @@ pheromoneColor :: Color
 pheromoneColor = orange
 
 
-pheromoneSize :: Float
-pheromoneSize = 10
-
-
 pheromoneScale :: Float
-pheromoneScale = 0.05
+pheromoneScale = 0.15
 
 
 initPheromoneAmount :: Int
-initPheromoneAmount = 300
+initPheromoneAmount = 100
 
 
 regeneratePheromoneDelay :: Int
-regeneratePheromoneDelay = 20
+regeneratePheromoneDelay = 25
 
 
 maxPheromones :: Int
