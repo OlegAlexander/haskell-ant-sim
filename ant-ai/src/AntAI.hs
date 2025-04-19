@@ -24,6 +24,8 @@ import Constants (
     screenHeight,
     screenWidth,
     ticksPerCourse,
+    foragingBrainFile,
+    returningBrainFile,
  )
 import Control.Monad (forM_, replicateM, when)
 import Data.Foldable (toList)
@@ -49,6 +51,8 @@ import NeuralNetwork (
     mutate,
     sigmoid,
     unflattenLayers,
+    writeFlatLayers,
+    readFlatLayers,
  )
 import Pheromones (pheromoneSys)
 import Raylib.Core (
@@ -116,7 +120,7 @@ generateRandomWall rng nest =
     let (x, rng') = randomR (0, int2Float screenWidth) rng
         (y, rng'') = randomR (0, int2Float screenHeight) rng'
         (w, rng''') = randomR (minWallSize, int2Float screenWidth - x) rng''
-        (h, rng'''') = randomR (minWallSize, int2Float screenHeight - y) rng'''
+        (h, !rng'''') = randomR (minWallSize, int2Float screenHeight - y) rng'''
         wall = Rectangle x y w h
         nestCenter = calcRectCenter nest.nContainer.cRect
     in  if isPointInRect nestCenter wall
@@ -136,12 +140,12 @@ generateRandomWalls rng nest numWalls =
 generateRandomFood :: StdGen -> Nest -> Seq Rectangle -> (Food, StdGen)
 generateRandomFood rng nest walls =
     let (x, rng') = randomR (0, int2Float screenWidth) rng
-        (y, rng'') = randomR (0, int2Float screenHeight) rng'
+        (y, !rng'') = randomR (0, int2Float screenHeight) rng'
         (Vector2 nestX nestY) = nest.nContainer.cRect & calcRectCenter
         dx = nestX - x
         dy = nestY - y
         distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
-        amount = ceiling (100 * (distance ** 3))
+        amount = ceiling (150 * (distance ** 3))
         food = Food (Container amount (Rectangle x y hitboxSize hitboxSize))
         foodOverlapsNest = isPointInRect (Vector2 x y) nest.nContainer.cRect
         foodOverlapsWalls = any (isPointInRect (Vector2 x y)) walls
@@ -160,7 +164,7 @@ generateRandomFoods rng nest walls numFoods =
 resetAnt :: StdGen -> Ant -> (Ant, StdGen)
 resetAnt rng ant =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        (ant', rng') = mkAnt rng screenCenter
+        (ant', !rng') = mkAnt rng screenCenter
         ant'' =
             ant'
                 { aForagingBrain = ant.aForagingBrain,
@@ -173,7 +177,7 @@ resetAnt rng ant =
 -- Same as resetAnt but also reset the score to 0
 hardResetAnt :: StdGen -> Ant -> (Ant, StdGen)
 hardResetAnt gen ant =
-    let (ant', rng') = resetAnt gen ant
+    let (ant', !rng') = resetAnt gen ant
     in  (ant'{aScore = 0}, rng')
 
 
@@ -208,7 +212,7 @@ generateNewAnt rng ants =
         (p1, p2, rng') = getParents rng ants
         (foragingBrain, rng'') = generateNewBrain rng' p1.aForagingBrain p2.aForagingBrain
         (returningBrain, rng''') = generateNewBrain rng'' p1.aReturningBrain p2.aReturningBrain
-        (newAnt, rng'''') = mkAnt rng''' screenCenter
+        (newAnt, !rng'''') = mkAnt rng''' screenCenter
     in  (newAnt{aForagingBrain = foragingBrain, aReturningBrain = returningBrain}, rng'''')
 
 
@@ -307,15 +311,16 @@ mkInputVector ant =
 
 applyAntDecision :: AntDecision -> Ant -> Ant
 applyAntDecision decision ant = case decision of
+    GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
     GoLeft -> ant{aWheelPos = TurnLeft, aGoDir = Stop}
     GoForwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Forward}
     GoForward -> ant{aWheelPos = Center, aGoDir = Forward}
     GoForwardRight -> ant{aWheelPos = TurnRight, aGoDir = Forward}
     GoRight -> ant{aWheelPos = TurnRight, aGoDir = Stop}
-    GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
-    GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
-    GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
-    GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
+    -- GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
+    -- GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
+    -- GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
+    
 
 
 -- If the training mode is Off or Done, return the current ticks, courses, and generation.
@@ -356,9 +361,10 @@ updateAntAIWorld w =
         (walls, rng') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then generateRandomWalls rng w.wNest 3 else (w.wWalls, rng)
         (foods, rng'') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 10 else (w.wFood, rng')
         (resetAnts, rng''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
-        bestAvgScore = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
+        avgScore = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
+        _ = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then traceShowId ("avgScore", avgScore, w.wBestAvgScore * 0.6, w.wBestAvgScore) else ("", 0, 0, 0)
         (newAnts, rng'''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
-        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 && bestAvgScore > (w.wBestAvgScore * 0.5) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
+        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 && avgScore > (w.wBestAvgScore * 0.6) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
         -- _ = traceShowId ("new ants high score", let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) newAnts in (sortedAnts `Seq.index` 0).aScore)
         pheromones = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then Seq.empty else w.wPheromones
         (ticks, course, generation) = calcTicksCourseGeneration w
@@ -369,7 +375,7 @@ updateAntAIWorld w =
               wCourse = course,
               wGeneration = generation',
               wTrainingMode = trainingMode,
-              wBestAvgScore = max bestAvgScore w.wBestAvgScore,
+              wBestAvgScore = max avgScore w.wBestAvgScore,
               wWalls = walls,
               wFood = foods,
               wPheromones = pheromones,
@@ -390,6 +396,14 @@ drawAnt color ant = do
     drawCircleV antPos 5 color
     let antDir = antPos & getNextPos ant.aAngle 20
     drawLineEx antPos antDir 5 color
+
+
+writeBestBrain :: World -> IO ()
+writeBestBrain w = do
+    let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) w.wAnts
+        bestAnt = sortedAnts `Seq.index` 0
+    writeFlatLayers foragingBrainFile (flattenLayers bestAnt.aForagingBrain)
+    writeFlatLayers returningBrainFile (flattenLayers bestAnt.aReturningBrain)
 
 
 renderAntAIWorld :: World -> IO ()
@@ -417,7 +431,8 @@ renderAntAIWorld w = do
     --         scoreText = printf "%.2f" antScore
     --         (Vector2 tx ty) = Vector2 (x - 20) (y - 40)
     --     when (ant.aScore > 0) $ drawText scoreText (floor tx) (floor ty) 30 blue
-    when (w.wTrainingMode == Slow && w.wTicks == 0) performGC
+    when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0) performGC
+    when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0) (writeBestBrain w)
 
 
 antAISys :: System World

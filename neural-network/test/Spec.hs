@@ -7,6 +7,7 @@ import Data.Vector (Vector)
 import Data.Vector qualified as V
 import NeuralNetwork
 import System.Random (mkStdGen)
+import System.Directory (removeDirectoryRecursive)
 import Test.Hspec
 import Text.Printf (printf)
 
@@ -100,3 +101,11 @@ main = hspec $ do
                 mutaRounded = map (printf "%.4f" :: Float -> String) mutated
             origRounded `shouldBe` ["0.0947", "-0.0176", "-0.0905", "-0.0933", "-0.0409", "-0.0119", "-0.0739", "-0.0751", "-0.0807", "0.0261", "-0.0190", "0.0762", "0.0526", "-0.0450", "0.0133", "0.0597", "0.0380", "0.0997", "-0.0268", "0.0711", "0.0450", "-0.0224"]
             mutaRounded `shouldBe` ["0.0947", "-0.0176", "-0.0905", "-0.1467", "-0.0409", "-0.0119", "-0.0739", "-0.0751", "-0.0807", "0.0261", "-0.0190", "0.0762", "0.0526", "-0.0450", "0.0133", "0.0597", "0.0380", "0.0997", "-0.0268", "0.0711", "0.0450", "-0.0224"]
+
+        it "write/read" $ do
+            let ((flat, shapes), _) = initFlatLayers [2, 4, 2] 0.1 (mkStdGen 0)
+                filepath = "testdata/flatLayers.bin"
+            writeFlatLayers filepath (flat, shapes)
+            (flat', shapes') <- readFlatLayers filepath
+            (flat', shapes') `shouldBe` (flat, shapes)
+            removeDirectoryRecursive "testdata"

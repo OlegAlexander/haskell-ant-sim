@@ -8,7 +8,7 @@
 module Pheromones where
 
 import AntMovement (antMovementSys)
-import Constants (bgColor, hitboxSize, fps, initPheromoneAmount, maxPheromones, pheromoneColor, pheromoneScale, regeneratePheromoneDelay, screenHeight, screenWidth)
+import Constants (bgColor, hitboxSize, fps, initPheromoneAmount, maxPheromones, pheromoneColor, pheromoneScale, screenHeight, screenWidth)
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Sequence (Seq, (<|))
@@ -87,8 +87,8 @@ antDropsPheromone nest foods pheromones ant =
         notOnNest =
             not (isPointInRect antPos nest.nContainer.cRect)
         regenerationCounter = ant.aRegeneratePheromoneCounter
-        regenCounterGreaterThanDelay = regenerationCounter > regeneratePheromoneDelay
-        -- underMaxPheromones = length pheromones < maxPheromones
+        regenCounterGreaterThanDelay = regenerationCounter > ant.aRegeneratePheromoneDelay
+        underMaxPheromones = length pheromones < maxPheromones
         -- Force pheromones' because mapAccumL is lazy in the accumulator
         (ant', !pheromones') =
             if hasFood
@@ -96,7 +96,7 @@ antDropsPheromone nest foods pheromones ant =
                 -- && notOnPheromone
                 && notOnNest
                 && regenCounterGreaterThanDelay
-                -- && underMaxPheromones
+                && underMaxPheromones
                 then
                     let pheremoneRectSize = hitboxSize * 0.5 -- Make it smaller than the nest and food
                         pheromoneRect = calcCenteredRect antPos pheremoneRectSize

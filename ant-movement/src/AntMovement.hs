@@ -133,7 +133,7 @@ getNextSpeed ant =
 
 updateAntMovement :: [(Rectangle, EntityType)] -> StdGen -> Ant -> (Ant, StdGen)
 updateAntMovement collisionRects rng ant =
-    let (nextAngle, rng') = getNextAngle rng ant
+    let (nextAngle, !rng') = getNextAngle rng ant
         nextSpeed = getNextSpeed ant
         nextPos = getNextPos nextAngle nextSpeed ant.aPos
         nextPos' =

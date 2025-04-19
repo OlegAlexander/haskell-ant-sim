@@ -62,6 +62,7 @@ data Ant = Ant
       aHasFood :: Bool,
       aScore :: Float,
       aRegeneratePheromoneCounter :: Int,
+      aRegeneratePheromoneDelay :: Int,
       aForagingBrain :: [Layer],
       aReturningBrain :: [Layer]
     }
@@ -108,13 +109,13 @@ data World = World
 
 
 data AntDecision
-    = GoLeft
+    = GoNowhere
+    | GoLeft
     | GoForwardLeft
     | GoForward
     | GoForwardRight
     | GoRight
-    | GoBackwardRight
-    | GoBackward
-    | GoBackwardLeft
-    | GoNowhere
+    -- | GoBackwardRight
+    -- | GoBackward
+    -- | GoBackwardLeft
     deriving (Enum, Eq, Show)

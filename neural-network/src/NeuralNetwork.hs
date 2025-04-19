@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use bimap" #-}
 module NeuralNetwork where
@@ -8,11 +9,30 @@ import Data.Vector (Vector)
 import Data.Vector qualified as V
 import Debug.Trace (traceShowId)
 import System.Random (Random, StdGen, randomR)
+import           Data.Serialize        (decode, encode)
+import qualified Data.ByteString       as BS  
+import           System.Directory      (createDirectoryIfMissing)
+import           System.FilePath       (takeDirectory)
 
 
 type Layer = (Vector (Vector Float), Vector Float)
 type FlatLayers = ([Float], [(Int, Int)])
 
+writeFlatLayers :: FilePath -> FlatLayers -> IO ()
+writeFlatLayers path flatLayers = do
+    createDirectoryIfMissing True (takeDirectory path)
+    BS.writeFile path (encode flatLayers)
+    putStrLn $ "FlatLayers written to " ++ path
+
+
+readFlatLayers :: FilePath -> IO (FlatLayers)
+readFlatLayers path = do
+    contents <- BS.readFile path
+    case decode contents of
+        Left err -> error $ "Failed to decode FlatLayers: " ++ err
+        Right flatLayers -> do
+            putStrLn $ "FlatLayers read from " ++ path
+            return flatLayers
 
 -- Redefine uniformListR from random v1.3.0
 -- which I can't use because of QuickCheck dependency :(
@@ -128,7 +148,7 @@ mutate mutationRate range (flatLayers, shapes) gen =
 invert :: Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
 invert mutationRate (flatLayers, shapes) gen =
     let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
-        inverted = zipWith (\p x -> if p < mutationRate then let val = x * (-1) in traceShowId val else x) probs flatLayers
+        inverted = zipWith (\p x -> if p < mutationRate then let val = x * (-1) in val else x) probs flatLayers
     in  inverted `seq` ((inverted, shapes), gen')
 
 

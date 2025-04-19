@@ -101,15 +101,19 @@ pheromoneColor = orange
 
 
 pheromoneScale :: Float
-pheromoneScale = 0.15
+pheromoneScale = 0.03
 
 
 initPheromoneAmount :: Int
-initPheromoneAmount = 100
+initPheromoneAmount = 500
 
 
-regeneratePheromoneDelay :: Int
-regeneratePheromoneDelay = 25
+regeneratePheromoneDelayMin :: Int
+regeneratePheromoneDelayMin = 25
+
+
+regeneratePheromoneDelayMax :: Int
+regeneratePheromoneDelayMax = 75
 
 
 maxPheromones :: Int
@@ -134,3 +138,11 @@ mutationRate = 0.05
 
 nnParameterRange :: Float
 nnParameterRange = 10.0
+
+
+foragingBrainFile :: FilePath
+foragingBrainFile = "models/foraging.brain"
+
+
+returningBrainFile :: FilePath
+returningBrainFile = "models/returning.brain"

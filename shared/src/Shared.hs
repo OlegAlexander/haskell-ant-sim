@@ -3,7 +3,7 @@
 
 module Shared where
 
-import Constants (antMaxSpeed, hitboxSize, nnParameterRange, screenHeight, screenWidth)
+import Constants (antMaxSpeed, hitboxSize, nnParameterRange, screenHeight, screenWidth, regeneratePheromoneDelayMax, regeneratePheromoneDelayMin)
 import Control.Monad (forM_, unless, (>=>))
 import Data.Function ((&))
 import Data.List (mapAccumL)
@@ -107,8 +107,9 @@ mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
     let (randomAngle, rng') = rng & randomR (0, 360)
         (randomMaxSpeedOffset, rng'') = rng' & randomR (-2, 2)
-        (flatNeuralNetworkForaging, rng''') = initFlatLayers [99, 99, 9] 0.1 rng''
-        (flatNeuralNetworkReturning, rng'''') = initFlatLayers [99, 99, 9] 0.1 rng'''
+        (regeneratePheromoneDelay, rng''') = rng'' & randomR (regeneratePheromoneDelayMin, regeneratePheromoneDelayMax)
+        (flatNeuralNetworkForaging, rng'''') = initFlatLayers [99, 99, 6] 0.1 rng'''
+        (flatNeuralNetworkReturning, !rng''''') = initFlatLayers [99, 99, 6] 0.1 rng''''
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
@@ -124,11 +125,12 @@ mkAnt rng pos =
               aNestDistanceWhenFoodPickedUp = 0,
               aHasFood = False,
               aScore = 0,
+              aRegeneratePheromoneDelay = regeneratePheromoneDelay,
               aRegeneratePheromoneCounter = 0,
               aForagingBrain = unflattenLayers flatNeuralNetworkForaging,
               aReturningBrain = unflattenLayers flatNeuralNetworkReturning
             },
-          rng''''
+          rng'''''
         )
 
 
