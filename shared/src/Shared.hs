@@ -90,7 +90,7 @@ isPointInRect (Vector2 x y) (Rectangle rx ry rw rh) =
 
 -- Normalize a value to the range [0, 1]
 normalize :: Float -> Float -> Float
-normalize x maxVal = min 1.0 (x / maxVal)
+normalize x maxVal = if x >= 0 && maxVal > 0 then min 1.0 (x / maxVal) else 0
 
 
 drawTextLines :: Int -> Int -> Int -> Int -> Color -> [String] -> IO ()
@@ -106,15 +106,14 @@ drawTextLines' = drawTextLines 10 10 40 30 darkBrown
 mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
     let (randomAngle, rng') = rng & randomR (0, 360)
-        (randomMaxSpeedOffset, rng'') = rng' & randomR (-2, 2)
-        (regeneratePheromoneDelay, rng''') = rng'' & randomR (regeneratePheromoneDelayMin, regeneratePheromoneDelayMax)
-        (flatNeuralNetworkForaging, rng'''') = initFlatLayers [99, 99, 6] 0.1 rng'''
-        (flatNeuralNetworkReturning, !rng''''') = initFlatLayers [99, 99, 6] 0.1 rng''''
+        (regeneratePheromoneDelay, rng'') =  randomR (regeneratePheromoneDelayMin, regeneratePheromoneDelayMax) rng'
+        (flatNeuralNetworkForaging, rng''') = initFlatLayers [99, 99, 6] 0.1 rng''
+        (flatNeuralNetworkReturning, !rng'''') = initFlatLayers [99, 99, 6] 0.1 rng'''
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
               aSpeed = 0,
-              aMaxSpeed = antMaxSpeed + randomMaxSpeedOffset,
+              aMaxSpeed = antMaxSpeed,
               aGoDir = Stop,
               aWheelPos = Center,
               aSprite = LeftSprite,
@@ -125,12 +124,13 @@ mkAnt rng pos =
               aNestDistanceWhenFoodPickedUp = 0,
               aHasFood = False,
               aScore = 0,
+              aPheromoneCounter = 0,
               aRegeneratePheromoneDelay = regeneratePheromoneDelay,
               aRegeneratePheromoneCounter = 0,
               aForagingBrain = unflattenLayers flatNeuralNetworkForaging,
               aReturningBrain = unflattenLayers flatNeuralNetworkReturning
             },
-          rng'''''
+          rng''''
         )
 
 

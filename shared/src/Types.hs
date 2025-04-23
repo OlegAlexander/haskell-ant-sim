@@ -61,6 +61,7 @@ data Ant = Ant
       aNestAntAngleDelta :: Float, -- -1 to 1
       aHasFood :: Bool,
       aScore :: Float,
+      aPheromoneCounter :: Int,
       aRegeneratePheromoneCounter :: Int,
       aRegeneratePheromoneDelay :: Int,
       aForagingBrain :: [Layer],

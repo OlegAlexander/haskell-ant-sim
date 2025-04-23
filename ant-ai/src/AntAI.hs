@@ -217,14 +217,16 @@ generateNewAnt rng ants =
 
 
 average :: (Fractional a) => [a] -> a
-average xs = sum xs / fromIntegral (length xs)
+average xs = if not (null xs) then sum xs / fromIntegral (length xs) else 0
 
 
 stdDev :: (Floating a) => [a] -> a
 stdDev xs =
-    let avg = average xs
-        variance = sum (fmap (\x -> (x - avg) ** 2) xs) / fromIntegral (length xs)
-    in  sqrt variance
+    if not (null xs) then 
+        let avg = average xs
+            variance = sum (fmap (\x -> (x - avg) ** 2) xs) / fromIntegral (length xs)
+        in  sqrt variance
+    else 0
 
 
 -- Sort the ants by score from best to worst and keep the top n%.
@@ -234,17 +236,10 @@ stdDev xs =
 -- Return the new generation of ants.
 generateNextGeneration :: Int -> StdGen -> Seq Ant -> (Seq Ant, Int, StdGen)
 generateNextGeneration generation rng ants =
-    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) ants
-        !debug1 = traceShowId (fmap (.aScore) sortedAnts)
+    let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) ants
         (topAnts, rng') = sortedAnts & Seq.take (Seq.length ants `div` 2) & hardResetAllAnts rng
-        bestAnt = topAnts `Seq.index` 0
-        (bestAntFlatForagingBrain, bestAntBrainShapes) = flattenLayers bestAnt.aForagingBrain
-        bestAvg = average bestAntFlatForagingBrain
-        bestStdDev = stdDev bestAntFlatForagingBrain
-        !debug2 = traceShowId (length bestAntFlatForagingBrain, (printf "%.4f" :: Float -> String) bestAvg, (printf "%.4f" :: Float -> String) bestStdDev)
         (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - Seq.length topAnts)]
-        !debug3 = traceShowId "next generation"
+        _ = traceShowId ("generation", generation + 1)
     in  (topAnts <> Seq.fromList newAnts, generation + 1, rng'')
 
 
@@ -320,28 +315,28 @@ applyAntDecision decision ant = case decision of
     -- GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
     -- GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
     -- GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
-    
 
 
--- If the training mode is Off or Done, return the current ticks, courses, and generation.
+
+-- If the training mode is Off or Done, return the current ticks and courses
 -- If the training mode is Slow or Fast, increment ticks by 1.
 -- If ticks is equal to ticksPerCourse, reset ticks to 0 and increment courses by 1.
--- If courses is equal to coursesPerGeneration, reset courses to 0 and increment generation by 1.
-calcTicksCourseGeneration :: World -> (Int, Int, Int)
-calcTicksCourseGeneration w =
-    let (ticks, course, generation) = case w.wTrainingMode of
-            Off -> (w.wTicks, w.wCourse, w.wGeneration)
-            Slow -> (w.wTicks + 1, w.wCourse, w.wGeneration)
-            Fast -> (w.wTicks + 1, w.wCourse, w.wGeneration)
-            Done -> (w.wTicks, w.wCourse, w.wGeneration)
-        (ticks', course', generation') =
+-- If courses is equal to coursesPerGeneration, reset courses to 0.
+calcTicksAndCourse :: World -> (Int, Int)
+calcTicksAndCourse w =
+    let (ticks, course) = case w.wTrainingMode of
+            Off -> (w.wTicks, w.wCourse)
+            Slow -> (w.wTicks + 1, w.wCourse)
+            Fast -> (w.wTicks + 1, w.wCourse)
+            Done -> (w.wTicks, w.wCourse)
+        (ticks', course') =
             if ticks == ticksPerCourse
-                then (0, course + 1, generation)
+                then (0, course + 1)
                 else
                     if course == coursesPerGeneration
-                        then (0, 0, generation + 1)
-                        else (ticks, course, generation)
-    in  (ticks', course', generation')
+                        then (0, 0)
+                        else (ticks, course)
+    in  (ticks', course')
 
 
 getAntDecision :: Ant -> AntDecision
@@ -362,12 +357,11 @@ updateAntAIWorld w =
         (foods, rng'') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 10 else (w.wFood, rng')
         (resetAnts, rng''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
         avgScore = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
-        _ = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then traceShowId ("avgScore", avgScore, w.wBestAvgScore * 0.6, w.wBestAvgScore) else ("", 0, 0, 0)
         (newAnts, rng'''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
-        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 && avgScore > (w.wBestAvgScore * 0.6) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
-        -- _ = traceShowId ("new ants high score", let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) newAnts in (sortedAnts `Seq.index` 0).aScore)
+        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 && avgScore > (w.wBestAvgScore * 0.5) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
+        _ = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then traceShowId ("avgScore", avgScore, w.wBestAvgScore * 0.5, w.wBestAvgScore) else ("", 0, 0, 0)
         pheromones = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then Seq.empty else w.wPheromones
-        (ticks, course, generation) = calcTicksCourseGeneration w
+        (ticks, course) = calcTicksAndCourse w
         trainingMode = if generation' == maxGenerations then Done else w.wTrainingMode
     in  w
             { wAnts = newAnts',

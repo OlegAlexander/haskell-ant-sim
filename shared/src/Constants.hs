@@ -29,7 +29,7 @@ antScale = 0.3
 
 
 antMaxSpeed :: Float
-antMaxSpeed = 10
+antMaxSpeed = 8
 
 
 antAcceleration :: Float
@@ -101,19 +101,23 @@ pheromoneColor = orange
 
 
 pheromoneScale :: Float
-pheromoneScale = 0.03
+pheromoneScale = 0.02
 
 
 initPheromoneAmount :: Int
-initPheromoneAmount = 500
+initPheromoneAmount = 1000
 
 
 regeneratePheromoneDelayMin :: Int
-regeneratePheromoneDelayMin = 25
+regeneratePheromoneDelayMin = 50
 
 
 regeneratePheromoneDelayMax :: Int
-regeneratePheromoneDelayMax = 75
+regeneratePheromoneDelayMax = 100
+
+
+maxPheromonesPerFood :: Int
+maxPheromonesPerFood = 5
 
 
 maxPheromones :: Int

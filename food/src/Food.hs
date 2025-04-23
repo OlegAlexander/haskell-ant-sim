@@ -131,7 +131,7 @@ antFoodNestInteraction (nest, foods) ant =
         dx = nestX - antX
         dy = nestY - antY
         distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
-        (antHasFood', antScore', nestDistanceWhenFoodPickedUp', antAngle', nestScore', foods') =
+        (antHasFood', antScore', nestDistanceWhenFoodPickedUp', antAngle', antPherCounter', nestScore', foods') =
             case (ant.aHasFood, antInNest, antInFoodIndex) of
                 -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
                 -- If the ant finds food, it gets aNestDistance points and one food unit is removed from the food object
@@ -141,19 +141,21 @@ antFoodNestInteraction (nest, foods) ant =
                       ant.aScore + (distance ** 3),
                       distance,
                       ant.aAngle,
+                      ant.aPheromoneCounter,
                       nest.nContainer.cAmount,
                       let Food (Container amount rect) = fromJust (foods !? i)
                           foodObj' = Food (Container (amount - 1) rect)
                       in  Seq.update i foodObj' foods
                     )
                 -- If the ant brings the food back to the nest, it gets aNestDistanceWhenFoodPickedUp points and the nest gets a point
-                (True, True, _) -> (False, ant.aScore + (distance ** 3) * 10, 0, ant.aAngle, nest.nContainer.cAmount + 1, foods)
+                -- Also the ant's pheromoneCounter is reset to 0
+                (True, True, _) -> (False, ant.aScore + (distance ** 3) * 10, 0, ant.aAngle, 0, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
-                _ -> (ant.aHasFood, ant.aScore, ant.aNestDistanceWhenFoodPickedUp, ant.aAngle, nest.nContainer.cAmount, foods)
+                _ -> (ant.aHasFood, ant.aScore, ant.aNestDistanceWhenFoodPickedUp, ant.aAngle, ant.aPheromoneCounter, nest.nContainer.cAmount, foods)
         -- Delete food when amount is 0
         !foods'' = foods' & Seq.filter (\food -> food.fContainer.cAmount > 0)
         !nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
-        ant' = ant{aHasFood = antHasFood', aScore = antScore', aNestDistanceWhenFoodPickedUp = nestDistanceWhenFoodPickedUp', aAngle = antAngle'}
+        ant' = ant{aHasFood = antHasFood', aScore = antScore', aNestDistanceWhenFoodPickedUp = nestDistanceWhenFoodPickedUp', aAngle = antAngle', aPheromoneCounter = antPherCounter'}
     in  (ant', (nest', foods''))
 
 

@@ -8,7 +8,7 @@
 module Pheromones where
 
 import AntMovement (antMovementSys)
-import Constants (bgColor, hitboxSize, fps, initPheromoneAmount, maxPheromones, pheromoneColor, pheromoneScale, screenHeight, screenWidth)
+import Constants (bgColor, hitboxSize, fps, initPheromoneAmount, maxPheromones, maxPheromonesPerFood, pheromoneColor, pheromoneScale, screenHeight, screenWidth)
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Sequence (Seq, (<|))
@@ -75,33 +75,32 @@ antDropsPheromone nest foods pheromones ant =
     -- and it's not on top of a pheromone (this may be too slow),
     -- and it's not on top of the nest
     -- and the ant's regeneration counter is greater than the regeneration delay.
+    -- and the ant's pheromoneCounter is less than the maxPheromonesPerFood.
     -- and the total number of pheromones is less than maxPheromones. Sadly, this is needed for efficiency.
     -- Otherwise, just increment the regeneration counter.
     -- TODO: The increment counter logic should be a little more complicated.
     let antPos = ant.aPos
         hasFood = ant.aHasFood
-        notOnFood =
-            not (any (\food -> isPointInRect antPos food.fContainer.cRect) foods)
-        -- notOnPheromone =
-        --     not (any (\pheromone -> isPointInRect antPos pheromone.pContainer.cRect) pheromones)
-        notOnNest =
-            not (isPointInRect antPos nest.nContainer.cRect)
+        notOnFood = not (any (\food -> isPointInRect antPos food.fContainer.cRect) foods)
+        notOnNest = not (isPointInRect antPos nest.nContainer.cRect)
+        pheromoneCounter = ant.aPheromoneCounter
+        pheromoneCounterLessThanMax = pheromoneCounter < maxPheromonesPerFood
         regenerationCounter = ant.aRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > ant.aRegeneratePheromoneDelay
-        underMaxPheromones = length pheromones < maxPheromones
+        -- underMaxPheromones = length pheromones < maxPheromones
         -- Force pheromones' because mapAccumL is lazy in the accumulator
         (ant', !pheromones') =
             if hasFood
                 && notOnFood
-                -- && notOnPheromone
                 && notOnNest
+                && pheromoneCounterLessThanMax
                 && regenCounterGreaterThanDelay
-                && underMaxPheromones
+                -- && underMaxPheromones
                 then
                     let pheremoneRectSize = hitboxSize * 0.5 -- Make it smaller than the nest and food
                         pheromoneRect = calcCenteredRect antPos pheremoneRectSize
                         pheromone = Pheromone (Container initPheromoneAmount pheromoneRect)
-                    in  (ant{aRegeneratePheromoneCounter = 0}, pheromone <| pheromones)
+                    in  (ant{aRegeneratePheromoneCounter = 0, aPheromoneCounter = pheromoneCounter + 1}, pheromone <| pheromones)
                 else (ant{aRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
     in  (ant', pheromones')
 
