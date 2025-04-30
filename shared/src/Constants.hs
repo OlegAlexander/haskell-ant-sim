@@ -41,7 +41,7 @@ antTurnAngle = 5
 
 
 antJitterAngle :: Float
-antJitterAngle = 5
+antJitterAngle = 10
 
 
 antVisionAngle :: Float
@@ -101,11 +101,11 @@ pheromoneColor = orange
 
 
 pheromoneScale :: Float
-pheromoneScale = 0.02
+pheromoneScale = 0.025
 
 
 initPheromoneAmount :: Int
-initPheromoneAmount = 1000
+initPheromoneAmount = fps * 10
 
 
 regeneratePheromoneDelayMin :: Int
@@ -117,7 +117,7 @@ regeneratePheromoneDelayMax = 100
 
 
 maxPheromonesPerFood :: Int
-maxPheromonesPerFood = 5
+maxPheromonesPerFood = 3
 
 
 maxPheromones :: Int

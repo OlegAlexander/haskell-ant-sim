@@ -202,7 +202,7 @@ generateNewBrain :: StdGen -> [Layer] -> [Layer] -> ([Layer], StdGen)
 generateNewBrain rng p1Brain p2Brain =
     let (crossedBrain, rng') = crossover (flattenLayers p1Brain) (flattenLayers p2Brain) rng
         (mutatedBrain, rng'') = mutate mutationRate 0.5 crossedBrain rng'
-        (invertedBrain, rng''') = invert (mutationRate * 0.001) mutatedBrain rng''
+        (invertedBrain, rng''') = invert (mutationRate * 0.002) mutatedBrain rng''
     in  (unflattenLayers invertedBrain, rng''')
 
 
@@ -237,9 +237,9 @@ stdDev xs =
 generateNextGeneration :: Int -> StdGen -> Seq Ant -> (Seq Ant, Int, StdGen)
 generateNextGeneration generation rng ants =
     let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) ants
+        _ = traceShowId (generation + 1, fmap (.aScore) (toList sortedAnts))
         (topAnts, rng') = sortedAnts & Seq.take (Seq.length ants `div` 2) & hardResetAllAnts rng
         (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - Seq.length topAnts)]
-        _ = traceShowId ("generation", generation + 1)
     in  (topAnts <> Seq.fromList newAnts, generation + 1, rng'')
 
 
@@ -358,8 +358,8 @@ updateAntAIWorld w =
         (resetAnts, rng''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
         avgScore = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
         (newAnts, rng'''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
-        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 && avgScore > (w.wBestAvgScore * 0.5) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
-        _ = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then traceShowId ("avgScore", avgScore, w.wBestAvgScore * 0.5, w.wBestAvgScore) else ("", 0, 0, 0)
+        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 && avgScore > (w.wBestAvgScore * 0.66) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
+        _ = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then traceShowId ("avgScore", avgScore, w.wBestAvgScore * 0.66, w.wBestAvgScore) else ("", 0, 0, 0)
         pheromones = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then Seq.empty else w.wPheromones
         (ticks, course) = calcTicksAndCourse w
         trainingMode = if generation' == maxGenerations then Done else w.wTrainingMode

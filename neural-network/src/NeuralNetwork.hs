@@ -22,7 +22,7 @@ writeFlatLayers :: FilePath -> FlatLayers -> IO ()
 writeFlatLayers path flatLayers = do
     createDirectoryIfMissing True (takeDirectory path)
     BS.writeFile path (encode flatLayers)
-    putStrLn $ "FlatLayers written to " ++ path
+    -- putStrLn $ "FlatLayers written to " ++ path
 
 
 readFlatLayers :: FilePath -> IO (FlatLayers)
@@ -31,7 +31,7 @@ readFlatLayers path = do
     case decode contents of
         Left err -> error $ "Failed to decode FlatLayers: " ++ err
         Right flatLayers -> do
-            putStrLn $ "FlatLayers read from " ++ path
+            -- putStrLn $ "FlatLayers read from " ++ path
             return flatLayers
 
 -- Redefine uniformListR from random v1.3.0
