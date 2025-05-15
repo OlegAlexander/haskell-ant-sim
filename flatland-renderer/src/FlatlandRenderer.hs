@@ -5,6 +5,7 @@
 {-# HLINT ignore "Use tuple-section" #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
+-- TODO Rename this module to AntVision
 module FlatlandRenderer where
 
 import Constants (

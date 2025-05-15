@@ -29,7 +29,7 @@ antScale = 0.3
 
 
 antMaxSpeed :: Float
-antMaxSpeed = 8
+antMaxSpeed = 10
 
 
 antAcceleration :: Float

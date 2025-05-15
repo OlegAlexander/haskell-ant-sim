@@ -53,6 +53,7 @@ import NeuralNetwork (
     unflattenLayers,
     writeFlatLayers,
     readFlatLayers,
+    uniformListR
  )
 import Pheromones (pheromoneSys)
 import Raylib.Core (
@@ -189,12 +190,12 @@ hardResetAllAnts :: StdGen -> Seq Ant -> (Seq Ant, StdGen)
 hardResetAllAnts rng ants = mapAccumL' hardResetAnt rng ants
 
 
-getParents :: StdGen -> Seq Ant -> (Ant, Ant, StdGen)
-getParents rng ants =
-    let (parent1Index, rng') = randomR (0, Seq.length ants - 1) rng
-        (parent2Index, rng'') = randomR (0, Seq.length ants - 1) rng'
-        parent1 = ants `Seq.index` parent1Index
-        parent2 = ants `Seq.index` parent2Index
+getParents :: StdGen -> Seq a -> (a, a, StdGen)
+getParents rng xs =
+    let (parent1Index, rng') = randomR (0, Seq.length xs - 1) rng
+        (parent2Index, rng'') = randomR (0, Seq.length xs - 1) rng'
+        parent1 = xs `Seq.index` parent1Index
+        parent2 = xs `Seq.index` parent2Index
     in  (parent1, parent2, rng'')
 
 
@@ -228,19 +229,63 @@ stdDev xs =
         in  sqrt variance
     else 0
 
+-- TODO Move these selection functions to a separate module
+-- Sort by score and keep the top n%.
+truncationSelection :: (a -> Float) -> Float -> Seq a -> Seq a
+truncationSelection getScore percentage xs =
+    let numToKeep = round (fromIntegral (Seq.length xs) * (percentage / 100))
+    in  xs & sortByScore getScore & Seq.take numToKeep
 
--- Sort the ants by score from best to worst and keep the top n%.
+
+-- Sort by score from highest to lowest
+sortByScore :: (a -> Float) -> Seq a -> Seq a
+sortByScore getScore xs = Seq.sortBy (\a b -> compare (getScore b) (getScore a)) xs
+
+
+-- Choose k random members and return the winner.
+tournament :: (a -> Float) -> Int -> StdGen -> Seq a -> (a, StdGen)
+tournament getScore k rng xs =
+    let (indices, rng') = uniformListR k (0, Seq.length xs - 1) rng
+        contenders = Seq.fromList (fmap (Seq.index xs) indices)
+        winner = sortByScore getScore contenders `Seq.index` 0
+    in  (winner, rng')
+
+
+-- Run n tournaments and return the winner of each.
+tournamentSelection :: (a -> Float) -> Int -> Int -> StdGen -> Seq a -> (Seq a, StdGen)
+tournamentSelection getScore n k rng xs =
+    let (winners, rng') = mapAccumL' (\rgen _ -> tournament getScore k rgen xs) rng [1 .. n]
+    in  (Seq.fromList winners, rng')
+
+
+-- Use truncation selection to choose the parents
 -- For each ant in numAnts, generate a new ant brain by crossing over
 -- the brains of 2 random ants and then mutate it.
--- Keep the best ant brain from the previous generation.
+-- Maybe keep the best ant brains from the previous generation (Elitism).
 -- Return the new generation of ants.
-generateNextGeneration :: Int -> StdGen -> Seq Ant -> (Seq Ant, Int, StdGen)
-generateNextGeneration generation rng ants =
-    let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) ants
-        (topAnts, rng') = sortedAnts & Seq.take (Seq.length ants `div` 2) & hardResetAllAnts rng
+generateNextGeneration' :: Int -> StdGen -> Seq Ant -> (Seq Ant, Int, StdGen)
+generateNextGeneration' generation rng ants =
+    let selectedAnts = truncationSelection (.aScore) 33 ants
+        (topAnts, rng') = selectedAnts & hardResetAllAnts rng
         (newAnts, rng'') = mapAccumL' (\rgen _ -> generateNewAnt rgen topAnts) rng' [1 .. (numAnts - Seq.length topAnts)]
         _ = traceShowId ("generation", generation + 1)
     in  (topAnts <> Seq.fromList newAnts, generation + 1, rng'')
+
+
+-- Use tournament selection to choose the parents
+-- For each ant in numAnts, generate a new ant brain by crossing over
+-- the brains of 2 random ants and then mutate it.
+-- Maybe keep the best ant brains from the previous generation (Elitism).
+-- Return the new generation of ants.
+generateNextGeneration :: Int -> StdGen -> Seq Ant -> (Seq Ant, Int, StdGen)
+generateNextGeneration generation rng ants =
+    let (eliteAnts, rng') = ants & sortByScore (.aScore) & Seq.take 5 & hardResetAllAnts rng
+        (selectedAnts, rng'') = tournamentSelection (.aScore) 100 3 rng' ants
+        (parents, rng''') = hardResetAllAnts rng'' selectedAnts 
+        numChildren = numAnts - Seq.length eliteAnts
+        (children, rng'''') = mapAccumL' (\rgen _ -> generateNewAnt rgen parents) rng''' [1 .. numChildren]
+        _ = traceShowId ("generation", generation + 1)
+    in  (eliteAnts <> Seq.fromList children, generation + 1, rng'''')
 
 
 initAntAIWorld :: IO World
@@ -342,7 +387,7 @@ calcTicksAndCourse w =
 getAntDecision :: Ant -> AntDecision
 getAntDecision ant =
     let brain = if ant.aHasFood then ant.aReturningBrain else ant.aForagingBrain
-    in  antBrainNeuralNetwork brain (mkInputVector ant)
+    in  ant & mkInputVector & antBrainNeuralNetwork brain
 
 
 -- TODO Clean up this function!
@@ -358,8 +403,8 @@ updateAntAIWorld w =
         (resetAnts, rng''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
         avgScore = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
         (newAnts, rng'''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
-        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 && avgScore > (w.wBestAvgScore * 0.5) then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
-        _ = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then traceShowId ("avgScore", avgScore, w.wBestAvgScore * 0.5, w.wBestAvgScore) else ("", 0, 0, 0)
+        (newAnts', generation', rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
+        _ = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then traceShowId ("avgScore", avgScore, w.wBestAvgScore) else ("", 0, 0)
         pheromones = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then Seq.empty else w.wPheromones
         (ticks, course) = calcTicksAndCourse w
         trainingMode = if generation' == maxGenerations then Done else w.wTrainingMode
@@ -394,8 +439,7 @@ drawAnt color ant = do
 
 writeBestBrain :: World -> IO ()
 writeBestBrain w = do
-    let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) w.wAnts
-        bestAnt = sortedAnts `Seq.index` 0
+    let bestAnt = sortByScore (.aScore) w.wAnts `Seq.index` 0
     writeFlatLayers foragingBrainFile (flattenLayers bestAnt.aForagingBrain)
     writeFlatLayers returningBrainFile (flattenLayers bestAnt.aReturningBrain)
 
@@ -415,7 +459,6 @@ renderAntAIWorld w = do
           "Course: " ++ show (w.wCourse + 1),
           "Ticks: " ++ show (w.wTicks + 1),
           "Best Avg Score: " ++ show w.wBestAvgScore
-          --   "Best Score Now: " ++ show (let sortedAnts = Seq.sortBy (\a b -> compare b.aScore a.aScore) w.wAnts in (sortedAnts `Seq.index` 0).aScore)
         ]
     forM_ w.wAnts (drawAnt black)
     -- Draw the score above the ants

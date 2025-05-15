@@ -87,7 +87,7 @@ antDropsPheromone nest foods pheromones ant =
         pheromoneCounterLessThanMax = pheromoneCounter < maxPheromonesPerFood
         regenerationCounter = ant.aRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > ant.aRegeneratePheromoneDelay
-        -- underMaxPheromones = length pheromones < maxPheromones
+        underMaxPheromones = length pheromones < maxPheromones
         -- Force pheromones' because mapAccumL is lazy in the accumulator
         (ant', !pheromones') =
             if hasFood
@@ -95,7 +95,7 @@ antDropsPheromone nest foods pheromones ant =
                 && notOnNest
                 && pheromoneCounterLessThanMax
                 && regenCounterGreaterThanDelay
-                -- && underMaxPheromones
+                && underMaxPheromones
                 then
                     let pheremoneRectSize = hitboxSize * 0.5 -- Make it smaller than the nest and food
                         pheromoneRect = calcCenteredRect antPos pheremoneRectSize

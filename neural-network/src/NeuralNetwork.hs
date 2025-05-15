@@ -25,7 +25,7 @@ writeFlatLayers path flatLayers = do
     putStrLn $ "FlatLayers written to " ++ path
 
 
-readFlatLayers :: FilePath -> IO (FlatLayers)
+readFlatLayers :: FilePath -> IO FlatLayers
 readFlatLayers path = do
     contents <- BS.readFile path
     case decode contents of
@@ -128,6 +128,7 @@ initFlatLayers layerSizes range gen =
 
 
 -- Genetic Algorithm --
+-- TODO This should be a separate module
 
 -- Crossover two flat layers with a probability of 50% that a gene will come from either parent.
 crossover :: FlatLayers -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
@@ -140,6 +141,7 @@ crossover (parent1, shapes1) (parent2, shapes2) gen =
 mutate :: Float -> Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
 mutate mutationRate range (flatLayers, shapes) gen =
     let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
+        -- TODO Use a normal distribution here instead of uniform
         (offsets, gen'') = uniformListR (length flatLayers) (-range, range) gen'
         mutated = zipWith3 (\p x y -> if p < mutationRate then y + x else y) probs offsets flatLayers
     in  ((mutated, shapes), gen'')
