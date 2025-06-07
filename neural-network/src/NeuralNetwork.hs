@@ -138,8 +138,8 @@ crossover (parent1, shapes1) (parent2, shapes2) gen =
     in  ((child, shapes1), gen')
 
 
-mutate :: Float -> Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
-mutate mutationRate range (flatLayers, shapes) gen =
+mutate :: Float -> Float -> (FlatLayers, StdGen) -> (FlatLayers, StdGen)
+mutate mutationRate range ((flatLayers, shapes), gen) =
     let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
         -- TODO Use a normal distribution here instead of uniform
         (offsets, gen'') = uniformListR (length flatLayers) (-range, range) gen'
@@ -147,8 +147,8 @@ mutate mutationRate range (flatLayers, shapes) gen =
     in  ((mutated, shapes), gen'')
 
 
-invert :: Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
-invert mutationRate (flatLayers, shapes) gen =
+invert :: Float -> (FlatLayers, StdGen) -> (FlatLayers, StdGen)
+invert mutationRate ((flatLayers, shapes), gen) =
     let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
         inverted = zipWith (\p x -> if p < mutationRate then let val = x * (-1) in val else x) probs flatLayers
     in  inverted `seq` ((inverted, shapes), gen')

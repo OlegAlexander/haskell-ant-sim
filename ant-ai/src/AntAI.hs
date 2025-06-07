@@ -14,6 +14,7 @@ import Constants (
     compassMaxDistance,
     coursesPerGeneration,
     foodColor,
+    foragingBrainFile,
     fps,
     hitboxSize,
     maxGenerations,
@@ -21,11 +22,10 @@ import Constants (
     mutationRate,
     nnParameterRange,
     numAnts,
+    returningBrainFile,
     screenHeight,
     screenWidth,
     ticksPerCourse,
-    foragingBrainFile,
-    returningBrainFile,
  )
 import Control.Monad (forM_, replicateM, when)
 import Data.Foldable (toList)
@@ -49,11 +49,11 @@ import NeuralNetwork (
     forwardAll,
     invert,
     mutate,
+    readFlatLayers,
     sigmoid,
     unflattenLayers,
+    uniformListR,
     writeFlatLayers,
-    readFlatLayers,
-    uniformListR
  )
 import Pheromones (pheromoneSys)
 import Raylib.Core (
@@ -201,10 +201,11 @@ getParents rng xs =
 
 generateNewBrain :: StdGen -> [Layer] -> [Layer] -> ([Layer], StdGen)
 generateNewBrain rng p1Brain p2Brain =
-    let (crossedBrain, rng') = crossover (flattenLayers p1Brain) (flattenLayers p2Brain) rng
-        (mutatedBrain, rng'') = mutate mutationRate 0.5 crossedBrain rng'
-        (invertedBrain, rng''') = invert (mutationRate * 0.001) mutatedBrain rng''
-    in  (unflattenLayers invertedBrain, rng''')
+    let (newBrain, rng') =
+            crossover (flattenLayers p1Brain) (flattenLayers p2Brain) rng
+                & mutate mutationRate 0.5
+                & invert (mutationRate * 0.001)
+    in  (unflattenLayers newBrain, rng')
 
 
 generateNewAnt :: StdGen -> Seq Ant -> (Ant, StdGen)
@@ -223,11 +224,13 @@ average xs = if not (null xs) then sum xs / fromIntegral (length xs) else 0
 
 stdDev :: (Floating a) => [a] -> a
 stdDev xs =
-    if not (null xs) then 
-        let avg = average xs
-            variance = sum (fmap (\x -> (x - avg) ** 2) xs) / fromIntegral (length xs)
-        in  sqrt variance
-    else 0
+    if not (null xs)
+        then
+            let avg = average xs
+                variance = sum (fmap (\x -> (x - avg) ** 2) xs) / fromIntegral (length xs)
+            in  sqrt variance
+        else 0
+
 
 -- TODO Move these selection functions to a separate module
 -- Sort by score and keep the top n%.
@@ -281,7 +284,7 @@ generateNextGeneration :: Int -> StdGen -> Seq Ant -> (Seq Ant, Int, StdGen)
 generateNextGeneration generation rng ants =
     let (eliteAnts, rng') = ants & sortByScore (.aScore) & Seq.take 5 & hardResetAllAnts rng
         (selectedAnts, rng'') = tournamentSelection (.aScore) 100 3 rng' ants
-        (parents, rng''') = hardResetAllAnts rng'' selectedAnts 
+        (parents, rng''') = hardResetAllAnts rng'' selectedAnts
         numChildren = numAnts - Seq.length eliteAnts
         (children, rng'''') = mapAccumL' (\rgen _ -> generateNewAnt rgen parents) rng''' [1 .. numChildren]
         _ = traceShowId ("generation", generation + 1)
@@ -357,11 +360,11 @@ applyAntDecision decision ant = case decision of
     GoForward -> ant{aWheelPos = Center, aGoDir = Forward}
     GoForwardRight -> ant{aWheelPos = TurnRight, aGoDir = Forward}
     GoRight -> ant{aWheelPos = TurnRight, aGoDir = Stop}
-    -- GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
-    -- GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
-    -- GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
 
 
+-- GoBackwardRight -> ant{aWheelPos = TurnRight, aGoDir = Backward}
+-- GoBackward -> ant{aWheelPos = Center, aGoDir = Backward}
+-- GoBackwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Backward}
 
 -- If the training mode is Off or Done, return the current ticks and courses
 -- If the training mode is Slow or Fast, increment ticks by 1.
@@ -483,8 +486,8 @@ antAISysWrapped =
                 <> pheromoneSys
                 <> foodSys
                 <> antMovementSys
-                <> antAISys
                 <> flatlandRendererSys
+                <> antAISys
     in  allSystems
             { render = \w -> drawing $ do
                 f11Pressed <- isKeyPressed KeyF11

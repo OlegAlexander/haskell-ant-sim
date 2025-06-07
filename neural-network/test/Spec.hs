@@ -96,7 +96,7 @@ main = hspec $ do
 
         it "mutate" $ do
             let ((orig, shapes1), rng') = initFlatLayers [2, 4, 2] 0.1 (mkStdGen 0)
-                ((mutated, shapes2), rng'') = mutate 0.1 0.1 (orig, shapes1) rng'
+                ((mutated, shapes2), rng'') = mutate 0.1 0.1 ((orig, shapes1), rng')
                 origRounded = map (printf "%.4f" :: Float -> String) orig
                 mutaRounded = map (printf "%.4f" :: Float -> String) mutated
             origRounded `shouldBe` ["0.0947", "-0.0176", "-0.0905", "-0.0933", "-0.0409", "-0.0119", "-0.0739", "-0.0751", "-0.0807", "0.0261", "-0.0190", "0.0762", "0.0526", "-0.0450", "0.0133", "0.0597", "0.0380", "0.0997", "-0.0268", "0.0711", "0.0450", "-0.0224"]
