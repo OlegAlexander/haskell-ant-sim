@@ -51,12 +51,12 @@ getWallDrawingState wPressed isMouseRightPressed wbd
 
 
 calcBoundingBox :: Vector2 -> Vector2 -> Rectangle
-calcBoundingBox (Vector2 x1 y1) (Vector2 x2 y2) =
+calcBoundingBox (Vector2 !x1 !y1) (Vector2 !x2 !y2) =
     Rectangle (min x1 x2) (min y1 y2) (abs (x1 - x2)) (abs (y1 - y2))
 
 
 bigEnough :: Rectangle -> Bool
-bigEnough (Rectangle _ _ w h) = w > minWallSize && h > minWallSize
+bigEnough (Rectangle _ _ !w !h) = w > minWallSize && h > minWallSize
 
 
 initWallsWorld :: IO World
@@ -93,7 +93,7 @@ handleWallInput w = do
                         Just (fst $ fromJust wbd, mousePos)
                     }
         Finished -> do
-            let (start, end) = fromJust wbd
+            let (!start, !end) = fromJust wbd
                 newWall = calcBoundingBox start end
             if bigEnough newWall
                 then
@@ -111,7 +111,7 @@ renderWallsWorld w = do
         wbd = w.wWallBeingDrawn
     forM_ walls $ \wall -> drawRectangleRec wall wallColor
     when (isJust wbd) $ do
-        let (start, end) = fromJust wbd
+        let (!start, !end) = fromJust wbd
             wall = calcBoundingBox start end
         drawRectangleLinesEx wall 3 blue
 

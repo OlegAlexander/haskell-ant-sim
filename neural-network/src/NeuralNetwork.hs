@@ -5,6 +5,7 @@ module NeuralNetwork where
 
 import Data.Function ((&))
 import Data.List (foldl')
+import Data.Tuple (swap)
 import Data.Vector (Vector)
 import Data.Vector qualified as V
 import Debug.Trace (traceShowId)
@@ -121,7 +122,7 @@ pairs xs = zip xs (drop 1 xs)
 
 initFlatLayers :: [Int] -> Float -> StdGen -> (FlatLayers, StdGen)
 initFlatLayers layerSizes range gen =
-    let shapes = layerSizes & pairs & map (\(a, b) -> (b, a))
+    let shapes = layerSizes & pairs & map swap
         totalLength = sum (map (\(m, n) -> m * n + m) shapes)
         (weightsAndBiases, gen') = uniformListR totalLength (-range, range) gen
     in  ((weightsAndBiases, shapes), gen')

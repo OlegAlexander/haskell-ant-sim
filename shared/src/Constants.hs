@@ -68,12 +68,12 @@ minWallSize :: Float
 minWallSize = 10.0
 
 
-borderWallThickness :: Float
-borderWallThickness = 30
+fenceWallThickness :: Float
+fenceWallThickness = 10
 
 
 foodScale :: Float
-foodScale = 1.0
+foodScale = 0.1
 
 
 foodColor :: Color
@@ -105,11 +105,11 @@ pheromoneScale = 0.02
 
 
 initPheromoneAmount :: Int
-initPheromoneAmount = 1000
+initPheromoneAmount = 600
 
 
 regeneratePheromoneDelayMin :: Int
-regeneratePheromoneDelayMin = 50
+regeneratePheromoneDelayMin = 10
 
 
 regeneratePheromoneDelayMax :: Int
@@ -117,11 +117,11 @@ regeneratePheromoneDelayMax = 100
 
 
 maxPheromonesPerFood :: Int
-maxPheromonesPerFood = 5
+maxPheromonesPerFood = 1
 
 
 maxPheromones :: Int
-maxPheromones = 50
+maxPheromones = 300
 
 
 ticksPerCourse :: Int
@@ -144,9 +144,17 @@ nnParameterRange :: Float
 nnParameterRange = 10.0
 
 
-foragingBrainFile :: FilePath
-foragingBrainFile = "models/foraging.brain"
+outForagingBrainFile :: FilePath
+outForagingBrainFile = "models/foraging.brain"
 
 
-returningBrainFile :: FilePath
-returningBrainFile = "models/returning.brain"
+outReturningBrainFile :: FilePath
+outReturningBrainFile = "models/returning.brain"
+
+
+inForagingBrainFile :: FilePath
+inForagingBrainFile = "models/foraging_99_99_6_wrap_d787225.brain"
+
+
+inReturningBrainFile :: FilePath
+inReturningBrainFile = "models/returning_99_99_6_wrap_d787225.brain"

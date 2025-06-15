@@ -126,12 +126,12 @@ antFoodNestInteraction (nest, foods) ant =
     -- Find the index of the first food object that the ant is in, if any
     let antInFoodIndex = foods & Seq.findIndexL (\food -> isPointInRect ant.aPos food.fContainer.cRect)
         antInNest = isPointInRect ant.aPos nest.nContainer.cRect
-        (Vector2 nestX nestY) = nest.nContainer.cRect & calcRectCenter
-        (Vector2 antX antY) = ant.aPos
+        (Vector2 !nestX !nestY) = nest.nContainer.cRect & calcRectCenter
+        (Vector2 !antX !antY) = ant.aPos
         dx = nestX - antX
         dy = nestY - antY
         distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
-        (antHasFood', antScore', nestDistanceWhenFoodPickedUp', antAngle', antPherCounter', nestScore', foods') =
+        (!antHasFood', !antScore', !nestDistanceWhenFoodPickedUp', !antAngle', !antPherCounter', !nestScore', !foods') =
             case (ant.aHasFood, antInNest, antInFoodIndex) of
                 -- If the ant enters a food rectangle and antHasFood is False, set antHasFood to True
                 -- If the ant finds food, it gets aNestDistance points and one food unit is removed from the food object
@@ -140,7 +140,7 @@ antFoodNestInteraction (nest, foods) ant =
                     ( True,
                       ant.aScore + (distance ** 3),
                       distance,
-                      ant.aAngle,
+                      turnAround ant.aAngle,
                       ant.aPheromoneCounter,
                       nest.nContainer.cAmount,
                       let Food (Container amount rect) = fromJust (foods !? i)
@@ -149,27 +149,27 @@ antFoodNestInteraction (nest, foods) ant =
                     )
                 -- If the ant brings the food back to the nest, it gets aNestDistanceWhenFoodPickedUp points and the nest gets a point
                 -- Also the ant's pheromoneCounter is reset to 0
-                (True, True, _) -> (False, ant.aScore + (distance ** 3) * 10, 0, ant.aAngle, 0, nest.nContainer.cAmount + 1, foods)
+                (True, True, _) -> (False, ant.aScore + (distance ** 3) * 10, 0, turnAround ant.aAngle, 0, nest.nContainer.cAmount + 1, foods)
                 -- Otherwise, do nothing
                 _ -> (ant.aHasFood, ant.aScore, ant.aNestDistanceWhenFoodPickedUp, ant.aAngle, ant.aPheromoneCounter, nest.nContainer.cAmount, foods)
         -- Delete food when amount is 0
-        !foods'' = foods' & Seq.filter (\food -> food.fContainer.cAmount > 0)
-        !nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
+        foods'' = foods' & Seq.filter (\food -> food.fContainer.cAmount > 0)
+        nest' = nest{nContainer = nest.nContainer{cAmount = nestScore'}}
         ant' = ant{aHasFood = antHasFood', aScore = antScore', aNestDistanceWhenFoodPickedUp = nestDistanceWhenFoodPickedUp', aAngle = antAngle', aPheromoneCounter = antPherCounter'}
     in  (ant', (nest', foods''))
 
 
 updateFoodWorld :: World -> World
 updateFoodWorld w =
-    let (playerAnt', (nest', foods')) = w.wPlayerAnt & antFoodNestInteraction (w.wNest, w.wFood)
+    let (!playerAnt', !(!nest', !foods')) = w.wPlayerAnt & antFoodNestInteraction (w.wNest, w.wFood)
         -- _ = traceShowId (playerAnt'.aScore, playerAnt'.aNestDistanceWhenFoodPickedUp)
-        (ants', (nest'', foods'')) = w.wAnts & mapAccumL' antFoodNestInteraction (nest', foods')
+        (!ants', !(!nest'', !foods'')) = w.wAnts & mapAccumL' antFoodNestInteraction (nest', foods')
     in  w{wPlayerAnt = playerAnt', wNest = nest'', wFood = foods'', wAnts = ants'}
 
 
 -- Use a constant rectangle size for food, and just scale the amount circle.
 drawFood :: Food -> IO ()
-drawFood (Food (Container amount rect)) = do
+drawFood (Food !(Container !amount !rect)) = do
     -- Draw food as a circle
     let radius = int2Float amount * foodScale + 9
         pos = calcRectCenter rect

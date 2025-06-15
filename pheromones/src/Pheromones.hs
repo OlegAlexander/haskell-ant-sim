@@ -77,7 +77,7 @@ antDropsPheromone nest foods pheromones ant =
     -- and the ant's regeneration counter is greater than the regeneration delay.
     -- and the ant's pheromoneCounter is less than the maxPheromonesPerFood.
     -- and the total number of pheromones is less than maxPheromones. Sadly, this is needed for efficiency.
-    -- Otherwise, just increment the regeneration counter.
+    -- Otherwise, if the ant hasFood, increment the regeneration counter, otherwise reset it to 0.
     -- TODO: The increment counter logic should be a little more complicated.
     let antPos = ant.aPos
         hasFood = ant.aHasFood
@@ -88,8 +88,7 @@ antDropsPheromone nest foods pheromones ant =
         regenerationCounter = ant.aRegeneratePheromoneCounter
         regenCounterGreaterThanDelay = regenerationCounter > ant.aRegeneratePheromoneDelay
         underMaxPheromones = length pheromones < maxPheromones
-        -- Force pheromones' because mapAccumL is lazy in the accumulator
-        (ant', !pheromones') =
+        (!ant', !pheromones') =
             if hasFood
                 && notOnFood
                 && notOnNest
@@ -101,12 +100,12 @@ antDropsPheromone nest foods pheromones ant =
                         pheromoneRect = calcCenteredRect antPos pheremoneRectSize
                         pheromone = Pheromone (Container initPheromoneAmount pheromoneRect)
                     in  (ant{aRegeneratePheromoneCounter = 0, aPheromoneCounter = pheromoneCounter + 1}, pheromone <| pheromones)
-                else (ant{aRegeneratePheromoneCounter = regenerationCounter + 1}, pheromones)
+                else (ant{aRegeneratePheromoneCounter = if hasFood then regenerationCounter + 1 else 0}, pheromones)
     in  (ant', pheromones')
 
 
 decrementPheromoneAmount :: Pheromone -> Pheromone
-decrementPheromoneAmount (Pheromone (Container amount rect)) =
+decrementPheromoneAmount (Pheromone (Container !amount !rect)) =
     Pheromone (Container (amount - 1) rect)
 
 
@@ -125,7 +124,7 @@ updatePheromoneWorld w =
 
 -- Use a constant rectangle size for a pheromone, and just scale the amount circle.
 drawPheromone :: Pheromone -> IO ()
-drawPheromone (Pheromone (Container amount rect)) = do
+drawPheromone (Pheromone (Container !amount !rect)) = do
     -- Draw pheromone as a circle
     let radius = int2Float amount * pheromoneScale
         pos = calcRectCenter rect

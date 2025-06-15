@@ -3,7 +3,7 @@
 
 module Shared where
 
-import Constants (antMaxSpeed, hitboxSize, nnParameterRange, screenHeight, screenWidth, regeneratePheromoneDelayMax, regeneratePheromoneDelayMin)
+import Constants (antMaxSpeed, hitboxSize, nnParameterRange, screenHeight, screenWidth, regeneratePheromoneDelayMax, regeneratePheromoneDelayMin, fenceWallThickness)
 import Control.Monad (forM_, unless, (>=>))
 import Data.Function ((&))
 import Data.List (mapAccumL)
@@ -105,10 +105,10 @@ drawTextLines' = drawTextLines 10 10 40 30 darkBrown
 
 mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)
 mkAnt rng pos =
-    let (randomAngle, rng') = rng & randomR (0, 360)
-        (regeneratePheromoneDelay, rng'') =  randomR (regeneratePheromoneDelayMin, regeneratePheromoneDelayMax) rng'
-        (flatNeuralNetworkForaging, rng''') = initFlatLayers [99, 99, 6] 0.1 rng''
-        (flatNeuralNetworkReturning, !rng'''') = initFlatLayers [99, 99, 6] 0.1 rng'''
+    let (!randomAngle, !rng') = randomR (0, 360) rng
+        (!regeneratePheromoneDelay, !rng'') =  randomR (regeneratePheromoneDelayMin, regeneratePheromoneDelayMax) rng'
+        (!flatNeuralNetworkForaging, !rng''') = initFlatLayers [99, 99, 6] 0.1 rng''
+        (!flatNeuralNetworkReturning, !rng'''') = initFlatLayers [99, 99, 6] 0.1 rng'''
     in  ( Ant
             { aPos = pos,
               aAngle = randomAngle,
@@ -134,10 +134,20 @@ mkAnt rng pos =
         )
 
 
+fenceWalls :: Float -> Seq.Seq Rectangle
+fenceWalls thickness =
+    Seq.fromList
+        [ Rectangle 0 0 (int2Float screenWidth) thickness, -- Top
+          Rectangle 0 (int2Float screenHeight - thickness) (int2Float screenWidth) thickness, -- Bottom
+          Rectangle 0 0 thickness (int2Float screenHeight), -- Left
+          Rectangle (int2Float screenWidth - thickness) 0 thickness (int2Float screenHeight) -- Right
+        ]
+
+
 defaultWorld :: StdGen -> World
 defaultWorld rng =
     let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
-        (playerAnt, rng') = mkAnt rng screenCenter
+        (!playerAnt, !rng') = mkAnt rng screenCenter
         nest = Nest (Container 0 (calcCenteredRect screenCenter hitboxSize))
     in  World
             { wPlayerAnt = playerAnt,
@@ -147,7 +157,7 @@ defaultWorld rng =
               wRenderVisionRects = False,
               wRenderHomeVector = False,
               wRenderHomeCompass = False,
-              wWalls = Seq.empty,
+              wWalls = fenceWalls fenceWallThickness,
               wWallBeingDrawn = Nothing,
               wFood = Seq.empty,
               wFoodBeingDrawn = Nothing,

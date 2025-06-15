@@ -111,7 +111,7 @@ handleAMInput w = do
 
 getNextAngle :: StdGen -> Ant -> (Float, StdGen)
 getNextAngle rng ant =
-    let (jitter, rng') = rng & randomR (-antJitterAngle, antJitterAngle)
+    let (!jitter, !rng') = rng & randomR (-antJitterAngle, antJitterAngle)
         jitterAmount = jitter * min (abs ant.aSpeed) 1
         angle = case ant.aWheelPos of
             TurnRight -> ant.aAngle - antTurnAngle + jitterAmount
@@ -133,7 +133,7 @@ getNextSpeed ant =
 
 updateAntMovement :: [(Rectangle, EntityType)] -> StdGen -> Ant -> (Ant, StdGen)
 updateAntMovement collisionRects rng ant =
-    let (nextAngle, !rng') = getNextAngle rng ant
+    let (!nextAngle, !rng') = getNextAngle rng ant
         nextSpeed = getNextSpeed ant
         nextPos = getNextPos nextAngle nextSpeed ant.aPos
         nextPos' =
@@ -152,7 +152,7 @@ updateAntMovement collisionRects rng ant =
 updateAMWorld :: World -> World
 updateAMWorld w =
     let collisionRects = getCollisionRects w
-        (wPlayerAnt, rng) = updateAntMovement collisionRects w.wRng w.wPlayerAnt
+        (!wPlayerAnt, !rng) = updateAntMovement collisionRects w.wRng w.wPlayerAnt
     in  w{wPlayerAnt = wPlayerAnt, wRng = rng}
 
 

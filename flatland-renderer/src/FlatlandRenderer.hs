@@ -93,9 +93,9 @@ import Types (
 -- Intersect a ray with a rectangle and return the distance to the intersection
 intersectRayRect :: Vector2 -> Vector2 -> (Rectangle, EntityType) -> Maybe (Float, EntityType)
 intersectRayRect
-    camPos@(Vector2 rayOriginX rayOriginY)
-    rayDir@(Vector2 rayDirX rayDirY)
-    (rect@(Rectangle rectX rectY rectW rectH), entityType)
+    camPos@(Vector2 !rayOriginX !rayOriginY)
+    rayDir@(Vector2 !rayDirX !rayDirY)
+    (rect@(Rectangle !rectX !rectY !rectW !rectH), entityType)
         -- Skip if the ant is inside the rectangle
         | isPointInRect camPos rect = Nothing
         | otherwise =
@@ -132,7 +132,7 @@ castRay camPos maxDist rects angle =
     let rad = (-angle) * deg2Rad
         rayDir = Vector2 (cos rad) (sin rad)
         minDist = minimumDistance camPos rayDir rects
-        (dist, entityType) = fromMaybe (maxDist, UnknownET) minDist
+        (!dist, !entityType) = fromMaybe (maxDist, UnknownET) minDist
         entityType' = if dist >= maxDist then UnknownET else entityType
         depth = 1 - normalize dist maxDist
         color = scalarTimesColor depth (entityTypeToColor entityType')
@@ -205,12 +205,12 @@ updateVisionRays rects ant =
 
 
 visionRayToLine :: VisionRay -> (Vector2, Vector2)
-visionRayToLine (VisionRay p1 angle rayLength _ _) =
+visionRayToLine (VisionRay !p1 !angle !rayLength _ _) =
     (p1, getNextPos angle rayLength p1)
 
 
 calcNestDirectionAndDistance :: Vector2 -> Vector2 -> (Degrees, Float)
-calcNestDirectionAndDistance (Vector2 nestX nestY) (Vector2 antX antY) =
+calcNestDirectionAndDistance (Vector2 !nestX !nestY) (Vector2 !antX !antY) =
     let dx = nestX - antX
         dy = nestY - antY
         -- Normalize the angle to the range [0, 1]
@@ -282,7 +282,7 @@ updateAntFR :: World -> Ant -> Ant
 updateAntFR w ant =
     let visibleRects = w & collectVisibleRects
         nestPos = w.wNest.nContainer.cRect & calcRectCenter
-        (nestAngle, nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
+        (!nestAngle, !nestDistance) = ant.aPos & calcNestDirectionAndDistance nestPos
         nestAntAngleDelta = (nestAngle - (ant.aAngle / 360)) + 0.5
         ant' =
             ant
