@@ -73,7 +73,7 @@ fenceWallThickness = 10
 
 
 foodScale :: Float
-foodScale = 0.1
+foodScale = 0.0001
 
 
 foodColor :: Color
@@ -153,8 +153,8 @@ outReturningBrainFile = "models/returning.brain"
 
 
 inForagingBrainFile :: FilePath
-inForagingBrainFile = "models/foraging_99_99_6_wrap_d787225.brain"
+inForagingBrainFile = "models/foraging_2025-06-15_5.633.brain"
 
 
 inReturningBrainFile :: FilePath
-inReturningBrainFile = "models/returning_99_99_6_wrap_d787225.brain"
+inReturningBrainFile = "models/returning_2025-06-15_5.633.brain"

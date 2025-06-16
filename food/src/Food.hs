@@ -161,15 +161,15 @@ antFoodNestInteraction (nest, foods) ant =
 
 updateFoodWorld :: World -> World
 updateFoodWorld w =
-    let (!playerAnt', !(!nest', !foods')) = w.wPlayerAnt & antFoodNestInteraction (w.wNest, w.wFood)
+    let (!playerAnt', (!nest', !foods')) = w.wPlayerAnt & antFoodNestInteraction (w.wNest, w.wFood)
         -- _ = traceShowId (playerAnt'.aScore, playerAnt'.aNestDistanceWhenFoodPickedUp)
-        (!ants', !(!nest'', !foods'')) = w.wAnts & mapAccumL' antFoodNestInteraction (nest', foods')
+        (!ants', (!nest'', !foods'')) = w.wAnts & mapAccumL' antFoodNestInteraction (nest', foods')
     in  w{wPlayerAnt = playerAnt', wNest = nest'', wFood = foods'', wAnts = ants'}
 
 
 -- Use a constant rectangle size for food, and just scale the amount circle.
 drawFood :: Food -> IO ()
-drawFood (Food !(Container !amount !rect)) = do
+drawFood (Food (Container !amount !rect)) = do
     -- Draw food as a circle
     let radius = int2Float amount * foodScale + 9
         pos = calcRectCenter rect

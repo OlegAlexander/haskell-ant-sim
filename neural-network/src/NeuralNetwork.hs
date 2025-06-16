@@ -52,7 +52,7 @@ dotProd xs ys = sum (V.zipWith (*) xs ys)
 
 -- Forward pass for a single layer
 forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
-forwardLayer activationFunction inputs (weights, biases) =
+forwardLayer activationFunction inputs (!weights, !biases) =
     weights
         & fmap (dotProd inputs)
         & V.zipWith (+) biases
@@ -80,14 +80,14 @@ listOfListsToVecOfVecs listOfLists = listOfLists & map V.fromList & V.fromList
 
 flattenOneLayer :: Layer -> ([Float], (Int, Int))
 flattenOneLayer (weights, biases) =
-    let (weights', biases') = (vecOfVecsToListOfLists weights, V.toList biases)
+    let (!weights', !biases') = (vecOfVecsToListOfLists weights, V.toList biases)
     in  (concat weights' ++ biases', (length weights', length (head weights')))
 
 
 -- Flatten all layers into a single list of Floats plus shape info.
 flattenLayers :: [Layer] -> FlatLayers
 flattenLayers layers =
-    let (flatWeightsAndBiases, shapes) = layers & map flattenOneLayer & unzip
+    let (!flatWeightsAndBiases, !shapes) = layers & map flattenOneLayer & unzip
     in  (concat flatWeightsAndBiases, shapes)
 
 
@@ -103,8 +103,8 @@ unflattenLayersToLists (flatWeightsAndBiases, shapes) =
         ([], _) -> []
         (_, []) -> []
         (xs, (m, n) : rest) ->
-            let (wVals, r1) = splitAt (m * n) xs
-                (bVals, r2) = splitAt m r1
+            let (!wVals, !r1) = splitAt (m * n) xs
+                (!bVals, !r2) = splitAt m r1
                 wMatrix = splitEvery n wVals
                 layer = (wMatrix, bVals)
             in  layer : unflattenLayersToLists (r2, rest)
@@ -124,7 +124,7 @@ initFlatLayers :: [Int] -> Float -> StdGen -> (FlatLayers, StdGen)
 initFlatLayers layerSizes range gen =
     let shapes = layerSizes & pairs & map swap
         totalLength = sum (map (\(m, n) -> m * n + m) shapes)
-        (weightsAndBiases, gen') = uniformListR totalLength (-range, range) gen
+        (!weightsAndBiases, !gen') = uniformListR totalLength (-range, range) gen
     in  ((weightsAndBiases, shapes), gen')
 
 
@@ -134,23 +134,23 @@ initFlatLayers layerSizes range gen =
 -- Crossover two flat layers with a probability of 50% that a gene will come from either parent.
 crossover :: FlatLayers -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
 crossover (parent1, shapes1) (parent2, shapes2) gen =
-    let (probs, gen') = uniformListR (length parent1) (0, 1) gen :: ([Float], StdGen)
+    let (!probs, !gen') = uniformListR (length parent1) (0, 1) gen :: ([Float], StdGen)
         child = zipWith3 (\p x y -> if p < 0.5 then x else y) probs parent1 parent2
     in  ((child, shapes1), gen')
 
 
 mutate :: Float -> Float -> (FlatLayers, StdGen) -> (FlatLayers, StdGen)
 mutate mutationRate range ((flatLayers, shapes), gen) =
-    let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
+    let (!probs, !gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
         -- TODO Use a normal distribution here instead of uniform
-        (offsets, gen'') = uniformListR (length flatLayers) (-range, range) gen'
+        (!offsets, !gen'') = uniformListR (length flatLayers) (-range, range) gen'
         mutated = zipWith3 (\p x y -> if p < mutationRate then y + x else y) probs offsets flatLayers
     in  ((mutated, shapes), gen'')
 
 
 invert :: Float -> (FlatLayers, StdGen) -> (FlatLayers, StdGen)
 invert mutationRate ((flatLayers, shapes), gen) =
-    let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
+    let (!probs, !gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
         inverted = zipWith (\p x -> if p < mutationRate then let val = x * (-1) in val else x) probs flatLayers
     in  inverted `seq` ((inverted, shapes), gen')
 
@@ -161,7 +161,7 @@ clamp minVal maxVal x = max minVal (min maxVal x)
 
 mutate' :: Float -> Float -> Float -> FlatLayers -> StdGen -> (FlatLayers, StdGen)
 mutate' mutationRate range weight (flatLayers, shapes) gen =
-    let (probs, gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
-        (randVals, gen'') = uniformListR (length flatLayers) (-range * weight, range * weight) gen'
+    let (!probs, !gen') = uniformListR (length flatLayers) (0, 1) gen :: ([Float], StdGen)
+        (!randVals, !gen'') = uniformListR (length flatLayers) (-range * weight, range * weight) gen'
         mutated = zipWith3 (\p x y -> if p < mutationRate then clamp (-range) range (x + y) else y) probs randVals flatLayers
     in  ((mutated, shapes), gen'')
