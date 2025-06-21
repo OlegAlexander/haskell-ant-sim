@@ -101,7 +101,7 @@ pheromoneColor = orange
 
 
 pheromoneScale :: Float
-pheromoneScale = 0.02
+pheromoneScale = 0.04
 
 
 initPheromoneAmount :: Int
