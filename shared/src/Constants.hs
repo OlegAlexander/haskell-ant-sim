@@ -105,7 +105,7 @@ pheromoneScale = 0.02
 
 
 initPheromoneAmount :: Int
-initPheromoneAmount = 600
+initPheromoneAmount = 300
 
 
 regeneratePheromoneDelayMin :: Int
@@ -129,7 +129,7 @@ ticksPerCourse = fps * 30
 
 
 coursesPerGeneration :: Int
-coursesPerGeneration = 3
+coursesPerGeneration = 5
 
 
 maxGenerations :: Int
@@ -153,8 +153,8 @@ outReturningBrainFile = "models/returning.brain"
 
 
 inForagingBrainFile :: FilePath
-inForagingBrainFile = "models/foraging_2025-06-15_5.633.brain"
+inForagingBrainFile = "models/foraging_2025-06-21_7.345.brain"
 
 
 inReturningBrainFile :: FilePath
-inReturningBrainFile = "models/returning_2025-06-15_5.633.brain"
+inReturningBrainFile = "models/returning_2025-06-21_7.345.brain"
