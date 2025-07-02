@@ -52,17 +52,14 @@ dotProd xs ys = sum (V.zipWith (*) xs ys)
 
 -- Forward pass for a single layer
 forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
-forwardLayer activationFunction inputs (!weights, !biases) =
-    weights
-        & fmap (dotProd inputs)
-        & V.zipWith (+) biases
-        & fmap activationFunction
+forwardLayer activationFunc inputs (!weights, !biases) =
+    V.zipWith (\ws b -> activationFunc (dotProd inputs ws + b)) weights biases
 
 
 -- Forward pass for all layers
 forwardAll :: (Float -> Float) -> [Layer] -> Vector Float -> Vector Float
-forwardAll activationFunction layers inputs =
-    foldl' (forwardLayer activationFunction) inputs layers
+forwardAll activationFunc layers inputs =
+    foldl' (forwardLayer activationFunc) inputs layers
 
 
 -- Sigmoid activation function

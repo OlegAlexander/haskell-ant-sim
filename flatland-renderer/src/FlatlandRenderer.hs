@@ -329,11 +329,11 @@ renderFRWorld w = do
     -- but I'm not sure how to avoid this duplication because I want the ant
     -- to be drawn on top of the vision rays.
     -- draw player ant as a circle
-    drawCircleV antPos 5 black
+    drawCircleV antPos 5 nestColor
 
     -- draw ant direction as a line
     let antDir = getNextPos playerAnt.aAngle 20 antPos
-    drawLineEx antPos antDir 5 black
+    drawLineEx antPos antDir 5 nestColor
 
     -- draw ant vision rects
     when renderVisionRects $ do

@@ -29,6 +29,7 @@ import Constants (
     screenWidth,
     ticksPerCourse, 
     fenceWallThickness,
+    usePretrainedBrains
  )
 import Control.Monad (forM_, replicateM, when)
 import Data.Foldable (toList)
@@ -314,9 +315,13 @@ initAntAIWorld = do
     setTraceLogLevel LogWarning
     -- setMouseCursor MouseCursorCrosshair
     setExitKey KeyNull -- Pressing ESC should not exit the game
-    flatForagingBrain <- readFlatLayers inForagingBrainFile
-    flatReturningBrain <- readFlatLayers inReturningBrainFile
-    let ants' = map (loadAntBrains flatForagingBrain flatReturningBrain) ants
+    ants' <- if usePretrainedBrains 
+        then do
+            -- Load the flat layers from the files
+            foraging <- readFlatLayers inForagingBrainFile
+            returning <- readFlatLayers inReturningBrainFile
+            return $ map (loadAntBrains foraging returning) ants
+        else return ants
     return (defaultWorld rng'){wAnts = Seq.fromList ants'}
 
 
@@ -489,6 +494,13 @@ renderAntAIWorld w = do
     when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0) performGC
     when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0) (writeBestBrain w)
 
+
+updateAntAIWorldDebug :: World -> World
+updateAntAIWorldDebug w =
+    let w' = pTraceShowId w
+            & updateAntAIWorld
+            & pTraceShowId
+    in w'
 
 antAISys :: System World
 antAISys = System handleAntAIInput updateAntAIWorld renderAntAIWorld

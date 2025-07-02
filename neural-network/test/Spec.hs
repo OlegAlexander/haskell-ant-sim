@@ -1,4 +1,4 @@
--- cabal test ant-ai
+-- stack test neural-network
 
 module Main where
 
