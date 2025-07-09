@@ -11,6 +11,7 @@ import Data.Sequence qualified as Seq
 import Data.Tuple (swap)
 import GHC.Float (int2Float)
 import NeuralNetwork (initFlatLayers, unflattenLayers)
+import Raylib.Core (takeScreenshot)
 import Raylib.Core.Text (drawText)
 import Raylib.Types (Color (..), Rectangle (..), Vector2 (..))
 import Raylib.Util.Colors (darkBrown)
@@ -26,6 +27,7 @@ import Types (
     WheelPos (..),
     World (..),
  )
+import ScreenshotOps (fixScreenshot, diffImages)
 
 
 (|||) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
@@ -200,4 +202,10 @@ gameLoop sys shouldExitFunc world = do
         world' <- sys.handleInput world
         let world'' = sys.update world'
         sys.render world''
+        -- takeScreenshot "screenshot.png"
+        -- fixScreenshot  "screenshot.png"
+        -- diffImages "screenshot3.png" "screenshot.png" "screenshotDiff.png" >>= \identical ->
+        --     if not identical
+        --         then putStrLn "Images differ."
+        --         else putStrLn "Images are identical."
         gameLoop sys shouldExitFunc world''

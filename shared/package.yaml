@@ -23,6 +23,7 @@ dependencies:
   - pretty-simple >= 4.1.2.0
   - vector >= 0.13.1.0
   - containers
+  - JuicyPixels
 
 
 library:
@@ -31,4 +32,5 @@ library:
     - Constants
     - Shared
     - Types
+    - ScreenshotOps
   dependencies: neural-network
