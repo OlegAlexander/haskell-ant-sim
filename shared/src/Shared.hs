@@ -4,7 +4,7 @@
 module Shared where
 
 import Constants (antMaxSpeed, hitboxSize, nnParameterRange, screenHeight, screenWidth, regeneratePheromoneDelayMax, regeneratePheromoneDelayMin, fenceWallThickness)
-import Control.Monad (forM_, unless, (>=>))
+import Control.Monad (forM_, unless, when, (>=>))
 import Data.Function ((&))
 import Data.List (mapAccumL)
 import Data.Sequence qualified as Seq
@@ -27,7 +27,7 @@ import Types (
     WheelPos (..),
     World (..),
  )
-import ScreenshotOps (fixScreenshot, diffImages)
+import ScreenshotOps (fixScreenshot, diffScreenshots)
 
 
 (|||) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
@@ -164,7 +164,8 @@ defaultWorld rng =
               wFood = Seq.empty,
               wFoodBeingDrawn = Nothing,
               wPheromones = Seq.empty,
-              wTrainingMode = Off,
+            --   wTrainingMode = Off,
+              wTrainingMode = Fast,
               wTicks = 0,
               wGeneration = 0,
               wCourse = 0,
@@ -195,17 +196,28 @@ instance Monoid (System w) where
     mempty = System return id (\_ -> return ())
 
 
-gameLoop :: System w -> IO Bool -> w -> IO ()
+-- gameLoop :: System w -> IO Bool -> w -> IO ()
+-- gameLoop sys shouldExitFunc world = do
+-- Temporarily make the World type concrete to avoid type errors when taking a screenshot
+gameLoop :: System World -> IO Bool -> World -> IO ()
 gameLoop sys shouldExitFunc world = do
     shouldExit <- shouldExitFunc
     unless shouldExit $ do
         world' <- sys.handleInput world
         let world'' = sys.update world'
         sys.render world''
-        -- takeScreenshot "screenshot.png"
-        -- fixScreenshot  "screenshot.png"
-        -- diffImages "screenshot3.png" "screenshot.png" "screenshotDiff.png" >>= \identical ->
-        --     if not identical
-        --         then putStrLn "Images differ."
-        --         else putStrLn "Images are identical."
+
+        -- Visual regression test
+        when ((world''.wTrainingMode == Slow || world''.wTrainingMode == Fast) && world''.wGeneration == 2 && world''.wTicks == 600) $ do
+            -- Take a screenshot and exit the game
+            takeScreenshot "ant_ai_screenshot.png"
+            fixScreenshot "ant_ai_screenshot.png"
+            -- error "Screenshot taken, exiting game."
+
+            diffScreenshots "ant_ai_screenshot.png" "ant_ai_screenshot_golden.png" "ant_ai_screenshotDiff.png" >>= \identical ->
+                if not identical
+                    then putStrLn "Screenshots differ."
+                    else putStrLn "Screenshots are identical."
+            error "Screenshots compared, exiting game."
+
         gameLoop sys shouldExitFunc world''

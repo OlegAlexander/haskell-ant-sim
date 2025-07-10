@@ -29,15 +29,15 @@ fixScreenshot path = do
   writePng path cropped            -- overwrite
 
 
--- | Compare two PNGs.
+-- | Compare two screenshots.
 --   * True  -> images identical (no diff file written)
 --   * False -> pixels differ   (diff PNG written)
 --   * IOError -> input sizes differ
-diffImages :: FilePath      -- ^ first image
+diffScreenshots :: FilePath      -- ^ first image
            -> FilePath      -- ^ second image
            -> FilePath      -- ^ where to write diff if they differ
            -> IO Bool
-diffImages fpA fpB fpOut = do
+diffScreenshots fpA fpB fpOut = do
   imgA <- loadRGBA fpA
   imgB <- loadRGBA fpB
 
@@ -45,7 +45,7 @@ diffImages fpA fpB fpOut = do
   let w = imageWidth imgA
       h = imageHeight imgA
   unless (w == imageWidth imgB && h == imageHeight imgB) $
-    ioError (userError "diffImages: dimension mismatch")
+    ioError (userError "diffScreenshots: dimension mismatch")
 
   -- Fast equality check on raw pixel buffers
   if imageData imgA == imageData imgB

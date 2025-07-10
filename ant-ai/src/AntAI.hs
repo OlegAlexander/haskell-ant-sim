@@ -100,7 +100,7 @@ import Shared (
     fenceWalls,
  )
 import System.Mem (performGC)
-import System.Random (StdGen, newStdGen, random, randomIO, randomR)
+import System.Random (StdGen, newStdGen, random, randomIO, randomR, mkStdGen)
 import Text.Printf (printf)
 import Types (
     Ant (..),
@@ -151,8 +151,8 @@ generateRandomFood rng nest walls =
         dx = nestX - x
         dy = nestY - y
         distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
-        -- amount = ceiling (150 * (distance ** 3))
-        amount = ceiling (1_000_000 * (distance ** 3))
+        amount = ceiling (1000 * (distance ** 3))
+        -- amount = ceiling (1_000_000 * (distance ** 3))
         food = Food (Container amount (Rectangle x y hitboxSize hitboxSize))
         foodOverlapsNest = isPointInRect (Vector2 x y) nest.nContainer.cRect
         foodOverlapsWalls = any (isPointInRect (Vector2 x y)) walls
@@ -307,8 +307,9 @@ loadAntBrains foragingBrain returningBrain ant =
 
 initAntAIWorld :: IO World
 initAntAIWorld = do
-    rng <- newStdGen
-    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+    -- rng <- newStdGen
+    let rng = mkStdGen 0 -- Use a fixed seed for reproducibility
+        screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         (!ants, !rng') = mapAccumL' mkAnt rng (replicate numAnts screenCenter)
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
@@ -474,7 +475,7 @@ renderAntAIWorld w = do
         else setTargetFPS fps
     gameFps <- getFPS
     drawTextLines'
-        [ "FPS: " ++ show gameFps,
+        [ "FPS: 60", -- ++ show gameFps,
           "Pheromones: " ++ show (Seq.length w.wPheromones),
           "Ants: " ++ show (Seq.length w.wAnts),
           "Training: " ++ show w.wTrainingMode,
@@ -494,13 +495,6 @@ renderAntAIWorld w = do
     when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0) performGC
     when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0) (writeBestBrain w)
 
-
-updateAntAIWorldDebug :: World -> World
-updateAntAIWorldDebug w =
-    let w' = pTraceShowId w
-            & updateAntAIWorld
-            & pTraceShowId
-    in w'
 
 antAISys :: System World
 antAISys = System handleAntAIInput updateAntAIWorld renderAntAIWorld
