@@ -214,7 +214,7 @@ gameLoop sys shouldExitFunc world = do
             fixScreenshot "ant_ai_screenshot.png"
             -- error "Screenshot taken, exiting game."
 
-            diffScreenshots "ant_ai_screenshot.png" "ant_ai_screenshot_golden.png" "ant_ai_screenshotDiff.png" >>= \identical ->
+            diffScreenshots "ant_ai_screenshot.png" "ant_ai_screenshot_baseline.png" "ant_ai_screenshot_diff.png" >>= \identical ->
                 if not identical
                     then putStrLn "Screenshots differ."
                     else putStrLn "Screenshots are identical."

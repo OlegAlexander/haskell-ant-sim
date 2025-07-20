@@ -107,6 +107,7 @@ import Types (
     AntDecision (..),
     Container (..),
     Food (..),
+    Pheromone (..),
     GoDir (..),
     Nest (..),
     Sprite (..),
@@ -373,8 +374,8 @@ mkInputVector ant =
         V.fromList inputVector
 
 
-applyAntDecision :: AntDecision -> Ant -> Ant
-applyAntDecision decision ant = case decision of
+applyAntDecision :: Ant -> AntDecision -> Ant
+applyAntDecision ant decision = case decision of
     GoNowhere -> ant{aWheelPos = Center, aGoDir = Stop}
     GoLeft -> ant{aWheelPos = TurnLeft, aGoDir = Stop}
     GoForwardLeft -> ant{aWheelPos = TurnLeft, aGoDir = Forward}
@@ -414,35 +415,68 @@ getAntDecision ant =
     in  ant & mkInputVector & antBrainNeuralNetwork brain
 
 
--- TODO Clean up this function!
+-- Reset the course: generate new walls, food, ants, and pheromones.
+resetCourse :: World -> StdGen -> Seq Ant -> (Seq Rectangle, Seq Food, Seq Ant, Seq Pheromone, StdGen)
+resetCourse w rng ants =
+  let (walls , rng') = generateRandomWalls rng  w.wNest 3
+      (foods , rng'') = generateRandomFoods rng' w.wNest walls 1
+      (ants'  , rng''') = resetAllAnts rng'' ants
+  in  (walls, foods, ants', Seq.empty, rng''')
+
+
+-- Runs only on the first course of a generation.
+-- Computes average score and advances GA generation.
+resetFirstCourse :: World -> StdGen -> Seq Ant -> (Seq Ant, Int, StdGen, Float)
+resetFirstCourse w rng ants =
+  let avgScore = average (fmap (.aScore) (toList ants))
+      _ = traceShowId ("avgScore", avgScore, w.wBestAvgScore)
+      (ants', gen', rng') = generateNextGeneration w.wGeneration rng ants
+  in  (ants', gen', rng', avgScore)
+
+
 updateAntAIWorld :: World -> World
 updateAntAIWorld w =
-    let antDecisions = w.wAnts & fmap getAntDecision
-        decidedAnts = w.wAnts & Seq.zipWith applyAntDecision antDecisions
-        collisionRects = getCollisionRects w
-        (!movedAnts, !rng) = mapAccumL' (updateAntMovement collisionRects) w.wRng decidedAnts
+    let isTraining = w.wTrainingMode == Slow || w.wTrainingMode == Fast
+        isStartOfCourse = isTraining && w.wTicks == 0
+        isFirstCourse = isStartOfCourse && w.wCourse == 0
+
+        -- Ant decisions
+        antDecisions = fmap getAntDecision w.wAnts
+        decidedAnts = Seq.zipWith applyAntDecision w.wAnts antDecisions
+
+        -- Ant movement
+        (!movedAnts, !rng) = 
+            mapAccumL' (updateAntMovement (getCollisionRects w)) w.wRng decidedAnts
+
+        -- Ant vision
         seeingAnts = fmap (updateAntFR w) movedAnts
-        (!walls, !rng') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then generateRandomWalls rng w.wNest 3 else (w.wWalls, rng)
-        (!foods, !rng'') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then generateRandomFoods rng' w.wNest walls 1 else (w.wFood, rng')
-        (!resetAnts, !rng''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then resetAllAnts rng'' seeingAnts else (seeingAnts, rng'')
-        avgScore = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then average (fmap (.aScore) (toList resetAnts)) else w.wBestAvgScore
-        (!newAnts, !rng'''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then hardResetAllAnts rng''' resetAnts else (resetAnts, rng''')
-        (!newAnts', !generation', !rng''''') = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then generateNextGeneration w.wGeneration rng'''' resetAnts else (newAnts, w.wGeneration, rng'''')
-        _ = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0 then traceShowId ("avgScore", avgScore, w.wBestAvgScore) else ("", 0, 0)
-        pheromones = if (w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 then Seq.empty else w.wPheromones
+
+        -- Start of course: reset walls, food, ants, pheromones
+        (!walls, !foods, !resetAnts, !pheromones, !rng') =
+            if isStartOfCourse
+                then resetCourse w rng seeingAnts
+                else (w.wWalls, w.wFood, seeingAnts, w.wPheromones, rng)
+        
+        -- First course of generation: calc average score, advance GA generation
+        (!newAnts, !generation, !rng'', !avgScore) =
+            if isFirstCourse
+                then resetFirstCourse w rng' seeingAnts
+                else (resetAnts, w.wGeneration, rng', w.wBestAvgScore)
+
+        -- Ticks, course, and training mode
         (!ticks, !course) = calcTicksAndCourse w
-        trainingMode = if generation' == maxGenerations then Done else w.wTrainingMode
+        trainingMode = if generation == maxGenerations then Done else w.wTrainingMode
     in  w
-            { wAnts = newAnts',
+            { wAnts = newAnts,
               wTicks = ticks,
               wCourse = course,
-              wGeneration = generation',
+              wGeneration = generation,
               wTrainingMode = trainingMode,
               wBestAvgScore = max avgScore w.wBestAvgScore,
               wWalls = walls,
               wFood = foods,
               wPheromones = pheromones,
-              wRng = rng'''''
+              wRng = rng''
             }
 
 
