@@ -334,13 +334,20 @@ handleAntAIInput w = do
     tKey <- isKeyPressed KeyT
     leftShiftKey <- isKeyDown KeyLeftShift
     rightShiftKey <- isKeyDown KeyRightShift
+    dKey <- isKeyPressed KeyD
+    nKey <- isKeyPressed KeyN
     let shiftTPressed = tKey && (leftShiftKey || rightShiftKey)
         trainingMode = case (tKey, shiftTPressed, w.wTrainingMode) of
             (True, False, Off) -> Fast
             (_, True, Fast) -> Slow
             (_, True, Slow) -> Fast
             _ -> w.wTrainingMode
-    return w{wTrainingMode = trainingMode}
+        toggleDebugText = dKey /= w.wRenderDebugText
+        toggleNNVectors = nKey /= w.wRenderNNVectors
+    return w{wTrainingMode = trainingMode,
+             wRenderDebugText = toggleDebugText,
+             wRenderNNVectors = toggleNNVectors
+            }
 
 
 antBrainForward :: Vector Float -> AntDecision
@@ -548,16 +555,17 @@ renderAntAIWorld w = do
         then do setTargetFPS 1000
         else setTargetFPS fps
     gameFps <- getFPS
-    drawTextLines'
-        [ "FPS: 60", -- ++ show gameFps,
-          "Pheromones: " ++ show (Seq.length w.wPheromones),
-          "Ants: " ++ show (Seq.length w.wAnts),
-          "Training: " ++ show w.wTrainingMode,
-          "Generation: " ++ show (w.wGeneration + 1),
-          "Course: " ++ show (w.wCourse + 1),
-          "Ticks: " ++ show (w.wTicks + 1),
-          "Best Avg Score: " ++ show w.wBestAvgScore
-        ]
+    when w.wRenderDebugText $ do
+        drawTextLines'
+            [ "FPS: " ++ show gameFps,
+            "Pheromones: " ++ show (Seq.length w.wPheromones),
+            "Ants: " ++ show (Seq.length w.wAnts),
+            "Training: " ++ show w.wTrainingMode,
+            "Generation: " ++ show (w.wGeneration + 1),
+            "Course: " ++ show (w.wCourse + 1),
+            "Ticks: " ++ show (w.wTicks + 1),
+            "Best Avg Score: " ++ show w.wBestAvgScore
+            ]
     forM_ w.wAnts (drawAnt black)
     -- Draw the score above the ants
     -- forM_ w.wAnts $ \ant -> do
@@ -568,15 +576,16 @@ renderAntAIWorld w = do
     --     when (ant.aScore > 0) $ drawText scoreText (floor tx) (floor ty) 30 blue
 
     -- Visualize the input and output vectors for the player ant brain. 
-    let playerAntInputVector = mkInputVector w.wPlayerAnt
-        inputRects = vectorToRects playerAntInputVector (Vector2 0 0) 150
-        playerBrain = if w.wPlayerAnt.aHasFood then w.wPlayerAnt.aReturningBrain else w.wPlayerAnt.aForagingBrain
-        playerAntOutputVector = playerAntInputVector & forwardAll sigmoid playerBrain
-        outputRects = vectorToRects playerAntOutputVector (Vector2 0 (fromIntegral screenHeight)) (-150)
-        playerAntDecision = getAntDecision w.wPlayerAnt
-    forM_ (inputRects <> outputRects) $ \rect -> drawRectangleRec rect blue
-    drawText (show playerAntDecision) 803 (fromIntegral screenHeight - 97) 50 black -- drop shadow
-    drawText (show playerAntDecision) 800 (fromIntegral screenHeight - 100) 50 purple 
+    when w.wRenderNNVectors $ do
+        let playerAntInputVector = mkInputVector w.wPlayerAnt
+            inputRects = vectorToRects playerAntInputVector (Vector2 0 0) 150
+            playerBrain = if w.wPlayerAnt.aHasFood then w.wPlayerAnt.aReturningBrain else w.wPlayerAnt.aForagingBrain
+            playerAntOutputVector = playerAntInputVector & forwardAll sigmoid playerBrain
+            outputRects = vectorToRects playerAntOutputVector (Vector2 0 (fromIntegral screenHeight)) (-150)
+            playerAntDecision = getAntDecision w.wPlayerAnt
+        forM_ (inputRects <> outputRects) $ \rect -> drawRectangleRec rect blue
+        drawText (show playerAntDecision) 803 (fromIntegral screenHeight - 97) 50 black -- drop shadow
+        drawText (show playerAntDecision) 800 (fromIntegral screenHeight - 100) 50 purple 
 
 
     when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0) performGC

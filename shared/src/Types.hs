@@ -94,6 +94,8 @@ data World = World
       wRenderVisionRects :: Bool,
       wRenderHomeVector :: Bool,
       wRenderHomeCompass :: Bool,
+      wRenderNNVectors :: Bool,
+      wRenderDebugText :: Bool,
       wWalls :: Seq Rectangle,
       wWallBeingDrawn :: Maybe (Vector2, Vector2),
       wFood :: Seq Food,
