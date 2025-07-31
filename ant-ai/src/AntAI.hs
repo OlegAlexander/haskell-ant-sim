@@ -73,7 +73,7 @@ import Raylib.Core (
     toggleFullscreen,
     windowShouldClose,
  )
-import Raylib.Core.Shapes (drawCircleV, drawLineEx)
+import Raylib.Core.Shapes (drawCircleV, drawLineEx, drawRectangleRec)
 import Raylib.Core.Text (drawFPS, drawText)
 import Raylib.Types (
     Color,
@@ -84,7 +84,7 @@ import Raylib.Types (
  )
 import Raylib.Types.Core (Vector2 (..))
 import Raylib.Util (drawing)
-import Raylib.Util.Colors (black, blue, darkBrown, green, lightGray)
+import Raylib.Util.Colors (black, blue, darkBrown, green, lightGray, purple)
 import Shared (
     System (..),
     calcRectCenter,
@@ -308,24 +308,26 @@ loadAntBrains foragingBrain returningBrain ant =
 
 initAntAIWorld :: IO World
 initAntAIWorld = do
-    -- rng <- newStdGen
-    let rng = mkStdGen 0 -- Use a fixed seed for reproducibility
-        screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
+    rng <- newStdGen
+    -- let rng = mkStdGen 0 -- Use a fixed seed for reproducibility
+    let screenCenter = Vector2 (int2Float screenWidth / 2) (int2Float screenHeight / 2)
         (!ants, !rng') = mapAccumL' mkAnt rng (replicate numAnts screenCenter)
+        world = defaultWorld rng'
     _ <- initWindow screenWidth screenHeight "Ant AI"
     setTargetFPS fps
     setTraceLogLevel LogWarning
     -- setMouseCursor MouseCursorCrosshair
     setExitKey KeyNull -- Pressing ESC should not exit the game
-    ants' <- if usePretrainedBrains 
+    (ants', playerAnt') <- if usePretrainedBrains 
         then do
             -- Load the flat layers from the files
-            foraging <- readFlatLayers inForagingBrainFile
+            foraging  <- readFlatLayers inForagingBrainFile
             returning <- readFlatLayers inReturningBrainFile
-            return $ map (loadAntBrains foraging returning) ants
-        else return ants
-    return (defaultWorld rng'){wAnts = Seq.fromList ants'}
-
+            let antsWithBrains = map (loadAntBrains foraging returning) ants
+                playerAntWithBrains = loadAntBrains foraging returning world.wPlayerAnt
+            return (antsWithBrains, playerAntWithBrains)
+        else return (ants, world.wPlayerAnt)
+    return world{wPlayerAnt = playerAnt', wAnts = Seq.fromList ants'}
 
 handleAntAIInput :: World -> IO World
 handleAntAIInput w = do
@@ -418,9 +420,9 @@ getAntDecision ant =
 -- Reset the course: generate new walls, food, ants, and pheromones.
 resetCourse :: World -> StdGen -> Seq Ant -> (Seq Rectangle, Seq Food, Seq Ant, Seq Pheromone, StdGen)
 resetCourse w rng ants =
-  let (walls , rng') = generateRandomWalls rng  w.wNest 3
-      (foods , rng'') = generateRandomFoods rng' w.wNest walls 1
-      (ants'  , rng''') = resetAllAnts rng'' ants
+  let (walls, rng') = generateRandomWalls rng  w.wNest 3
+      (foods, rng'') = generateRandomFoods rng' w.wNest walls 1
+      (ants', rng''') = resetAllAnts rng'' ants
   in  (walls, foods, ants', Seq.empty, rng''')
 
 
@@ -501,6 +503,44 @@ writeBestBrain w = do
     writeFlatLayers outForagingBrainFile (flattenLayers bestAnt.aForagingBrain)
     writeFlatLayers outReturningBrainFile (flattenLayers bestAnt.aReturningBrain)
 
+-- Convert a vector of floats to a list of rectangles. 
+-- The higher the value, the taller the rect should be.
+-- The width of all the rectangles should span the width of the screen.
+-- The origin defines the top left corner of the first rect.
+-- The scale controls the height of the rects and can be negative. 
+-- vectorToRects :: Vector Float -> Vector2 -> Float -> [Rectangle]
+-- vectorToRects vector (Vector2 originX originY) scale =
+
+-- Build a single bar rectangle given its x‑offset and value
+makeBarRect :: Float     -- ^ x offset from origin
+            -> Float     -- ^ bar width
+            -> Float     -- ^ scale (can be negative)
+            -> Float     -- ^ original value
+            -> Vector2   -- ^ origin
+            -> Rectangle
+makeBarRect xOff barW scale v (Vector2 ox oy) =
+  let rawH = v * scale                -- signed height
+      (y', h') | rawH >= 0 = (oy        ,  rawH)
+                | otherwise = (oy + rawH, -rawH)  -- shift up, flip
+  in  Rectangle (ox + xOff) y' barW h'
+
+-- Convert a vector of values into equal‑width vertical bars
+-- whose heights are `value * scale`.
+-- The bars collectively span the full screen width, starting at `origin`.
+vectorToRects
+  :: V.Vector Float  -- ^ input values
+  -> Vector2         -- ^ origin (top‑left of first bar)
+  -> Float           -- ^ scale for height (can be negative)
+  -> [Rectangle]
+vectorToRects vec origin scale
+  | V.null vec = []                                   -- nothing to draw
+  | otherwise  =
+      let n            = V.length vec
+          barW         = int2Float screenWidth / fromIntegral n
+          xOffsets     = [0, barW ..]                 -- 0,barW,2*barW,…
+          values       = V.toList vec
+      in  zipWith (\x v -> makeBarRect x barW scale v origin) xOffsets values
+
 
 renderAntAIWorld :: World -> IO ()
 renderAntAIWorld w = do
@@ -526,6 +566,19 @@ renderAntAIWorld w = do
     --         scoreText = printf "%.2f" antScore
     --         (Vector2 tx ty) = Vector2 (x - 20) (y - 40)
     --     when (ant.aScore > 0) $ drawText scoreText (floor tx) (floor ty) 30 blue
+
+    -- Visualize the input and output vectors for the player ant brain. 
+    let playerAntInputVector = mkInputVector w.wPlayerAnt
+        inputRects = vectorToRects playerAntInputVector (Vector2 0 0) 150
+        playerBrain = if w.wPlayerAnt.aHasFood then w.wPlayerAnt.aReturningBrain else w.wPlayerAnt.aForagingBrain
+        playerAntOutputVector = playerAntInputVector & forwardAll sigmoid playerBrain
+        outputRects = vectorToRects playerAntOutputVector (Vector2 0 (fromIntegral screenHeight)) (-150)
+        playerAntDecision = getAntDecision w.wPlayerAnt
+    forM_ (inputRects <> outputRects) $ \rect -> drawRectangleRec rect blue
+    drawText (show playerAntDecision) 803 (fromIntegral screenHeight - 97) 50 black -- drop shadow
+    drawText (show playerAntDecision) 800 (fromIntegral screenHeight - 100) 50 purple 
+
+
     when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0) performGC
     when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0) (writeBestBrain w)
 

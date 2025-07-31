@@ -81,7 +81,7 @@ foodColor = yellow
 
 
 foodGrowthAmount :: Int
-foodGrowthAmount = 1
+foodGrowthAmount = 10
 
 
 hitboxSize :: Float
