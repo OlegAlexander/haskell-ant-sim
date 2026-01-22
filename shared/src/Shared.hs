@@ -198,28 +198,11 @@ instance Monoid (System w) where
     mempty = System return id (\_ -> return ())
 
 
--- gameLoop :: System w -> IO Bool -> w -> IO ()
--- gameLoop sys shouldExitFunc world = do
--- Temporarily make the World type concrete to avoid type errors when taking a screenshot
-gameLoop :: System World -> IO Bool -> World -> IO ()
+gameLoop :: System w -> IO Bool -> w -> IO ()
 gameLoop sys shouldExitFunc world = do
     shouldExit <- shouldExitFunc
     unless shouldExit $ do
         world' <- sys.handleInput world
         let world'' = sys.update world'
         sys.render world''
-
-        -- Visual regression test
-        when ((world''.wTrainingMode == Slow || world''.wTrainingMode == Fast) && world''.wGeneration == 2 && world''.wTicks == 600) $ do
-            -- Take a screenshot and exit the game
-            takeScreenshot "ant_ai_screenshot.png"
-            fixScreenshot "ant_ai_screenshot.png"
-            -- error "Screenshot taken, exiting game."
-
-            diffScreenshots "ant_ai_screenshot.png" "ant_ai_screenshot_baseline.png" "ant_ai_screenshot_diff.png" >>= \identical ->
-                if not identical
-                    then putStrLn "Screenshots differ."
-                    else putStrLn "Screenshots are identical."
-            error "Screenshots compared, exiting game."
-
         gameLoop sys shouldExitFunc world''

@@ -79,7 +79,8 @@ initAMWorld = do
     let testWall1 = Rectangle 200 200 500 300
         testWall2 = Rectangle 100 300 1000 50
         testWall3 = Rectangle 900 500 20 20
-        walls = Seq.fromList [testWall1, testWall2, testWall3]
+        -- walls = Seq.fromList [testWall1, testWall2, testWall3]
+        walls = Seq.fromList [] -- disable walls for the video
     _ <- initWindow screenWidth screenHeight "Ant Movement"
     setTargetFPS fps
     setMouseCursor MouseCursorCrosshair
@@ -163,7 +164,7 @@ renderAMWorld w = do
         antPos = playerAnt.aPos
 
     -- draw walls
-    forM_ walls $ \wall -> drawRectangleRec wall wallColor
+    -- forM_ walls $ \wall -> drawRectangleRec wall wallColor
 
     -- draw player ant as a circle
     drawCircleV antPos 5 black

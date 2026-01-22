@@ -1,0 +1,35 @@
+strict digraph deps {
+"ant-ai" [style=solid];
+"ant-movement" [style=solid];
+"ant-sim" [style=solid];
+"draw-walls" [style=solid];
+"flatland-renderer" [style=solid];
+"food" [style=solid];
+"neural-network" [style=solid];
+"pheromones" [style=solid];
+"shared" [style=solid];
+{rank=max; "neural-network"; };
+"ant-ai" -> "ant-movement";
+"ant-ai" -> "draw-walls";
+"ant-ai" -> "flatland-renderer";
+"ant-ai" -> "food";
+"ant-ai" -> "neural-network";
+"ant-ai" -> "pheromones";
+"ant-ai" -> "shared";
+"ant-movement" -> "shared";
+"ant-sim" -> "ant-movement";
+"ant-sim" -> "draw-walls";
+"ant-sim" -> "flatland-renderer";
+"ant-sim" -> "food";
+"ant-sim" -> "pheromones";
+"ant-sim" -> "shared";
+"draw-walls" -> "shared";
+"flatland-renderer" -> "ant-movement";
+"flatland-renderer" -> "shared";
+"food" -> "ant-movement";
+"food" -> "shared";
+"pheromones" -> "ant-movement";
+"pheromones" -> "food";
+"pheromones" -> "shared";
+"shared" -> "neural-network";
+}

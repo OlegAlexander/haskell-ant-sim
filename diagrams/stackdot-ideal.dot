@@ -1,0 +1,25 @@
+// Custom idealized graph
+strict digraph deps {
+concentrate=true; 
+node [style=filled; fillcolor=lavender;]
+"ant-sim" -> "ant-movement";
+"ant-sim" -> "draw-walls";
+"ant-sim" -> "flatland-renderer";
+"ant-sim" -> "food";
+"ant-sim" -> "neural-network";
+"ant-sim" -> "pheromones";
+"ant-sim" -> "shared";
+"ant-sim" -> "genetic-algorithm";
+"genetic-algorithm" -> "neural-network";
+"genetic-algorithm" -> "shared";
+"ant-movement" -> "shared";
+"draw-walls" -> "shared";
+"flatland-renderer" -> "ant-movement";
+"flatland-renderer" -> "shared";
+"food" -> "ant-movement";
+"food" -> "shared";
+"pheromones" -> "ant-movement";
+"pheromones" -> "food";
+"pheromones" -> "shared";
+"neural-network" -> "shared";
+}

@@ -141,25 +141,41 @@ generateRandomWalls rng nest numWalls =
     in  (fenceWalls fenceWallThickness <> Seq.fromList walls, rng')
 
 
--- Generate 1 random food object with a random position and food amount.
+rectsOverlap :: Rectangle -> Rectangle -> Bool
+rectsOverlap (Rectangle ax ay aw ah) (Rectangle bx by bw bh) =
+  not ( ax + aw <= bx
+     || bx + bw <= ax
+     || ay + ah <= by
+     || by + bh <= ay )
+
+
+-- Generate 1 random food object with a random position.
 -- Food should be within the screen bounds.
 -- Food should not overlap the nest or the walls.
 generateRandomFood :: StdGen -> Nest -> Seq Rectangle -> (Food, StdGen)
 generateRandomFood rng nest walls =
-    let (!x, !rng') = randomR (0, int2Float screenWidth) rng
-        (!y, !rng'') = randomR (0, int2Float screenHeight) rng'
-        (Vector2 !nestX !nestY) = nest.nContainer.cRect & calcRectCenter
-        dx = nestX - x
-        dy = nestY - y
-        distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
-        amount = ceiling (1000 * (distance ** 3))
-        -- amount = ceiling (1_000_000 * (distance ** 3))
-        food = Food (Container amount (Rectangle x y hitboxSize hitboxSize))
-        foodOverlapsNest = isPointInRect (Vector2 x y) nest.nContainer.cRect
-        foodOverlapsWalls = any (isPointInRect (Vector2 x y)) walls
-    in  if foodOverlapsNest || foodOverlapsWalls
-            then generateRandomFood rng'' nest walls
-            else (food, rng'')
+  let maxX = int2Float screenWidth  - hitboxSize
+      maxY = int2Float screenHeight - hitboxSize
+
+      (!x, !rng')  = randomR (0, maxX) rng
+      (!y, !rng'') = randomR (0, maxY) rng'
+
+      foodRect = Rectangle x y hitboxSize hitboxSize
+
+      (Vector2 !nestX !nestY) = calcRectCenter nest.nContainer.cRect
+      dx = nestX - x
+      dy = nestY - y
+      distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
+      amount = ceiling (2000 * (distance ** 3))
+
+      food = Food (Container amount foodRect)
+
+      foodOverlapsNest  = rectsOverlap foodRect nest.nContainer.cRect
+      foodOverlapsWalls = any (rectsOverlap foodRect) walls
+  in
+    if foodOverlapsNest || foodOverlapsWalls
+      then generateRandomFood rng'' nest walls
+      else (food, rng'')
 
 
 generateRandomFoods :: StdGen -> Nest -> Seq Rectangle -> Int -> (Seq Food, StdGen)
@@ -428,7 +444,7 @@ getAntDecision ant =
 resetCourse :: World -> StdGen -> Seq Ant -> (Seq Rectangle, Seq Food, Seq Ant, Seq Pheromone, StdGen)
 resetCourse w rng ants =
   let (walls, rng') = generateRandomWalls rng  w.wNest 3
-      (foods, rng'') = generateRandomFoods rng' w.wNest walls 1
+      (foods, rng'') = generateRandomFoods rng' w.wNest walls 3
       (ants', rng''') = resetAllAnts rng'' ants
   in  (walls, foods, ants', Seq.empty, rng''')
 
@@ -561,7 +577,7 @@ renderAntAIWorld w = do
             "Pheromones: " ++ show (Seq.length w.wPheromones),
             "Ants: " ++ show (Seq.length w.wAnts),
             "Training: " ++ show w.wTrainingMode,
-            "Generation: " ++ show (w.wGeneration + 1),
+            "Generation: " ++ show w.wGeneration,
             "Course: " ++ show (w.wCourse + 1),
             "Ticks: " ++ show (w.wTicks + 1),
             "Best Avg Score: " ++ show w.wBestAvgScore
@@ -592,27 +608,37 @@ renderAntAIWorld w = do
     when ((w.wTrainingMode == Slow || w.wTrainingMode == Fast) && w.wTicks == 0 && w.wCourse == 0) (writeBestBrain w)
 
 
+frameSetup :: IO ()
+frameSetup = do
+    f11Pressed <- isKeyPressed KeyF11
+    when f11Pressed toggleFullscreen
+    clearBackground bgColor
+
+
 antAISys :: System World
-antAISys = System handleAntAIInput updateAntAIWorld renderAntAIWorld
+antAISys = System 
+            handleAntAIInput 
+            updateAntAIWorld 
+            renderAntAIWorld
 
 
 antAISysWrapped :: System World
 antAISysWrapped =
     let allSystems =
-            drawWallsSys
-                <> pheromoneSys
-                <> foodSys
-                <> antMovementSys
-                <> flatlandRendererSys
-                <> antAISys
+               drawWallsSys
+            <> pheromoneSys
+            <> foodSys
+            <> antMovementSys
+            <> flatlandRendererSys
+            <> antAISys
     in  allSystems
-            { render = \w -> drawing $ do
-                f11Pressed <- isKeyPressed KeyF11
-                when f11Pressed toggleFullscreen
-                clearBackground bgColor
-                allSystems.render w
-            }
+        { render = \w -> drawing $ do
+            frameSetup
+            allSystems.render w
+        }
 
 
 driveAntAI :: IO ()
-driveAntAI = initAntAIWorld >>= gameLoop antAISysWrapped windowShouldClose
+driveAntAI = 
+    initAntAIWorld >>= 
+    gameLoop antAISysWrapped windowShouldClose

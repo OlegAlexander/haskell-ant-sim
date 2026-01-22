@@ -7,6 +7,8 @@ module DrawWalls where
 import Constants (
     minWallSize,
     wallColor,
+    screenWidth,
+    screenHeight
  )
 import Control.Monad (forM_, when)
 import Data.Function ((&))
@@ -61,7 +63,7 @@ bigEnough (Rectangle _ _ !w !h) = w > minWallSize && h > minWallSize
 
 initWallsWorld :: IO World
 initWallsWorld = do
-    _ <- initWindow 1000 800 "Draw Walls"
+    _ <- initWindow screenWidth screenHeight "Draw Walls"
     setTargetFPS 60
     setMouseCursor MouseCursorCrosshair
     rng <- newStdGen
@@ -129,7 +131,7 @@ drawWallsSysWrapped =
     drawWallsSys
         { render = \w -> drawing $ do
             clearBackground lightGray
-            drawText "Press w to draw walls" 10 10 30 blue
+            drawText "Press w to draw walls" 25 25 30 blue
             drawWallsSys.render w
         }
 

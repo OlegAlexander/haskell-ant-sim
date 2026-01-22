@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Use bimap" #-}
+{-# HLINT ignore "Avoid lambda" #-}
 module NeuralNetwork where
 
 import Data.Function ((&))
@@ -16,8 +17,76 @@ import           System.Directory      (createDirectoryIfMissing)
 import           System.FilePath       (takeDirectory)
 
 
-type Layer = (Vector (Vector Float), Vector Float)
 type FlatLayers = ([Float], [(Int, Int)])
+
+
+type Layer = (Vector (Vector Float), Vector Float)
+
+
+-- Dot product of two vectors
+dotProd :: Vector Float -> Vector Float -> Float
+dotProd xs ys = V.sum (V.zipWith (*) xs ys)
+
+
+-- Forward pass for a single layer
+-- forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
+-- forwardLayer activationFunc inputs (!weights, !biases) =
+--     weights
+--         & V.map (\ws -> dotProd inputs ws)
+--         & V.zipWith (+) biases
+--         & V.map activationFunc
+
+
+-- 1. Expand (&) reverse application
+-- Law: x & f = f x
+-- forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
+-- forwardLayer activationFunc inputs (!weights, !biases) =
+--     V.map activationFunc
+--         (V.zipWith (+) biases
+--             (V.map (\ws -> dotProd inputs ws) weights))
+
+
+-- 2. Fusion of zipWith with map on its second argument
+-- Law: zipWith f xs (map g ys) = zipWith (\x y -> f x (g y)) xs ys
+-- forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
+-- forwardLayer activationFunc inputs (!weights, !biases) =
+--     V.map activationFunc
+--         (V.zipWith (\b ws -> b + dotProd inputs ws) biases weights)
+
+
+-- 3. Swap zipWith arguments for readability
+-- Law: zipWith f xs ys = zipWith (\y x -> f x y) ys xs
+-- forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
+-- forwardLayer activationFunc inputs (!weights, !biases) =
+--     V.map activationFunc
+--         (V.zipWith (\ws b -> b + dotProd inputs ws) weights biases)
+
+
+-- 4. Put b on the right for readability
+-- Law: a + b = b + a
+-- forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
+-- forwardLayer activationFunc inputs (!weights, !biases) =
+--     V.map activationFunc
+--         (V.zipWith (\ws b -> dotProd inputs ws + b) weights biases)
+
+
+-- 5. Fusion of map over zipWith
+-- Law: map f (zipWith g xs ys) = zipWith (\x y -> f (g x y)) xs ys
+forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
+forwardLayer activationFunc inputs (!weights, !biases) =
+    V.zipWith (\ws b -> activationFunc (dotProd inputs ws + b)) weights biases
+
+
+-- Forward pass for all layers
+forwardAll :: (Float -> Float) -> [Layer] -> Vector Float -> Vector Float
+forwardAll activationFunc layers inputs =
+    foldl' (forwardLayer activationFunc) inputs layers
+
+
+-- Sigmoid activation function
+sigmoid :: Float -> Float
+sigmoid x = 1 / (1 + exp (-x))
+
 
 writeFlatLayers :: FilePath -> FlatLayers -> IO ()
 writeFlatLayers path flatLayers = do
@@ -44,27 +113,6 @@ uniformListR n range gen = go n range gen []
         go count r g acc =
             let (val, nextGen) = randomR r g
             in  go (count - 1) r nextGen (val : acc)
-
-
-dotProd :: Vector Float -> Vector Float -> Float
-dotProd xs ys = sum (V.zipWith (*) xs ys)
-
-
--- Forward pass for a single layer
-forwardLayer :: (Float -> Float) -> Vector Float -> Layer -> Vector Float
-forwardLayer activationFunc inputs (!weights, !biases) =
-    V.zipWith (\ws b -> activationFunc (dotProd inputs ws + b)) weights biases
-
-
--- Forward pass for all layers
-forwardAll :: (Float -> Float) -> [Layer] -> Vector Float -> Vector Float
-forwardAll activationFunc layers inputs =
-    foldl' (forwardLayer activationFunc) inputs layers
-
-
--- Sigmoid activation function
-sigmoid :: Float -> Float
-sigmoid x = 1 / (1 + exp (-x))
 
 
 vecOfVecsToListOfLists :: Vector (Vector a) -> [[a]]

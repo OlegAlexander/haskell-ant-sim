@@ -129,7 +129,7 @@ ticksPerCourse = fps * 30
 
 
 coursesPerGeneration :: Int
-coursesPerGeneration = 5
+coursesPerGeneration = 3
 
 
 maxGenerations :: Int
@@ -161,4 +161,4 @@ inReturningBrainFile = "models/returning_99_99_6_fence_e681c76.brain"
 
 
 usePretrainedBrains :: Bool
-usePretrainedBrains = True
+usePretrainedBrains = False
