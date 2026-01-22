@@ -31,9 +31,8 @@ snapshot:
 #   - auto-update
 #   - wai
 packages:
-  - ant-ai
-  - ant-movement
   - ant-sim
+  - ant-movement
   - draw-walls
   - flatland-renderer
   - food

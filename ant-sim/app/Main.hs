@@ -1,7 +1,7 @@
 module Main where
 
-import AntSim qualified
+import AntSim (driveAntSim)
 
 
 main :: IO ()
-main = AntSim.main
+main = driveAntSim

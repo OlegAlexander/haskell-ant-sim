@@ -23,3 +23,5 @@ cabal.project.local~
 .ghc.environment.*
 .VSCodeCounter
 *.cabal
+models/foraging.brain
+models/returning.brain
