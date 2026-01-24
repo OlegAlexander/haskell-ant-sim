@@ -92,7 +92,7 @@ writeFlatLayers :: FilePath -> FlatLayers -> IO ()
 writeFlatLayers path flatLayers = do
     createDirectoryIfMissing True (takeDirectory path)
     BS.writeFile path (encode flatLayers)
-    putStrLn $ "FlatLayers written to " ++ path
+    -- putStrLn $ "FlatLayers written to " ++ path
 
 
 readFlatLayers :: FilePath -> IO FlatLayers

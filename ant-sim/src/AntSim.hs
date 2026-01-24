@@ -166,7 +166,7 @@ generateRandomFood rng nest walls =
       dx = nestX - x
       dy = nestY - y
       distance = normalize (sqrt (dx * dx + dy * dy)) compassMaxDistance
-      amount = ceiling (2000 * (distance ** 3))
+      amount = ceiling (10_000 * (distance ** 3))
 
       food = Food (Container amount foodRect)
 
@@ -444,7 +444,7 @@ getAntDecision ant =
 resetCourse :: World -> StdGen -> Seq Ant -> (Seq Rectangle, Seq Food, Seq Ant, Seq Pheromone, StdGen)
 resetCourse w rng ants =
   let (walls, rng') = generateRandomWalls rng  w.wNest 3
-      (foods, rng'') = generateRandomFoods rng' w.wNest walls 3
+      (foods, rng'') = generateRandomFoods rng' w.wNest walls 1
       (ants', rng''') = resetAllAnts rng'' ants
   in  (walls, foods, ants', Seq.empty, rng''')
 

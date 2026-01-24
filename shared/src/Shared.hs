@@ -102,7 +102,7 @@ drawTextLines x y verticalOffset fontSize color stats = do
 
 
 drawTextLines' :: [String] -> IO ()
-drawTextLines' = drawTextLines 10 10 40 30 darkBrown
+drawTextLines' = drawTextLines 20 20 40 30 darkBrown
 
 
 mkAnt :: StdGen -> Vector2 -> (Ant, StdGen)

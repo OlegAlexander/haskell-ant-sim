@@ -21,7 +21,7 @@ fps = 60
 
 
 numAnts :: Int
-numAnts = 50
+numAnts = 100
 
 
 antScale :: Float
@@ -73,7 +73,7 @@ fenceWallThickness = 10
 
 
 foodScale :: Float
-foodScale = 0.1
+foodScale = 0.01
 
 
 foodColor :: Color
@@ -81,7 +81,7 @@ foodColor = yellow
 
 
 foodGrowthAmount :: Int
-foodGrowthAmount = 10
+foodGrowthAmount = 100
 
 
 hitboxSize :: Float
