@@ -153,12 +153,12 @@ outReturningBrainFile = "models/returning.brain"
 
 
 inForagingBrainFile :: FilePath
-inForagingBrainFile = "models/foraging_99_99_6_fence_e681c76.brain"
+inForagingBrainFile = "models/foraging_2000_7.42_99_99_6_presentation_6cd6084.brain"
 
 
 inReturningBrainFile :: FilePath
-inReturningBrainFile = "models/returning_99_99_6_fence_e681c76.brain"
+inReturningBrainFile = "models/returning_2000_7.42_99_99_6_presentation_6cd6084.brain"
 
 
 usePretrainedBrains :: Bool
-usePretrainedBrains = False
+usePretrainedBrains = True

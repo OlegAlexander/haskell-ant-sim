@@ -583,6 +583,10 @@ renderAntSimWorld w = do
             "Best Avg Score: " ++ show w.wBestAvgScore
             ]
     forM_ w.wAnts (drawAnt black)
+
+    -- Temporarily draw the player ant in black for the neural network visualization demo
+    -- drawAnt black w.wPlayerAnt
+
     -- Draw the score above the ants
     -- forM_ w.wAnts $ \ant -> do
     --     let (Vector2 x y) = ant.aPos
