@@ -3,6 +3,7 @@
 Ant foraging simulation in Haskell.
 
 ![demo gif shows ants gathering food](media/gifs/demo.gif)
+![demo gif shows the ant's 1D vision](media/gifs/ant_vision.gif)
 
 ## Features
 
