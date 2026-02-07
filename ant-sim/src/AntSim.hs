@@ -135,9 +135,11 @@ generateRandomWall rng nest =
             else (wall, rng'''')
 
 
+-- Generate n random walls.
 generateRandomWalls :: StdGen -> Nest -> Int -> (Seq Rectangle, StdGen)
 generateRandomWalls rng nest numWalls =
-    let (!walls, !rng') = mapAccumL' (\rgen _ -> generateRandomWall rgen nest) rng [1 .. numWalls]
+    let (!walls, !rng') = 
+         mapAccumL' (\rgen _ -> generateRandomWall rgen nest) rng [1 .. numWalls]
     in  (fenceWalls fenceWallThickness <> Seq.fromList walls, rng')
 
 
