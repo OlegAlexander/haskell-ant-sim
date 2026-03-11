@@ -1,6 +1,6 @@
 # Haskell Ant Sim
 
-Agent-based ant foraging simulation in Haskell.
+Agent-based ant foraging simulation in Haskell. Possibly the buggiest Haskell program ever written.
 
 ![demo gif shows ants gathering food](media/gifs/demo.gif)
 ![demo gif shows the ant's 1D vision](media/gifs/ant_vision.gif)
